@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 23.0  
+**Version:** 24.0  
 **Last updated:** 20 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -50,7 +50,7 @@ Detailed run sheet with times, locations, vendor arrivals, responsibilities, key
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
 
 ### 4.7 Guests and seating
-Manage a guest list, households, invitations, RSVP statuses, dietary needs, plus-ones, table assignments, and seating layouts. Support both platform RSVP links and manual recording of replies received by phone, paper, or other channels (DEC-196).
+Organize guests into households while retaining individual guest records. Invitations can specify which wedding events each person or household may attend and set an individual plus-one allowance. Support platform RSVP links and manual recording of replies received elsewhere; a household member can submit responses for the group while attendance is recorded per person. Track dietary needs and allergies per guest with access limited to authorized wedding members. Guest records can also include table assignments and seating layouts (DEC-196, DEC-198–202).
 
 ### 4.8 Documents and notes
 Contracts, quotations, invoices, shared files, private notes, and relevant attachments.
@@ -2815,6 +2815,51 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Scope and follow-up:** Approves itemized planning records and simple summaries. Define calculations, currencies, handling of shared or split payments, and planner-specific financial visibility during budget-module design.
 
+### DEC-198 — Household grouping with individual guest records
+
+**Status:** Approved  
+**Decision:** Organize guests into households while maintaining a separate record for each individual guest.
+
+**Product behavior:** Households can simplify invitation handling, but each person remains independently represented for RSVP status, event attendance, dietary needs, and other guest details. Users can manage a guest individually without losing the household relationship.
+
+**Scope and follow-up:** Approves household grouping and per-person records. Define household editing, merging, and duplicate handling during guest-module design.
+
+### DEC-199 — Event-specific guest invitations
+
+**Status:** Approved  
+**Decision:** Let couples specify which wedding events each guest or household is invited to.
+
+**Product behavior:** Invitations may include different combinations of events for different guests. RSVP tracking should reflect the events each person was invited to, and guests should not be prompted to respond to events outside their invitation.
+
+**Scope and follow-up:** Approves event-level invitation scope. Define how event changes are communicated and how late additions or withdrawn invitations affect existing replies.
+
+### DEC-200 — Invitation-specific plus-one limits
+
+**Status:** Approved  
+**Decision:** Set a plus-one allowance for each invitation, supporting named or unnamed additional guests within that limit.
+
+**Product behavior:** The allowance may be zero or a chosen number. RSVP handling should not permit more additional guests than the invitation allows. Couples can add a named plus-one when known or record an unnamed allowance until the guest is identified.
+
+**Scope and follow-up:** Approves per-invitation limits and named or unnamed plus-ones. Define how plus-ones become individual guest records and inherit household or event invitations.
+
+### DEC-201 — Per-person RSVP records with household submission
+
+**Status:** Approved  
+**Decision:** Record attendance responses per person, while allowing one household member to submit RSVP responses for invited household members through a shared household response flow.
+
+**Product behavior:** The person submitting may enter responses for each invited member, including permitted plus-ones. The system stores a separate response per person and invited event. Manual responses received outside the platform can also be entered per person under DEC-196. A household-level form must not collapse individual attendance into a single yes/no value.
+
+**Scope and follow-up:** Approves response granularity and household submission. Define whether another household member can edit or replace a submitted response and any RSVP deadline behavior.
+
+### DEC-202 — Per-guest dietary and allergy information
+
+**Status:** Approved  
+**Decision:** Track structured dietary needs per guest, flag allergies, and limit visibility to authorized wedding members.
+
+**Product behavior:** Dietary information is attached to the individual guest rather than only to a household. Allergy details should be clearly distinguishable from preferences. Access must follow wedding permissions and expose the information only to authorized members who need it for planning; do not make it public through a guest RSVP link or broad guest list by default.
+
+**Scope and follow-up:** Approves per-guest tracking, allergy flags, and restricted visibility. Define the dietary categories, who qualifies as authorized, and how information is shared with caterers during later design.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -2827,7 +2872,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-198 (current):** How should couples organize guests across households, invitation groups, and wedding events?
+- **Q-203 (current):** How should digital guest invitations and RSVP links be delivered to guests?
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
@@ -3215,6 +3260,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-196 | 2026-10-20 | Digital and manually recorded guest RSVPs | Support platform RSVP links and manual recording of responses received elsewhere (Option A) | Approved |
 
 | DEC-197 | 2026-10-20 | Itemized wedding budget with simple summaries | Track category budgets and itemized quotes, costs, deposits, due dates, and payments with clear summaries (Option A) | Approved |
+
+| DEC-198 | 2026-10-20 | Household grouping with individual guest records | Group guests into households while retaining individual records and per-person details (Option A) | Approved |
+
+| DEC-199 | 2026-10-20 | Event-specific guest invitations | Let couples choose which wedding events each guest or household is invited to (Option A) | Approved |
+
+| DEC-200 | 2026-10-20 | Invitation-specific plus-one limits | Set a named or unnamed plus-one allowance for each invitation; enforce its limit (Option A) | Approved |
+
+| DEC-201 | 2026-10-20 | Per-person RSVP records with household submission | Let one household member submit responses for the group while storing attendance per person and invited event (Option A) | Approved |
+
+| DEC-202 | 2026-10-20 | Per-guest dietary and allergy information | Track needs per person, flag allergies, and restrict visibility to authorized wedding members (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
