@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 27.0  
+**Version:** 28.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -44,7 +44,7 @@ Couples maintain vendor records manually; planners and planning organizations us
 **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
-Detailed run sheet with times, locations, vendor arrivals, responsibilities, key contacts, operational notes, and potential live status updates. A focused mobile coordinator view and offline/printable access are proposed.
+Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule; other access follows workspace permissions. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. Provide a focused mobile coordinator view, saved offline read-only access, and a printable/PDF version (DEC-210–214).
 
 ### 4.6 Contacts
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
@@ -2911,6 +2911,51 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Scope and follow-up:** Resolves Q-209. The app stores only the current adult and child counts for each group, not separate invited and attending totals.
 
+### DEC-210 — Master chronological wedding-day schedule with event filters
+
+**Status:** Approved  
+**Decision:** Use one chronological master run sheet, with sections or filters for the ceremony, reception, dinner, dance party, and other configured event segments.
+
+**Product behavior:** Keep one source schedule so users can follow the full day in order or focus on a particular event segment. Event-specific views must reflect the same schedule entries and changes as the master timeline.
+
+**Scope and follow-up:** Approves a master timeline with event filters. Define detailed grouping, sort, and display behavior during schedule design.
+
+### DEC-211 — Start and end times with a visible TBD state
+
+**Status:** Approved  
+**Decision:** Schedule items can have start and end times, and may remain marked TBD until the timing is known.
+
+**Product behavior:** Allow an item to be saved without fixed times by showing a clear TBD state. Once known, users can add or edit its start and end times. Do not require fixed times before adding an item to the run sheet.
+
+**Scope and follow-up:** Approves start/end time fields and TBD timing. Define time-zone display and behavior for overlapping or missing durations during detailed design.
+
+### DEC-212 — Manual live status for schedule items
+
+**Status:** Approved  
+**Decision:** Use the statuses Planned, In progress, Complete, and Delayed for wedding-day schedule items.
+
+**Product behavior:** Authorized users update statuses manually during the event. Status is visible in the coordinator view and helps the team understand what is happening. A status change does not by itself alter the scheduled time.
+
+**Scope and follow-up:** Approves these four statuses. Define status-change history and whether additional statuses are needed during detailed design.
+
+### DEC-213 — Couple, lead planner, and assigned coordinator schedule updates
+
+**Status:** Approved  
+**Decision:** The couple, lead planner, and assigned coordinators may update the wedding-day schedule according to their permissions. Other users’ access follows the workspace permission model.
+
+**Product behavior:** Both partners retain equal control under DEC-003. Planner and coordinator updates remain subject to their current wedding access and assigned role. A schedule role does not grant access to unrelated private information.
+
+**Scope and follow-up:** Approves the main update roles, subject to existing permissions. Exact role defaults and permission settings remain open elsewhere in the specification.
+
+### DEC-214 — Offline read-only and printable schedule access
+
+**Status:** Approved  
+**Decision:** Provide a saved, read-only schedule for offline coordinator access, plus a printable/PDF version.
+
+**Product behavior:** Coordinators can prepare the current schedule for offline viewing before connectivity is lost. Offline access is read-only; updates require normal online permissions. A printable/PDF version supports paper backup and is governed by the same access rules when generated.
+
+**Scope and follow-up:** Approves offline read-only access and print/PDF support. Define when offline copies refresh and how stale copies are identified.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -2923,6 +2968,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
+- **Q-215 (current):** Which wedding-day schedule changes should notify the people responsible for affected items?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3335,6 +3381,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-208 | 2026-10-21 | Group-level confirmation with adjustable attending counts | One checkbox confirms the guest group; adult and child counts can be adjusted to actual attendance and feed the confirmed headcount (user direction) | Approved |
 
 | DEC-209 | 2026-10-21 | Replace guest-group counts with confirmed attendance | Keep one adult and child count per group; update them in place at confirmation and do not retain a separate original headcount (user direction) | Approved |
+
+| DEC-210 | 2026-10-21 | Master chronological wedding-day schedule with event filters | Use one chronological run sheet with sections or filters for event segments (Option A) | Approved |
+
+| DEC-211 | 2026-10-21 | Start and end times with a visible TBD state | Allow start and end times to remain TBD until known; do not require fixed times to add an item (Option A) | Approved |
+
+| DEC-212 | 2026-10-21 | Manual live status for schedule items | Allow authorized users to mark items Planned, In progress, Complete, or Delayed (Option A) | Approved |
+
+| DEC-213 | 2026-10-21 | Couple, lead planner, and assigned coordinator schedule updates | These roles may update the schedule according to existing permissions; others follow workspace access (Option A) | Approved |
+
+| DEC-214 | 2026-10-21 | Offline read-only and printable schedule access | Provide a saved offline read-only schedule and a printable/PDF version (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
