@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 24.0  
+**Version:** 25.0  
 **Last updated:** 20 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -49,8 +49,8 @@ Detailed run sheet with times, locations, vendor arrivals, responsibilities, key
 ### 4.6 Contacts
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
 
-### 4.7 Guests and seating
-Organize guests into households while retaining individual guest records. Invitations can specify which wedding events each person or household may attend and set an individual plus-one allowance. Support platform RSVP links and manual recording of replies received elsewhere; a household member can submit responses for the group while attendance is recorded per person. Track dietary needs and allergies per guest with access limited to authorized wedding members. Guest records can also include table assignments and seating layouts (DEC-196, DEC-198–202).
+### 4.7 Guest list and attendance tracking
+Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a checkbox to mark the entry confirmed. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
 Contracts, quotations, invoices, shared files, private notes, and relevant attachments.
@@ -2799,12 +2799,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 ### DEC-196 — Digital and manually recorded guest RSVPs
 
-**Status:** Approved  
-**Decision:** Support both platform RSVP links for guests and manual recording of replies received by phone, paper, or other channels.
+**Status:** Superseded by DEC-203  
+**Decision:** The original decision supported platform RSVP links and manual recording. The product direction is updated by DEC-203: couples track confirmation in their guest list, and the app does not send invitations or RSVP links.
 
-**Product behavior:** Couples can use platform RSVP links and record responses received elsewhere in the same guest-management workflow. Manually entered replies should be identified as recorded by a workspace member, with an appropriate edit history. A guest must not need to use the platform for the couple to track their invitation or response.
-
-**Scope and follow-up:** Approves digital and manual RSVP tracking. Define invitation delivery channels, guest identity and household handling, response fields, reminders, and the guest-facing privacy experience separately.
+**History:** Kept for decision traceability. The original invitation and response options are no longer current.
 
 ### DEC-197 — Itemized wedding budget with simple summaries
 
@@ -2817,48 +2815,83 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 ### DEC-198 — Household grouping with individual guest records
 
-**Status:** Approved  
-**Decision:** Organize guests into households while maintaining a separate record for each individual guest.
+**Status:** Superseded by DEC-204  
+**Decision:** The original decision centered the list on individual guest records grouped by household. DEC-204 updates the primary list presentation to named guest entries or groups with adult and child counts.
 
-**Product behavior:** Households can simplify invitation handling, but each person remains independently represented for RSVP status, event attendance, dietary needs, and other guest details. Users can manage a guest individually without losing the household relationship.
-
-**Scope and follow-up:** Approves household grouping and per-person records. Define household editing, merging, and duplicate handling during guest-module design.
+**History:** Kept for traceability. The list may retain individual detail where needed, but the approved top-level row is the named guest entry or group.
 
 ### DEC-199 — Event-specific guest invitations
 
-**Status:** Approved  
-**Decision:** Let couples specify which wedding events each guest or household is invited to.
+**Status:** Superseded by DEC-205  
+**Decision:** The original decision described invitations sent to selected events. DEC-205 retains event-specific attendance categories as couple-managed guest-list data and does not imply that the app sends invitations.
 
-**Product behavior:** Invitations may include different combinations of events for different guests. RSVP tracking should reflect the events each person was invited to, and guests should not be prompted to respond to events outside their invitation.
-
-**Scope and follow-up:** Approves event-level invitation scope. Define how event changes are communicated and how late additions or withdrawn invitations affect existing replies.
+**History:** Kept for traceability. Current event scopes and their display are defined by DEC-205.
 
 ### DEC-200 — Invitation-specific plus-one limits
 
-**Status:** Approved  
-**Decision:** Set a plus-one allowance for each invitation, supporting named or unnamed additional guests within that limit.
+**Status:** Superseded by DEC-204  
+**Decision:** The original decision set a plus-one allowance on each invitation. DEC-204 replaces invitation allowances with adult and child counts on a named guest entry or group.
 
-**Product behavior:** The allowance may be zero or a chosen number. RSVP handling should not permit more additional guests than the invitation allows. Couples can add a named plus-one when known or record an unnamed allowance until the guest is identified.
-
-**Scope and follow-up:** Approves per-invitation limits and named or unnamed plus-ones. Define how plus-ones become individual guest records and inherit household or event invitations.
+**History:** Kept for traceability. The app does not send invitations or enforce invitation plus-one limits.
 
 ### DEC-201 — Per-person RSVP records with household submission
 
-**Status:** Approved  
-**Decision:** Record attendance responses per person, while allowing one household member to submit RSVP responses for invited household members through a shared household response flow.
+**Status:** Superseded by DEC-203 and DEC-204  
+**Decision:** The original decision supported household-submitted digital RSVP responses stored per person. The current flow uses a couple-managed confirmation checkbox on each guest entry or group, with headcounts recorded as adults and children.
 
-**Product behavior:** The person submitting may enter responses for each invited member, including permitted plus-ones. The system stores a separate response per person and invited event. Manual responses received outside the platform can also be entered per person under DEC-196. A household-level form must not collapse individual attendance into a single yes/no value.
-
-**Scope and follow-up:** Approves response granularity and household submission. Define whether another household member can edit or replace a submitted response and any RSVP deadline behavior.
+**History:** Kept for traceability. There is no guest-facing RSVP submission flow in the app.
 
 ### DEC-202 — Per-guest dietary and allergy information
 
+**Status:** Superseded by DEC-206  
+**Decision:** The original decision called for structured dietary and allergy information per individual guest. DEC-206 updates this to optional labels chosen from a default list or created by the couple.
+
+**History:** Existing wedding workspace permissions continue to apply. Current label behavior is defined by DEC-206.
+
+### DEC-203 — Couple-managed guest list with manual confirmation
+
 **Status:** Approved  
-**Decision:** Track structured dietary needs per guest, flag allergies, and limit visibility to authorized wedding members.
+**Decision:** Couples use the app to maintain a guest list and manually mark whether each guest entry or group has confirmed. The app does not send wedding invitations or guest RSVP links.
 
-**Product behavior:** Dietary information is attached to the individual guest rather than only to a household. Allergy details should be clearly distinguishable from preferences. Access must follow wedding permissions and expose the information only to authorized members who need it for planning; do not make it public through a guest RSVP link or broad guest list by default.
+**Product behavior:** Provide a confirmation checkbox on each guest entry or group. Couples update it based on confirmations they receive outside the app. An unchecked entry is not counted as confirmed. Do not provide guest-facing invitation delivery or an RSVP submission flow as part of this guest-list feature.
 
-**Scope and follow-up:** Approves per-guest tracking, allergy flags, and restricted visibility. Define the dietary categories, who qualifies as authorized, and how information is shared with caterers during later design.
+**Scope and follow-up:** Replaces the invitation and RSVP sending directions in DEC-196 and DEC-201. The handling of a partially confirmed group remains open under Q-208.
+
+### DEC-204 — Named guest entries with adult and child counts
+
+**Status:** Approved  
+**Decision:** Represent each guest party or group as a named guest-list entry with a display name or group label and separate counts for adults and children.
+
+**Product behavior:** Show the group label and adult/child counts directly in the guest list. A confirmation checkbox applies to the entry as a whole unless a future decision permits partial confirmation. Keep detailed individual information optional and secondary to the grouped list view. Do not use plus-one allowances as invitation controls.
+
+**Scope and follow-up:** Replaces the previous individual-first presentation and invitation-specific plus-one allowance in DEC-198 and DEC-200. Q-208 covers partial confirmation behavior.
+
+### DEC-205 — Event-scope categories and readable combinations
+
+**Status:** Approved  
+**Decision:** Assign each guest entry to the whole event, reception only, dinner only, dance party only, or a combination of those event segments.
+
+**Product behavior:** Display one compact event-scope label per entry. Use “Full event” when the group is included in all event segments. For a partial combination, show all included segments in a consistent event order, for example “Reception + Dinner” or “Dinner + Dance party.” Keep combinations visually distinct from the full-event label so a partial invitation is easy to scan. The app records these categories for the couple; it does not send invitations.
+
+**Scope and follow-up:** Replaces the invitation-delivery framing of DEC-199. Confirm exact event naming and ordering when the wedding schedule is configured.
+
+### DEC-206 — Optional dietary labels from defaults or custom labels
+
+**Status:** Approved  
+**Decision:** Let couples attach optional dietary labels to guest entries, choosing from a default list or creating a custom label.
+
+**Product behavior:** The default list should include common labels such as Vegan and Vegetarian. Couples can add a custom label for another dietary preference or requirement. Labels are optional and should be visible in the guest list for planning. Apply existing wedding workspace permissions to these details.
+
+**Scope and follow-up:** Replaces the structured per-person dietary fields in DEC-202. Define the default label list and whether labels can be applied to a subgroup within a named guest entry during detailed design.
+
+### DEC-207 — Confirmed headcount at the top of the guest list
+
+**Status:** Approved  
+**Decision:** Show the number of confirmed attendees at the top of the guest list, calculated from the adult and child counts on confirmed entries.
+
+**Product behavior:** Display a clear total confirmed headcount. Include adult and child subtotals so the couple can quickly understand the composition. Update the count when an entry is marked confirmed or its headcount changes; do not include unchecked entries.
+
+**Scope and follow-up:** Approves the confirmed headcount summary. Partial confirmation of a named group remains unresolved under Q-208.
 
 ## 7. Proposed experience principles — pending validation
 
@@ -2872,7 +2905,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-203 (current):** How should digital guest invitations and RSVP links be delivered to guests?
+- **Q-208 (current):** Can a guest entry or group be partially confirmed, or does the confirmation checkbox apply to the entire entry?
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
@@ -3257,19 +3290,29 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 | DEC-195 | 2026-10-20 | Optional task dependencies | Allow non-blocking prerequisite links that surface blockers without preventing work or completion (Option A) | Approved |
 
-| DEC-196 | 2026-10-20 | Digital and manually recorded guest RSVPs | Support platform RSVP links and manual recording of responses received elsewhere (Option A) | Approved |
+| DEC-196 | 2026-10-20 | Digital and manually recorded guest RSVPs | Original decision included app RSVP links and manual responses; superseded by couple-managed confirmation tracking without app-sent invites or guest RSVP links (DEC-203) | Superseded by DEC-203 |
 
 | DEC-197 | 2026-10-20 | Itemized wedding budget with simple summaries | Track category budgets and itemized quotes, costs, deposits, due dates, and payments with clear summaries (Option A) | Approved |
 
-| DEC-198 | 2026-10-20 | Household grouping with individual guest records | Group guests into households while retaining individual records and per-person details (Option A) | Approved |
+| DEC-198 | 2026-10-20 | Household grouping with individual guest records | Original individual-first household model; superseded by named group entries with adult and child counts (DEC-204) | Superseded by DEC-204 |
 
-| DEC-199 | 2026-10-20 | Event-specific guest invitations | Let couples choose which wedding events each guest or household is invited to (Option A) | Approved |
+| DEC-199 | 2026-10-20 | Event-specific guest invitations | Event scopes remain, but invitation-sending framing is superseded by couple-managed event categories (DEC-205) | Superseded by DEC-205 |
 
-| DEC-200 | 2026-10-20 | Invitation-specific plus-one limits | Set a named or unnamed plus-one allowance for each invitation; enforce its limit (Option A) | Approved |
+| DEC-200 | 2026-10-20 | Invitation-specific plus-one limits | Superseded by recording adult and child counts on named guest entries without invitation controls (DEC-204) | Superseded by DEC-204 |
 
-| DEC-201 | 2026-10-20 | Per-person RSVP records with household submission | Let one household member submit responses for the group while storing attendance per person and invited event (Option A) | Approved |
+| DEC-201 | 2026-10-20 | Per-person RSVP records with household submission | Superseded by a couple-managed confirmation checkbox for each guest entry or group (DEC-203/204) | Superseded by DEC-203/204 |
 
-| DEC-202 | 2026-10-20 | Per-guest dietary and allergy information | Track needs per person, flag allergies, and restrict visibility to authorized wedding members (Option A) | Approved |
+| DEC-202 | 2026-10-20 | Per-guest dietary and allergy information | Superseded by optional default or custom dietary labels applied to guest entries (DEC-206) | Superseded by DEC-206 |
+
+| DEC-203 | 2026-10-20 | Couple-managed guest list with manual confirmation | Couples manually maintain guest entries and confirmation checkboxes; the app does not send invitations or RSVP links (user direction) | Approved |
+
+| DEC-204 | 2026-10-20 | Named guest entries with adult and child counts | Show each guest party/group by display name with adult and child counts; checkbox applies to the entry as a whole pending Q-208 (user direction) | Approved |
+
+| DEC-205 | 2026-10-20 | Event-scope categories and readable combinations | Track full event, reception, dinner, dance party, or combinations; show partial combinations in one ordered label, e.g. “Reception + Dinner” (user direction) | Approved |
+
+| DEC-206 | 2026-10-20 | Optional dietary labels from defaults or custom labels | Allow optional default labels such as Vegan or Vegetarian and couple-created custom labels (user direction) | Approved |
+
+| DEC-207 | 2026-10-20 | Confirmed headcount at the top of the guest list | Sum adult and child counts for confirmed entries and show total with adult/child subtotals (user direction) | Approved |
 
 ## 10. Document maintenance rules
 
