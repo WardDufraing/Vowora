@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 26.0  
+**Version:** 27.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -50,7 +50,7 @@ Detailed run sheet with times, locations, vendor arrivals, responsibilities, key
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
 
 ### 4.7 Guest list and attendance tracking
-Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
+Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
 Contracts, quotations, invoices, shared files, private notes, and relevant attachments.
@@ -2900,7 +2900,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Product behavior:** Keep one confirmation checkbox per guest group; do not require separate confirmation states for individuals in that group. Allow the couple to edit the group’s adult and child counts as part of recording confirmation. The confirmed headcount summary uses the adjusted counts for checked groups and excludes unchecked groups. This lets a group confirm while recording that fewer people will attend than were originally expected.
 
-**Scope and follow-up:** Resolves Q-208. Whether to preserve a separate original invited headcount alongside the confirmed-attendance counts remains open under Q-209.
+**Scope and follow-up:** Resolves Q-208. DEC-209 specifies that the confirmed attending counts replace the previous adult and child counts; a separate original headcount is not retained.
+
+### DEC-209 — Replace guest-group counts with confirmed attendance
+
+**Status:** Approved  
+**Decision:** Keep one adult count and one child count for each guest group. When the group confirms, update those counts in place to reflect the number actually attending; do not retain the original planned headcount separately.
+
+**Product behavior:** The confirmation checkbox applies to the whole group under DEC-208. The couple can adjust the adult and child counts at confirmation, and those updated values become the group’s current counts. The confirmed headcount summary uses the current counts for checked groups and excludes unchecked groups.
+
+**Scope and follow-up:** Resolves Q-209. The app stores only the current adult and child counts for each group, not separate invited and attending totals.
 
 ## 7. Proposed experience principles — pending validation
 
@@ -2914,7 +2923,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-209 (current):** Should the guest list retain the original invited headcount separately from the adjustable confirmed-attendance count?
+
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
@@ -3324,6 +3333,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-207 | 2026-10-20 | Confirmed headcount at the top of the guest list | Sum adult and child counts for confirmed entries and show total with adult/child subtotals (user direction) | Approved |
 
 | DEC-208 | 2026-10-21 | Group-level confirmation with adjustable attending counts | One checkbox confirms the guest group; adult and child counts can be adjusted to actual attendance and feed the confirmed headcount (user direction) | Approved |
+
+| DEC-209 | 2026-10-21 | Replace guest-group counts with confirmed attendance | Keep one adult and child count per group; update them in place at confirmation and do not retain a separate original headcount (user direction) | Approved |
 
 ## 10. Document maintenance rules
 
