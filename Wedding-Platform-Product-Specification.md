@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 21.0  
+**Version:** 23.0  
 **Last updated:** 20 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -35,13 +35,13 @@ The product should offer a welcoming, simple experience for couples and a more e
 **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. Each summary should lead to its corresponding detailed area when available. Exact widget layout, content thresholds, permissions, and customization remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
-Overall budget, category allocations, estimates, committed/actual costs, deposits, due dates, balances, and budget-versus-spend views.
+Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
 
 ### 4.3 Vendor options, comparisons, and decisions
-Couples enter vendor records manually. Professional planners and planning organizations use an organization-owned vendor library that can be reused across their weddings (DEC-182–183). Planners choose which client-visible details to share with each wedding; organization-only notes stay private, and later library changes require review before sharing (DEC-184). Users compare vendors side by side using relevant standard fields and optional custom criteria; the platform does not choose a winner (DEC-185). A guided status flow covers Considering, Contacted, Quote received, Shortlisted, Selected, Booked, and Not proceeding, with stages users may skip (DEC-186). A service category may have one primary vendor and additional selected vendors for distinct needs or scopes (DEC-187). Vendor records link to one or more contact-directory entries, with wedding visibility controlled separately from organization-private information (DEC-188). Contracts, quotes, invoices, payments, and tasks remain in their respective modules and link to the vendor record rather than being duplicated there (DEC-189).
+Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
-**Selected as the next module for detailed product design (DEC-055).** Explore a month-by-month planning timeline with milestones, assignments, deadlines, reminders, dependencies, and customizable checklists. This selection determines the next design focus; the detailed workflows and MVP commitment remain undecided.
+**Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
 Detailed run sheet with times, locations, vendor arrivals, responsibilities, key contacts, operational notes, and potential live status updates. A focused mobile coordinator view and offline/printable access are proposed.
@@ -50,7 +50,7 @@ Detailed run sheet with times, locations, vendor arrivals, responsibilities, key
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
 
 ### 4.7 Guests and seating
-Guest list, households, invitations, RSVPs, dietary needs, plus-ones, table assignments, and seating layouts.
+Manage a guest list, households, invitations, RSVP statuses, dietary needs, plus-ones, table assignments, and seating layouts. Support both platform RSVP links and manual recording of replies received by phone, paper, or other channels (DEC-196).
 
 ### 4.8 Documents and notes
 Contracts, quotations, invoices, shared files, private notes, and relevant attachments.
@@ -2743,6 +2743,78 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences and required follow-up design:** Define the exact supported link types, cross-module search and display behavior, handling when a linked item is archived or removed, and which roles can create or remove links.
 
+### DEC-190 — Customizable starter vendor service categories
+
+**Status:** Approved  
+**Decision:** Provide a useful starter list of vendor service categories that authorized users can add to, rename, reorder, or hide.
+
+**Product behavior:** Couples and planner organizations receive a consistent initial set of categories. Within the relevant workspace and permissions, users may tailor the category list to their needs. Hiding a category must not silently delete existing vendor records; existing records remain accessible and retain their category history or a clear uncategorized state if a category is removed.
+
+**Scope and follow-up:** Approves a customizable starter list, not a platform-wide vendor catalog. Define the exact starter categories and migration behavior for category changes during detailed design.
+
+### DEC-191 — Category-aware vendor fields
+
+**Status:** Approved  
+**Decision:** Vendor records use shared common fields plus fields tailored to the vendor’s service category, with optional custom fields.
+
+**Product behavior:** Common information such as vendor name and contact details remains consistent. Category-specific fields capture useful details for that service type. Organizations may add optional custom fields where needed. Custom or organization-only information must follow existing visibility and sharing controls, including DEC-184.
+
+**Scope and follow-up:** Approves a category-aware field model, not the exact field list or data validation rules. Define the initial common and category-specific fields during module design.
+
+### DEC-192 — Review possible vendor duplicates
+
+**Status:** Approved  
+**Decision:** Suggest possible duplicate vendor records to authorized users for review; never automatically merge records.
+
+**Product behavior:** When a user creates or imports a vendor that resembles an existing record in the organization directory, show likely matches and let an authorized user review, link, or merge as permitted. Do not block entry solely because a possible match exists, and do not merge records without an explicit user action. Preserve organization and wedding visibility boundaries while checking for matches.
+
+**Scope and follow-up:** Approves review suggestions and user-controlled resolution. Define match signals, merge permissions, and handling of distinct branches or contacts during detailed design.
+
+### DEC-193 — Editable date-based wedding planning starter plan
+
+**Status:** Approved  
+**Decision:** Offer an editable starter plan based on the wedding date, containing common planning tasks and milestones.
+
+**Product behavior:** The plan should provide a useful starting point rather than a required workflow. Couples can edit, add, or remove tasks and milestones. A missing or changed wedding date must not prevent use of the task list; date-based timing can be adjusted when the date is added or changed. Starter-plan generation must avoid overwriting tasks users have already customized.
+
+**Scope and follow-up:** Approves an editable date-based starter plan. The default plan contents, treatment of weddings without dates, and update behavior after major date changes remain to be designed.
+
+### DEC-194 — One accountable owner with optional task collaborators
+
+**Status:** Approved  
+**Decision:** A task may have one accountable owner and optional collaborators. A task may also remain unassigned.
+
+**Product behavior:** The owner is the primary person responsible for moving a task forward. Collaborators can help without creating ambiguity about accountability. Unassigned tasks remain visible to people with permission and can be claimed or assigned later. Assignment does not change workspace permissions or grant access to otherwise restricted information.
+
+**Scope and follow-up:** Approves the ownership model, not the detailed permission matrix or notification rules. Define who may assign, claim, or change task ownership and how changes are communicated.
+
+### DEC-195 — Optional task dependencies
+
+**Status:** Approved  
+**Decision:** Let users optionally link prerequisite tasks. Dependencies may surface blockers and overdue work but must not prevent users from working on or completing a task.
+
+**Product behavior:** Tasks remain independently editable and completable. When a prerequisite is incomplete or overdue, show that relationship as planning context rather than enforcing a hard lock. Users may add or remove dependency links, subject to workspace permissions. Avoid circular dependency relationships.
+
+**Scope and follow-up:** Approves optional, non-blocking dependencies. Define dependency display, reminders, and safeguards for changing dates or deleting linked tasks.
+
+### DEC-196 — Digital and manually recorded guest RSVPs
+
+**Status:** Approved  
+**Decision:** Support both platform RSVP links for guests and manual recording of replies received by phone, paper, or other channels.
+
+**Product behavior:** Couples can use platform RSVP links and record responses received elsewhere in the same guest-management workflow. Manually entered replies should be identified as recorded by a workspace member, with an appropriate edit history. A guest must not need to use the platform for the couple to track their invitation or response.
+
+**Scope and follow-up:** Approves digital and manual RSVP tracking. Define invitation delivery channels, guest identity and household handling, response fields, reminders, and the guest-facing privacy experience separately.
+
+### DEC-197 — Itemized wedding budget with simple summaries
+
+**Status:** Approved  
+**Decision:** Track category budgets and individual cost records, including quotes, deposits, due dates, and payments, while presenting simple planned-versus-actual summaries.
+
+**Product behavior:** The budget supports an overall target and category allocations, with individual records connected to vendors where relevant. Couples can distinguish estimates, quoted amounts, commitments, deposits, due dates, and paid amounts in line with the product’s experience principles. Summary views should remain understandable without requiring double-entry bookkeeping or a full accounting ledger.
+
+**Scope and follow-up:** Approves itemized planning records and simple summaries. Define calculations, currencies, handling of shared or split payments, and planner-specific financial visibility during budget-module design.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -2755,7 +2827,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-190 (current):** Which vendor service categories should the platform provide by default, and how customizable should they be?
+- **Q-198 (current):** How should couples organize guests across households, invitation groups, and wedding events?
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
@@ -3127,6 +3199,22 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-188 | 2026-10-20 | Link vendor records to wedding contact records | Link vendors to one or more contacts with separate wedding visibility and organization privacy controls (Option A) | Approved |
 
 | DEC-189 | 2026-10-20 | Link vendor records to documents, finances, and tasks | Keep related items in their own modules and link them to vendors without duplicating data (Option A) | Approved |
+
+| DEC-190 | 2026-10-20 | Customizable starter vendor service categories | Provide a starter set that authorized users can add to, rename, reorder, or hide (Option A) | Approved |
+
+| DEC-191 | 2026-10-20 | Category-aware vendor fields | Use common and category-specific fields with optional custom fields (Option A) | Approved |
+
+| DEC-192 | 2026-10-20 | Review possible vendor duplicates | Suggest likely matches for user review; allow explicit linking or merging and never merge automatically (Option A) | Approved |
+
+| DEC-193 | 2026-10-20 | Editable date-based wedding planning starter plan | Generate an editable starter plan with common wedding tasks and milestones based on the wedding date (Option A) | Approved |
+
+| DEC-194 | 2026-10-20 | One accountable owner with optional task collaborators | Allow one task owner, optional collaborators, or an unassigned state (Option A) | Approved |
+
+| DEC-195 | 2026-10-20 | Optional task dependencies | Allow non-blocking prerequisite links that surface blockers without preventing work or completion (Option A) | Approved |
+
+| DEC-196 | 2026-10-20 | Digital and manually recorded guest RSVPs | Support platform RSVP links and manual recording of responses received elsewhere (Option A) | Approved |
+
+| DEC-197 | 2026-10-20 | Itemized wedding budget with simple summaries | Track category budgets and itemized quotes, costs, deposits, due dates, and payments with clear summaries (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
