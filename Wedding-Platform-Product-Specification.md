@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 28.0  
+**Version:** 29.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -44,7 +44,7 @@ Couples maintain vendor records manually; planners and planning organizations us
 **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
-Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule; other access follows workspace permissions. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. Provide a focused mobile coordinator view, saved offline read-only access, and a printable/PDF version (DEC-210–214).
+Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Provide a focused mobile coordinator view, saved offline read-only access, and a printable/PDF version (DEC-210–219).
 
 ### 4.6 Contacts
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
@@ -2956,6 +2956,51 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Scope and follow-up:** Approves offline read-only access and print/PDF support. Define when offline copies refresh and how stale copies are identified.
 
+### DEC-215 — Notify on material schedule changes
+
+**Status:** Approved  
+**Decision:** Send schedule alerts when an item’s time, location, or responsibility changes. Routine note edits and status changes do not trigger these alerts.
+
+**Product behavior:** Treat updates to start/end time, location, or assigned responsibility as material changes. Changes only to notes, or status changes such as In progress or Delayed, do not generate a schedule-change alert under this decision.
+
+**Scope and follow-up:** Approves the change types that trigger alerts. Alert recipients are defined in DEC-216. Delivery channel and batching details remain open.
+
+### DEC-216 — Notify people assigned to affected schedule items
+
+**Status:** Approved  
+**Decision:** Send schedule-change alerts to the people assigned to the affected items.
+
+**Product behavior:** A change to an item notifies people assigned to that item. Do not notify every person who can view the full schedule solely because they have viewing access. Apply existing workspace access and notification settings.
+
+**Scope and follow-up:** Approves the recipient group for the material changes in DEC-215. Define how users without an assigned person are handled during detailed design.
+
+### DEC-217 — Review proposed timing adjustments after a delay
+
+**Status:** Approved  
+**Decision:** When a schedule item is delayed, show proposed timing adjustments for affected later items and require an authorized person to review and apply them. Do not shift later items automatically.
+
+**Product behavior:** Identify downstream items that may be affected by the delay and show suggested revised times. Authorized users may accept or edit the proposals, or leave the original schedule unchanged. Applying a proposal updates the schedule and triggers the applicable material-change alerts under DEC-215/216.
+
+**Scope and follow-up:** Approves human review before shifting later timings. Define how proposals account for buffers, fixed commitments, and overlapping locations during detailed design.
+
+### DEC-218 — Keep the schedule editable during the wedding
+
+**Status:** Approved  
+**Decision:** Keep the schedule editable before and during the wedding for authorized users under DEC-213. Do not impose an automatic cutoff or event-start lock.
+
+**Product behavior:** Authorized couples, lead planners, and assigned coordinators may make schedule updates as the day unfolds. Other users retain access according to their current permissions. Status changes remain available during the event.
+
+**Scope and follow-up:** Approves ongoing editability; there is no automatic schedule lock at a selected cutoff or at event start.
+
+### DEC-219 — Show the latest schedule without schedule-specific edit history
+
+**Status:** Approved  
+**Decision:** Show the latest schedule only. Do not provide a schedule-specific history of prior versions or edits.
+
+**Product behavior:** Authorized users see current schedule details, including applied timing changes and status updates. Do not expose prior schedule versions or a persistent schedule-edit timeline. This decision does not remove security, access, or administrative audit records required by other platform rules.
+
+**Scope and follow-up:** Approves the current-schedule-only experience. Offline-copy refresh and stale-copy handling remain open under Q-220.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -2968,7 +3013,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-215 (current):** Which wedding-day schedule changes should notify the people responsible for affected items?
+- **Q-220 (current):** How should offline schedule copies refresh after online changes, and how should outdated copies be identified?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3391,6 +3436,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-213 | 2026-10-21 | Couple, lead planner, and assigned coordinator schedule updates | These roles may update the schedule according to existing permissions; others follow workspace access (Option A) | Approved |
 
 | DEC-214 | 2026-10-21 | Offline read-only and printable schedule access | Provide a saved offline read-only schedule and a printable/PDF version (Option A) | Approved |
+
+| DEC-215 | 2026-10-21 | Notify on material schedule changes | Alert on time, location, or responsibility changes; do not alert for routine notes or status updates (Option A) | Approved |
+
+| DEC-216 | 2026-10-21 | Notify people assigned to affected schedule items | Send change alerts to people assigned to the affected items, not all schedule viewers by default (Option A) | Approved |
+
+| DEC-217 | 2026-10-21 | Review proposed timing adjustments after a delay | Suggest changes to affected later items for authorized review; do not shift automatically (Option A) | Approved |
+
+| DEC-218 | 2026-10-21 | Keep the schedule editable during the wedding | Authorized roles may edit before and during the event; no automatic cutoff or event-start lock (Option A) | Approved |
+
+| DEC-219 | 2026-10-21 | Show the latest schedule without schedule-specific edit history | Show current details only; do not provide prior schedule versions or a persistent edit timeline (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
