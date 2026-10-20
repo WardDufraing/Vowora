@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 29.0  
+**Version:** 30.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -44,7 +44,7 @@ Couples maintain vendor records manually; planners and planning organizations us
 **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
-Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Provide a focused mobile coordinator view, saved offline read-only access, and a printable/PDF version (DEC-210–219).
+Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224).
 
 ### 4.6 Contacts
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
@@ -3001,6 +3001,51 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Scope and follow-up:** Approves the current-schedule-only experience. Offline-copy refresh and stale-copy handling remain open under Q-220.
 
+### DEC-220 — Refresh saved offline schedules whenever online
+
+**Status:** Approved  
+**Decision:** A coordinator can save a schedule for offline use, and the app refreshes that saved copy whenever it is online.
+
+**Product behavior:** When a schedule has been marked Save offline, update its local read-only copy when the app has connectivity and a newer schedule is available. Display the last successful sync time. Offline access remains read-only under DEC-214.
+
+**Scope and follow-up:** Approves automatic refresh while online for explicitly saved schedules. DEC-221 defines how potential staleness is shown while offline.
+
+### DEC-221 — Show offline-copy sync time and staleness warning
+
+**Status:** Approved  
+**Decision:** Show the last sync time and a clear warning that an offline schedule may be out of date while the device is offline.
+
+**Product behavior:** Display when the saved schedule last synced. While offline, make clear that newer online changes may not be present. Once connectivity returns, refresh under DEC-220 and update the timestamp and warning state.
+
+**Scope and follow-up:** Approves timestamp and offline staleness warning. The warning must not claim to know about an online change that cannot be checked while disconnected.
+
+### DEC-222 — Explicitly save schedules for offline use
+
+**Status:** Approved  
+**Decision:** Let coordinators explicitly choose Save offline for a schedule; do not automatically save every schedule they can access.
+
+**Product behavior:** Provide a clear action to prepare or refresh the saved copy while online. Show whether the schedule is available offline and its last sync time under DEC-220/221.
+
+**Scope and follow-up:** Approves opt-in offline saving per schedule. Storage limits and removal behavior remain to be designed.
+
+### DEC-223 — Offline schedule includes run sheet and essential contacts
+
+**Status:** Approved  
+**Decision:** Include the timeline, locations, responsibilities, status, and essential day-of contact details in the offline schedule copy.
+
+**Product behavior:** Make this operational information available in the read-only offline copy. Do not include all connected wedding records or unrelated private information merely because they are linked elsewhere.
+
+**Scope and follow-up:** Approves the contents at a product level. Define which contact fields count as essential and how their access follows current wedding permissions.
+
+### DEC-224 — Printable/PDF run sheet includes operational details and essential contacts
+
+**Status:** Approved  
+**Decision:** Include timeline, locations, responsibilities, statuses, and essential day-of contacts in the printable/PDF run sheet.
+
+**Product behavior:** Keep the exported schedule practical for use on paper, with readable timing and responsibility details. Exclude unrelated connected wedding information. Apply existing access rules when generating and sharing the PDF.
+
+**Scope and follow-up:** Approves core printable/PDF contents. Page layout, print options, and essential contact fields remain for detailed design.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3013,7 +3058,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-220 (current):** How should offline schedule copies refresh after online changes, and how should outdated copies be identified?
+- **Q-225 (current):** What should happen to a saved offline schedule if that person’s wedding access is revoked?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3446,6 +3491,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-218 | 2026-10-21 | Keep the schedule editable during the wedding | Authorized roles may edit before and during the event; no automatic cutoff or event-start lock (Option A) | Approved |
 
 | DEC-219 | 2026-10-21 | Show the latest schedule without schedule-specific edit history | Show current details only; do not provide prior schedule versions or a persistent edit timeline (Option A) | Approved |
+
+| DEC-220 | 2026-10-21 | Refresh saved offline schedules whenever online | Update an explicitly saved read-only schedule copy whenever a newer schedule is available online; show last sync time (Option A) | Approved |
+
+| DEC-221 | 2026-10-21 | Show offline-copy sync time and staleness warning | Show last sync time and warn that an offline copy may be outdated while disconnected (Option A) | Approved |
+
+| DEC-222 | 2026-10-21 | Explicitly save schedules for offline use | Let coordinators opt in per schedule with a Save offline action; do not save every accessible schedule automatically (Option A) | Approved |
+
+| DEC-223 | 2026-10-21 | Offline schedule includes run sheet and essential contacts | Make timeline, locations, responsibilities, statuses, and essential day-of contacts available offline (Option A) | Approved |
+
+| DEC-224 | 2026-10-21 | Printable/PDF run sheet includes operational details and essential contacts | Include timeline, locations, responsibilities, statuses, and essential day-of contacts in the printable/PDF (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
