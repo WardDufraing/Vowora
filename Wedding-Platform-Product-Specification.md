@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 20.0  
+**Version:** 21.0  
 **Last updated:** 20 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -38,7 +38,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 Overall budget, category allocations, estimates, committed/actual costs, deposits, due dates, balances, and budget-versus-spend views.
 
 ### 4.3 Vendor options, comparisons, and decisions
-Couples enter vendor records manually. Professional planners and planning organizations use an organization-owned vendor library that can be reused across their weddings (DEC-182–183). When a planner adds a library vendor to a wedding, they choose which client-visible details to share; organization-only notes stay private, and later library changes require review before they are shared (DEC-184). The broader vendor workflow—multiple options, comparison, selection, booking, and links to budgets, payments, tasks, contacts, documents, and the wedding-day schedule—remains under design.
+Couples enter vendor records manually. Professional planners and planning organizations use an organization-owned vendor library that can be reused across their weddings (DEC-182–183). Planners choose which client-visible details to share with each wedding; organization-only notes stay private, and later library changes require review before sharing (DEC-184). Users compare vendors side by side using relevant standard fields and optional custom criteria; the platform does not choose a winner (DEC-185). A guided status flow covers Considering, Contacted, Quote received, Shortlisted, Selected, Booked, and Not proceeding, with stages users may skip (DEC-186). A service category may have one primary vendor and additional selected vendors for distinct needs or scopes (DEC-187). Vendor records link to one or more contact-directory entries, with wedding visibility controlled separately from organization-private information (DEC-188). Contracts, quotes, invoices, payments, and tasks remain in their respective modules and link to the vendor record rather than being duplicated there (DEC-189).
 
 ### 4.4 Long-term planning timeline and tasks
 **Selected as the next module for detailed product design (DEC-055).** Explore a month-by-month planning timeline with milestones, assignments, deadlines, reminders, dependencies, and customizable checklists. This selection determines the next design focus; the detailed workflows and MVP commitment remain undecided.
@@ -2688,6 +2688,61 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences and required follow-up design:** Define the vendor profile fields and their default visibility, who may select and share details, how edits to already-shared wedding details work, and how the wedding record behaves if the vendor entry is archived or removed from the organization library or the organization loses wedding access.
 
+### DEC-185 — Structured side-by-side vendor comparison
+
+**Status:** Approved  
+**Decision:** Option A — Compare vendors for the same service side by side using relevant standard details and optional custom criteria. The platform does not calculate an automatic winner.
+
+**Product behavior:** Users can compare key information such as price, package, availability, and pros and cons in a consistent view. The comparison may include criteria the user adds for that decision. The interface presents facts and user-entered assessments without automatically ranking vendors or recommending a winner.
+
+**Acceptance criteria:** (1) Users can compare multiple vendor records for the same service together; (2) common relevant details appear in a consistent side-by-side layout; (3) users can add optional custom comparison criteria; (4) the platform does not generate a winner or weighted score.
+
+**Consequences and required follow-up design:** Define the standard comparison fields for each vendor category, handling of missing or incomparable information, and how comparison criteria are saved or reused.
+
+### DEC-186 — Guided standard vendor decision and booking stages
+
+**Status:** Approved  
+**Decision:** Option A — Use a standard vendor status flow: Considering, Contacted, Quote received, Shortlisted, Selected, Booked, and Not proceeding. Users may skip stages.
+
+**Product behavior:** The status indicates where a vendor option stands in the couple’s or planner’s decision process. Users can move directly to an applicable stage without completing every earlier stage. “Selected” and “Booked” remain separate: selection records preference, while booking records that the vendor engagement is confirmed by the user. “Not proceeding” preserves a clear outcome for an option no longer under consideration.
+
+**Acceptance criteria:** (1) The standard stages are available in the stated order; (2) users can skip stages and move to a relevant stage directly; (3) Selected does not automatically mean Booked; (4) Not proceeding remains distinguishable from deletion or archive.
+
+**Consequences and required follow-up design:** Define confirmation behavior for marking a vendor Booked, status-change permissions and history, and how statuses appear in comparison views, dashboards, and reports.
+
+### DEC-187 — One primary vendor with additional selections allowed
+
+**Status:** Approved  
+**Decision:** Option A — A service category may have one designated primary vendor while also supporting additional selected vendors for distinct needs or scopes.
+
+**Product behavior:** Users can designate the main vendor for a service category and retain other selected vendors where a wedding needs multiple providers or separate scopes. The primary designation is distinct from the underlying Selected or Booked status. The system must not force multiple legitimate vendors into a single record or treat a primary designation as proof of a contract.
+
+**Acceptance criteria:** (1) A category may have one primary vendor; (2) additional vendors may be selected for that category with distinct needs or scopes; (3) users can change the primary designation without deleting other vendor records or their history; (4) primary status does not itself imply booking or payment.
+
+**Consequences and required follow-up design:** Define how scopes are recorded, whether one vendor may serve multiple categories, and how status and financial links are summarized when several vendors serve one category.
+
+### DEC-188 — Link vendor records to wedding contact records
+
+**Status:** Approved  
+**Decision:** Option A — Link a vendor to one or more contact-directory records, with wedding-visible details controlled separately from organization-private information.
+
+**Product behavior:** A vendor record can reference contact entries for relevant people at the vendor, such as a primary contact or day-of contact. Where the record comes from an organization library, the link does not bypass the selective sharing rules in DEC-184. Contacts and vendor records remain distinct records; linking them avoids re-entering the same contact details while preserving applicable wedding and organization permissions.
+
+**Acceptance criteria:** (1) A vendor can link to one or more contact records; (2) users can identify each linked contact’s role for that vendor; (3) linking does not expose organization-private fields or bypass wedding permissions; (4) permitted updates to contact details are reflected through the linked contact rather than duplicated copies.
+
+**Consequences and required follow-up design:** Define who can create, link, edit, and unlink contact records; how couples’ manual vendor entries connect to contacts; and how contact access and updates behave when a planner’s organization loses wedding access.
+
+### DEC-189 — Link vendor records to documents, finances, and tasks in their own modules
+
+**Status:** Approved  
+**Decision:** Option A — Keep contracts, quotes, invoices, payments, and tasks in their respective modules and link them to the relevant vendor record instead of duplicating them inside it.
+
+**Product behavior:** A vendor record provides access to its related documents, financial records, and tasks when the user has permission to view those items. The linked modules remain the source of truth for their own information and workflows. Creating a vendor link alone does not create a contract, financial commitment, payment, or task. Existing financial verification, privacy, and audit safeguards continue to apply.
+
+**Acceptance criteria:** (1) Authorized users can navigate from a vendor to its related documents, financial records, and tasks; (2) the same item is not duplicated solely to appear on the vendor record; (3) vendor links do not grant access to otherwise restricted information; (4) adding or changing a link does not itself create a commitment or task; (5) each linked item retains its original module’s status, permissions, and history.
+
+**Consequences and required follow-up design:** Define the exact supported link types, cross-module search and display behavior, handling when a linked item is archived or removed, and which roles can create or remove links.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -2700,7 +2755,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-185 (current):** How should users compare multiple vendor options for the same service?
+- **Q-190 (current):** Which vendor service categories should the platform provide by default, and how customizable should they be?
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
@@ -3062,6 +3117,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-183 | 2026-10-20 | Organization-owned vendor directory | Each planner organization maintains a private vendor library reusable across its weddings; no platform-wide catalog (Option A) | Approved |
 
 | DEC-184 | 2026-10-20 | Selectively share organization vendor details with a wedding | Planners select client-visible details; organization-only notes stay private; directory changes require review before sharing (Option A) | Approved |
+
+| DEC-185 | 2026-10-20 | Structured side-by-side vendor comparison | Compare relevant standard details with optional custom criteria; no automatic winner (Option A) | Approved |
+
+| DEC-186 | 2026-10-20 | Guided standard vendor decision and booking stages | Considering, Contacted, Quote received, Shortlisted, Selected, Booked, and Not proceeding; users may skip stages (Option A) | Approved |
+
+| DEC-187 | 2026-10-20 | One primary vendor with additional selections allowed | One primary per service category, with additional selected vendors for distinct needs or scopes (Option A) | Approved |
+
+| DEC-188 | 2026-10-20 | Link vendor records to wedding contact records | Link vendors to one or more contacts with separate wedding visibility and organization privacy controls (Option A) | Approved |
+
+| DEC-189 | 2026-10-20 | Link vendor records to documents, finances, and tasks | Keep related items in their own modules and link them to vendors without duplicating data (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
