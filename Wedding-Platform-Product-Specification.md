@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 58.0  
+**Version:** 59.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -38,7 +38,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
 
 ### 4.3 Vendor options, comparisons, and decisions
-**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Wedding vendor records link to the live organization vendor profile (DEC-338). Couples can view the full linked organization profile, but only organization staff can edit organization details; couples can add wedding-specific notes (DEC-341). If a directory vendor is removed, archive its organization profile and internal notes for 30 days, then permanently delete the organization profile; managers can restore it during that period, receive a final notice 7 days before deletion, or permanently delete it earlier after confirmation (DEC-342, DEC-350, DEC-355–358). Preserve each linked wedding record with its last available vendor details and remove the live link (DEC-342). Notify couples when contact details, availability, or business status change on a linked profile (DEC-349). Organization vendor profiles support internal notes visible only to organization staff (DEC-344); when a vendor is removed, archive the profile and retain its notes for organization staff during the 30-day archive period before permanent deletion (DEC-350, DEC-355). Organization profiles include the vendor name, service categories, contact details, website, location, and internal notes by default (DEC-348). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
+**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Wedding vendor records link to the live organization vendor profile (DEC-338). Couples can view the full linked organization profile, but only organization staff can edit organization details; couples can add wedding-specific notes (DEC-341). If a directory vendor is removed, archive its organization profile and internal notes for 30 days, then permanently delete the organization profile; managers can restore it during that period, receive a final notice 7 days before deletion, or permanently delete it earlier after confirmation (DEC-342, DEC-350, DEC-355–358). Preserve each linked wedding record with its last available vendor details and remove the live link (DEC-342). Restoring an organization profile does not automatically restore former wedding links; planners must relink records (DEC-361). A preserved wedding record may be linked to another organization profile by an authorized planner or retained as a standalone wedding record after the source profile is permanently deleted (DEC-362). When the planner organization's access to a wedding ends, convert linked vendor records to standalone wedding records with their last available details and remove the organization links (DEC-363). Notify couples when contact details, availability, or business status change on a linked profile (DEC-349). Organization vendor profiles support internal notes visible only to organization staff (DEC-344); when a vendor is removed, archive the profile and retain its notes for organization staff during the 30-day archive period before permanent deletion (DEC-350, DEC-355). Organization profiles include the vendor name, service categories, contact details, website, location, and internal notes by default (DEC-348). Organizations may create custom service categories alongside the defaults (DEC-364); organization managers may create custom fields shared across the organization directory (DEC-365). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields. Organization-level custom categories and profile fields follow DEC-364–365; organization managers control custom field creation and the fields are shared across that organization's directory. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
 **MVP scope:** Include all task behavior defined here and in DEC-193–195 and DEC-265–279 (DEC-318). **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. When the wedding date changes, preview proposed due-date changes for unfinished starter-plan tasks and ask before applying them; do not automatically shift dates (DEC-270). Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion (DEC-193–195). Show overdue indicators without changing task status, and show prerequisite blockers without automatically changing status; users manage task status themselves (DEC-271–272). Organize tasks by wedding-planning phase, with filters for owner, status, and due date (DEC-273). Notify assignees when assigned or when due dates change, but not for routine description edits (DEC-274). Use Not started, In progress, Blocked, and Complete statuses. Tasks may remain undated in a separate undated list until a due date is known. Tasks support simple checklists, while substantial subtasks can be separate tasks. Allow completion with unfinished checklist items after a warning and confirmation. Blocked tasks may include an optional short reason or link to a blocking task. Notify the owner and task collaborators when the due date changes. Move completed tasks to a collapsed but accessible Completed section. Archive tasks that are no longer needed while preserving links and activity and allowing restoration (DEC-275–279). Authorized users may reopen completed tasks while keeping completion activity visible. Allow optional reminders per task, with a suggested reminder before the due date (DEC-265–269). Detailed reminder timing, task templates, and MVP commitment remain undecided.
@@ -3850,6 +3850,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** A separately initiated lead planner change still notifies the couple under DEC-352.
 
+### DEC-361 — Restoring vendor profiles and former wedding links
+**Status:** Approved  
+**Decision:** Restore the organization vendor profile to the directory but require planners to relink any former wedding records.
+
+**Consequences:** Restoring a profile does not automatically reestablish previous wedding links.
+
+### DEC-362 — Replacing a deleted vendor profile link
+**Status:** Approved  
+**Decision:** Allow an authorized planner to link a preserved wedding vendor record to another organization profile or keep it as a standalone wedding record after the original profile is permanently deleted.
+
+**Consequences:** The wedding record and its last available details remain intact regardless of whether it is relinked.
+
+### DEC-363 — Vendor records when planner organization access ends
+**Status:** Approved  
+**Decision:** Preserve linked wedding vendor records as standalone records with their last available details and remove organization links when the planner organization's access to a wedding ends.
+
+**Consequences:** The couple's wedding records remain available independently of the planner organization.
+
+### DEC-364 — Custom organization vendor categories
+**Status:** Approved  
+**Decision:** Allow each planner organization to create custom vendor service categories alongside the platform defaults.
+
+**Consequences:** Custom categories belong to the organization directory; the organization-wide management workflow remains to be specified.
+
+### DEC-365 — Custom organization vendor profile fields
+**Status:** Approved  
+**Decision:** Let organization managers create custom vendor profile fields shared across their organization's directory.
+
+**Consequences:** Custom field creation is manager-controlled. Field types, validation, and behavior when a field is removed remain open.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3862,7 +3892,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-361 (current):** If an archived vendor profile is restored, should its former wedding links be reconnected automatically or require planners to relink them?
+- **Q-366 (current):** What should happen to vendor information entered into an organization custom field if a manager removes that field?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4543,6 +4573,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-358 | 2026-10-21 | Early permanent vendor deletion | Managers can permanently delete after confirmation | Approved |
 | DEC-359 | 2026-10-21 | Reassignments after staff departure | Organization manager reviews and reassigns flagged assignments | Approved |
 | DEC-360 | 2026-10-21 | Departure-related couple notifications | Keep staff assignment changes within the planner organization | Approved |
+| DEC-361 | 2026-10-21 | Restoring vendor profiles | Restore profile but require planners to relink wedding records | Approved |
+| DEC-362 | 2026-10-21 | Replacing a deleted vendor profile link | Allow authorized planners to relink or retain standalone wedding records | Approved |
+| DEC-363 | 2026-10-21 | Vendor records after planner access ends | Preserve as standalone records and remove organization links | Approved |
+| DEC-364 | 2026-10-21 | Custom organization vendor categories | Allow organization-specific categories alongside defaults | Approved |
+| DEC-365 | 2026-10-21 | Custom organization vendor fields | Managers create fields shared across the organization directory | Approved |
 
 ## 10. Document maintenance rules
 
