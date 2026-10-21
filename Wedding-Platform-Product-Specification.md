@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 59.0  
+**Version:** 60.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -38,7 +38,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
 
 ### 4.3 Vendor options, comparisons, and decisions
-**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Wedding vendor records link to the live organization vendor profile (DEC-338). Couples can view the full linked organization profile, but only organization staff can edit organization details; couples can add wedding-specific notes (DEC-341). If a directory vendor is removed, archive its organization profile and internal notes for 30 days, then permanently delete the organization profile; managers can restore it during that period, receive a final notice 7 days before deletion, or permanently delete it earlier after confirmation (DEC-342, DEC-350, DEC-355–358). Preserve each linked wedding record with its last available vendor details and remove the live link (DEC-342). Restoring an organization profile does not automatically restore former wedding links; planners must relink records (DEC-361). A preserved wedding record may be linked to another organization profile by an authorized planner or retained as a standalone wedding record after the source profile is permanently deleted (DEC-362). When the planner organization's access to a wedding ends, convert linked vendor records to standalone wedding records with their last available details and remove the organization links (DEC-363). Notify couples when contact details, availability, or business status change on a linked profile (DEC-349). Organization vendor profiles support internal notes visible only to organization staff (DEC-344); when a vendor is removed, archive the profile and retain its notes for organization staff during the 30-day archive period before permanent deletion (DEC-350, DEC-355). Organization profiles include the vendor name, service categories, contact details, website, location, and internal notes by default (DEC-348). Organizations may create custom service categories alongside the defaults (DEC-364); organization managers may create custom fields shared across the organization directory (DEC-365). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields. Organization-level custom categories and profile fields follow DEC-364–365; organization managers control custom field creation and the fields are shared across that organization's directory. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
+**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Wedding vendor records link to the live organization vendor profile (DEC-338). Couples can view the full linked organization profile, but only organization staff can edit organization details; couples can add wedding-specific notes (DEC-341). If a directory vendor is removed, archive its organization profile and internal notes for 30 days, then permanently delete the organization profile; managers can restore it during that period, receive a final notice 7 days before deletion, or permanently delete it earlier after confirmation (DEC-342, DEC-350, DEC-355–358). Preserve each linked wedding record with its last available vendor details and remove the live link (DEC-342). Restoring an organization profile does not automatically restore former wedding links; planners must relink records (DEC-361). A preserved wedding record may be linked to another organization profile by an authorized planner or retained as a standalone wedding record after the source profile is permanently deleted (DEC-362). When the planner organization's access to a wedding ends, convert linked vendor records to standalone wedding records with their last available details and remove the organization links (DEC-363). Notify couples when contact details, availability, or business status change on a linked profile (DEC-349). Organization vendor profiles support internal notes visible only to organization staff (DEC-344); when a vendor is removed, archive the profile and retain its notes for organization staff during the 30-day archive period before permanent deletion (DEC-350, DEC-355). Organization profiles include the vendor name, service categories, contact details, website, location, and internal notes by default (DEC-348). Organization managers may create custom service categories alongside the defaults (DEC-367). They may also create custom fields shared across the organization directory (DEC-365), using short text, long text, number, date, or single-choice dropdown types (DEC-369). Custom fields are visible to couples who can view the linked profile (DEC-368), except organization-internal notes (DEC-344). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields. Organization-level custom categories and profile fields follow DEC-364–365, DEC-367–370. Organization managers control custom category and field setup. Staff with vendor-edit permission can edit custom field values; managers alone can configure the fields (DEC-370). If a custom field is removed, archive it, keep existing values visible as read-only, and prevent new entries (DEC-366). Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
 **MVP scope:** Include all task behavior defined here and in DEC-193–195 and DEC-265–279 (DEC-318). **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. When the wedding date changes, preview proposed due-date changes for unfinished starter-plan tasks and ask before applying them; do not automatically shift dates (DEC-270). Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion (DEC-193–195). Show overdue indicators without changing task status, and show prerequisite blockers without automatically changing status; users manage task status themselves (DEC-271–272). Organize tasks by wedding-planning phase, with filters for owner, status, and due date (DEC-273). Notify assignees when assigned or when due dates change, but not for routine description edits (DEC-274). Use Not started, In progress, Blocked, and Complete statuses. Tasks may remain undated in a separate undated list until a due date is known. Tasks support simple checklists, while substantial subtasks can be separate tasks. Allow completion with unfinished checklist items after a warning and confirmation. Blocked tasks may include an optional short reason or link to a blocking task. Notify the owner and task collaborators when the due date changes. Move completed tasks to a collapsed but accessible Completed section. Archive tasks that are no longer needed while preserving links and activity and allowing restoration (DEC-275–279). Authorized users may reopen completed tasks while keeping completion activity visible. Allow optional reminders per task, with a suggested reminder before the due date (DEC-265–269). Detailed reminder timing, task templates, and MVP commitment remain undecided.
@@ -3880,6 +3880,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Custom field creation is manager-controlled. Field types, validation, and behavior when a field is removed remain open.
 
+### DEC-366 — Removing custom vendor profile fields
+**Status:** Approved  
+**Decision:** Archive removed custom fields, retain existing values as visible read-only information, and prevent new entries.
+
+**Consequences:** Existing organization vendor data remains available. Archive duration and deletion behavior remain to be specified.
+
+### DEC-367 — Creating custom vendor service categories
+**Status:** Approved  
+**Decision:** Restrict creation of organization-specific vendor service categories to organization managers.
+
+**Consequences:** Custom categories are available alongside platform defaults.
+
+### DEC-368 — Couple visibility of custom vendor fields
+**Status:** Approved  
+**Decision:** Show all organization custom vendor profile fields to couples who can view the linked profile.
+
+**Consequences:** This does not expose organization-internal notes, which remain restricted under DEC-344.
+
+### DEC-369 — MVP custom vendor field types
+**Status:** Approved  
+**Decision:** Support short text, long text, number, date, and single-choice dropdown custom fields.
+
+**Consequences:** Multi-select, file, and formula fields are outside this MVP field-type selection.
+
+### DEC-370 — Editing organization custom field values
+**Status:** Approved  
+**Decision:** Allow organization staff with vendor-edit permission to edit custom field values; keep field setup manager-only.
+
+**Consequences:** Field setup and vendor record value editing use separate permissions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3892,7 +3922,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-366 (current):** What should happen to vendor information entered into an organization custom field if a manager removes that field?
+- **Q-371 (current):** What should happen to vendor records assigned to a custom service category when a manager removes that category?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4578,6 +4608,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-363 | 2026-10-21 | Vendor records after planner access ends | Preserve as standalone records and remove organization links | Approved |
 | DEC-364 | 2026-10-21 | Custom organization vendor categories | Allow organization-specific categories alongside defaults | Approved |
 | DEC-365 | 2026-10-21 | Custom organization vendor fields | Managers create fields shared across the organization directory | Approved |
+| DEC-366 | 2026-10-21 | Removing custom vendor fields | Archive field; keep existing values visible read-only; prevent new entries | Approved |
+| DEC-367 | 2026-10-21 | Creating custom vendor categories | Organization managers only | Approved |
+| DEC-368 | 2026-10-21 | Couple visibility of custom fields | Show custom fields to couples who can view the linked profile | Approved |
+| DEC-369 | 2026-10-21 | MVP custom vendor field types | Short text, long text, number, date, single-choice dropdown | Approved |
+| DEC-370 | 2026-10-21 | Editing custom field values | Vendor-edit staff can edit values; setup remains manager-only | Approved |
 
 ## 10. Document maintenance rules
 
