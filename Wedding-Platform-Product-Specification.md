@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 31.0  
+**Version:** 32.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -53,7 +53,7 @@ Central directory for vendors, helpers, family, emergency contacts, and key stak
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
-Provide a searchable, categorized document library. Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Notes are shared with the wedding workspace (DEC-229).
+Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). Notes are shared with the wedding workspace (DEC-229).
 
 ### 4.9 Inspiration
 Ideas, references, moodboards, favorites, and related vendor options.
@@ -3076,6 +3076,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Do not describe notes as private in the module overview. Apply existing workspace permissions; note-specific private visibility is not included in this decision.
 
+### DEC-230 — Default document library categories
+**Status:** Approved  
+**Decision:** Provide default categories for Contracts, Quotes/Invoices, Receipts, and Other Documents.
+
+**Consequences:** Keep the starter categories clear and useful across different wedding planning workflows. Additional category behavior is defined in DEC-233.
+
+### DEC-231 — Documents may have multiple categories
+**Status:** Approved  
+**Decision:** Allow a document to be assigned to more than one category.
+
+**Consequences:** A document remains one library item even when it appears in multiple category views; categorization must not create duplicate files.
+
+### DEC-232 — Search document metadata and linked records
+**Status:** Approved  
+**Decision:** Search document titles, categories, linked records, and notes/descriptions.
+
+**Consequences:** Search results must respect each document's Shared or Private visibility and the user's current workspace permissions.
+
+### DEC-233 — Couple-created document categories
+**Status:** Approved  
+**Decision:** Keep the default categories and allow couples to create custom categories.
+
+**Consequences:** The detailed permissions for managing categories and any rename, reorder, archive, or deletion behavior remain open.
+
+### DEC-234 — Optional document expiry and renewal reminders
+**Status:** Approved  
+**Decision:** Allow an optional expiry or renewal date and reminder for a document.
+
+**Consequences:** Reminders are optional. Detailed reminder timing, recipients, and handling of replaced documents remain for later design.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3088,7 +3118,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-230 (current):** Which default categories should the searchable document library provide?
+- **Q-235 (current):** When a document with an expiry or renewal reminder is replaced, should its reminder date carry over to the replacement?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3541,6 +3571,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-228 | 2026-10-21 | Document replacement behavior | Replace the old file without retaining prior file content as a version (user selection) | Approved |
 
 | DEC-229 | 2026-10-21 | Workspace notes visibility | Share all workspace notes with the wedding workspace (user selection) | Approved |
+
+| DEC-230 | 2026-10-21 | Default document categories | Provide Contracts, Quotes/Invoices, Receipts, and Other Documents | Approved |
+
+| DEC-231 | 2026-10-21 | Multiple document categories | Allow one document to belong to multiple categories without duplicating the file | Approved |
+
+| DEC-232 | 2026-10-21 | Document library search scope | Search titles, categories, linked records, and notes/descriptions | Approved |
+
+| DEC-233 | 2026-10-21 | Custom document categories | Keep defaults and allow couples to create custom categories | Approved |
+
+| DEC-234 | 2026-10-21 | Document expiry and renewal reminders | Allow an optional expiry/renewal date and reminder on documents | Approved |
 
 ## 10. Document maintenance rules
 
