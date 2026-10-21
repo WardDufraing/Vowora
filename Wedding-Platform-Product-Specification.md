@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 53.0  
+**Version:** 54.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -38,7 +38,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
 
 ### 4.3 Vendor options, comparisons, and decisions
-**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
+**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329), plus the reusable organization-wide vendor directory for planners (DEC-334). Wedding vendor records link to the live organization vendor profile (DEC-338). Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
 **MVP scope:** Include all task behavior defined here and in DEC-193–195 and DEC-265–279 (DEC-318). **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. When the wedding date changes, preview proposed due-date changes for unfinished starter-plan tasks and ask before applying them; do not automatically shift dates (DEC-270). Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion (DEC-193–195). Show overdue indicators without changing task status, and show prerequisite blockers without automatically changing status; users manage task status themselves (DEC-271–272). Organize tasks by wedding-planning phase, with filters for owner, status, and due date (DEC-273). Notify assignees when assigned or when due dates change, but not for routine description edits (DEC-274). Use Not started, In progress, Blocked, and Complete statuses. Tasks may remain undated in a separate undated list until a due date is known. Tasks support simple checklists, while substantial subtasks can be separate tasks. Allow completion with unfinished checklist items after a warning and confirmation. Blocked tasks may include an optional short reason or link to a blocking task. Notify the owner and task collaborators when the due date changes. Move completed tasks to a collapsed but accessible Completed section. Archive tasks that are no longer needed while preserving links and activity and allowing restoration (DEC-275–279). Authorized users may reopen completed tasks while keeping completion activity visible. Allow optional reminders per task, with a suggested reminder before the due date (DEC-265–269). Detailed reminder timing, task templates, and MVP commitment remain undecided.
@@ -62,7 +62,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
 
 ### 4.11 Planner workspace and business tools
-**MVP scope:** Include a planner-facing multi-wedding dashboard showing assigned weddings and actions needing attention (DEC-331); organization staff assignment to weddings and access setting (DEC-332); basic private client and business notes kept separate from each couple's shared wedding workspace (DEC-333); an organization-wide vendor directory reusable across weddings alongside wedding-specific vendor records (DEC-334); and reusable task and timeline templates (DEC-335). The planner dashboard follows the combined portfolio and action-center direction in DEC-038. Organization staff assignment must remain consistent with couple visibility, notification, and restriction controls already defined. Private planner notes are not visible to couples unless explicitly shared through the wedding workspace. Further details such as team administration, workload views, template contents, and the exact private business record model remain open.
+**MVP scope:** Include a planner-facing multi-wedding dashboard showing assigned weddings and actions needing attention (DEC-331); organization staff assignment to weddings and access setting (DEC-332); basic private client and business notes kept separate from each couple's shared wedding workspace (DEC-333); an organization-wide vendor directory reusable across weddings alongside wedding-specific vendor records (DEC-334); and reusable task and timeline templates (DEC-335). The dashboard flags overdue and upcoming tasks, budget payments due, schedule changes, and unresolved decisions (DEC-337), following the combined portfolio and action-center direction in DEC-038. Organization managers manage staff; assigned planners can manage access for their own weddings (DEC-336), subject to couple visibility, notification, and restriction controls. Private business notes support a title and text, with an optional link to a client or wedding, and are not visible to couples unless explicitly shared through the wedding workspace (DEC-340). Planners can build reusable templates from scratch or save selected tasks and timeline items from an existing wedding (DEC-339). Wedding vendor records link to the live organization vendor profile rather than copying a snapshot (DEC-338). Workload views, template content and application behavior, and the exact private business record model remain open.
 
 ### 4.12 Reports and exports
 Budget summaries, vendor lists, contacts, timelines, and printable wedding-day materials.
@@ -3700,6 +3700,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** The template content, creation and sharing controls, and behavior when applying templates to an existing wedding remain open.
 
+### DEC-336 — Planner organization staff management
+**Status:** Approved  
+**Decision:** Organization managers manage staff; assigned planners can manage access for their own weddings.
+
+**Consequences:** This sets the initial division of responsibility. Detailed manager roles, onboarding, and staff permission defaults remain open.
+
+### DEC-337 — Planner dashboard attention items
+**Status:** Approved  
+**Decision:** Flag overdue and upcoming tasks, budget payments due, schedule changes, and unresolved decisions.
+
+**Consequences:** This defines the initial attention categories, not their ranking, notification behavior, or exact display rules.
+
+### DEC-338 — Wedding vendor links to organization profiles
+**Status:** Approved  
+**Decision:** Link each wedding's vendor record to the live organization vendor profile.
+
+**Consequences:** Changes to the organization profile can be reflected in linked wedding records. The handling of historical values and access when the organization relationship ends remains open.
+
+### DEC-339 — Creating reusable planner templates
+**Status:** Approved  
+**Decision:** Let planners build task and timeline templates from scratch or save selected tasks and timeline items from an existing wedding.
+
+**Consequences:** Template content, access controls, and behavior when applying templates to populated weddings remain open.
+
+### DEC-340 — Private planner business note content
+**Status:** Approved  
+**Decision:** Support text notes with a title and optional link to a client or wedding.
+
+**Consequences:** Notes remain private to the planner organization unless explicitly shared through the wedding workspace. Attachments and custom categories are outside this decision.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3712,7 +3742,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-336 (current):** Which additional planner organization and team-management capabilities, beyond assigning staff to weddings and setting their access, are required in the MVP?
+- **Q-341 (current):** When a wedding vendor record links to a live organization vendor profile, which profile details should the couple be able to see and edit?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4368,6 +4398,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-333 | 2026-10-21 | Private planner business records MVP scope | Include basic private client and business notes, separate from shared wedding workspaces | Approved |
 | DEC-334 | 2026-10-21 | Planner vendor directory MVP scope | Include a reusable organization-wide directory alongside wedding vendor records | Approved |
 | DEC-335 | 2026-10-21 | Reusable planner templates MVP scope | Include reusable task and timeline templates | Approved |
+| DEC-336 | 2026-10-21 | Planner organization staff management | Managers manage staff; assigned planners manage access for their own weddings | Approved |
+| DEC-337 | 2026-10-21 | Planner dashboard attention items | Flag overdue/upcoming tasks, payments due, schedule changes, and unresolved decisions | Approved |
+| DEC-338 | 2026-10-21 | Wedding vendor profile relationship | Link wedding vendor records to the live organization vendor profile | Approved |
+| DEC-339 | 2026-10-21 | Planner template creation | Build from scratch or save selected wedding tasks and timeline items | Approved |
+| DEC-340 | 2026-10-21 | Private planner business notes | Support titled text notes with optional client or wedding link | Approved |
 
 ## 10. Document maintenance rules
 
