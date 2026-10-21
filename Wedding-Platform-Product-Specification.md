@@ -3813,7 +3813,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved  
 **Decision:** Allow all organization staff to view organization-wide vendor profiles, with editing limited by role.
 
-**Consequences:** Wedding-specific vendor access and couple visibility continue to follow their separate rules.
+**Consequences:** Viewing and editing permissions for vendor records within each wedding follow their separate rules.
 
 ### DEC-355 — Permanent deletion of archived organization vendors
 **Status:** Approved  
@@ -4914,7 +4914,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-394 | 2026-10-21 | Notifications for vendor category changes | Notify couples only if the vendor is their primary selection | Approved |
 | DEC-395 | 2026-10-21 | Vendor category changes in activity history | Record actor and time, not deleted field values | Approved |
 | DEC-396 | 2026-10-21 | Custom field value changes in activity history | Do not log custom field value changes | Approved |
-| DEC-397 | 2026-10-21 | Visibility of vendor-related activity | Staff with vendor access; couples see accessible linked wedding vendor activity | Approved |
+| DEC-397 | 2026-10-21 | Visibility of vendor-related activity | Staff with permission to view vendor records; couples see activity for accessible linked wedding vendor records | Approved |
 | DEC-398 | 2026-10-21 | Planner-only vendor note edits in history | Do not log internal note edits | Approved |
 | DEC-399 | 2026-10-21 | Vendor activity retention | Match workspace activity history retention | Approved |
 | DEC-400 | 2026-10-21 | Custom field definition changes in history | Record manager, action, field name, and time | Approved |
