@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 82.0  
+**Version:** 83.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -69,6 +69,11 @@ Provide comments with replies attached to individual workspace records, such as 
 Budget summaries, vendor lists, contacts, timelines, and printable wedding-day materials.
 
 **Scope note:** MVP inclusions and boundaries are recorded in the applicable decisions in Section 6, including DEC-316–436. A decision commits only the specific behavior stated in it; related features remain candidates unless separately approved. The basic Inspiration and Contacts MVP selections have explicit boundaries, and vendor accounts are excluded from the product (DEC-416).
+
+### 4.13 Wedding decisions
+**MVP scope:** Not yet decided. The dashboard's unresolved-decisions card is approved for MVP (DEC-288, DEC-330), but the full decision-tracking area remains subject to an explicit MVP scope decision.
+
+**Approved behavior:** Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481).
 
 ## 5. Key cross-module behavior — proposed
 
@@ -4289,6 +4294,187 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Restoration does not require a new invitation; the new expiration date is required.
 
+### DEC-437 — Default expiry after wedding-date changes
+**Status:** Approved  
+**Decision:** Move an expiry that still uses the default to seven days after the new wedding date. Keep manually chosen expiry dates fixed.
+
+### DEC-438 — Wedding date changes after manual expiry adjustment
+**Status:** Approved  
+**Decision:** Preserve the manually chosen expiry date when the wedding date changes.
+
+### DEC-439 — Expiry when no wedding date is set
+**Status:** Approved  
+**Decision:** Coordinator/helper access has no expiry until a wedding date is added; then use the seven-day-after-wedding default.
+
+### DEC-440 — Time for access-expiry reminders
+**Status:** Approved  
+**Decision:** Send reminders at 9 a.m. in each recipient's local timezone.
+
+### DEC-441 — Reminders after expiry date changes
+**Status:** Approved  
+**Decision:** Cancel reminders for the old expiry date and schedule reminders for the new date.
+
+### DEC-442 — Default expiry recalculated into the past
+**Status:** Approved  
+**Decision:** Expire access immediately if a wedding-date change moves the default expiry into the past.
+
+### DEC-443 — Reminders when expiry is less than seven days away
+**Status:** Approved  
+**Decision:** Send only reminders whose scheduled time has not passed.
+
+### DEC-444 — Early access revocation and reminders
+**Status:** Approved  
+**Decision:** Cancel scheduled expiry reminders when access is revoked early.
+
+### DEC-445 — Review of access with no expiry
+**Status:** Approved  
+**Decision:** Do not schedule a review for explicitly continued access; decision-makers may change access at any time.
+
+### DEC-446 — Notification when active expiry date changes
+**Status:** Approved  
+**Decision:** Do not notify an active member when their expiry date changes.
+
+### DEC-447 — Customizing coordinator/helper access
+**Status:** Approved  
+**Decision:** Start from the role preset, then adjust access by area.
+
+### DEC-448 — Review before saving expanded access
+**Status:** Approved  
+**Decision:** Show a summary of all effective access before saving access beyond the role default.
+
+### DEC-449 — Reviewing member access
+**Status:** Approved  
+**Decision:** Show each member's role and effective access in the member list, with a link to adjust it.
+
+### DEC-450 — Permission levels by access area
+**Status:** Approved  
+**Decision:** Provide View and Edit levels; reserve access management for decision-makers.
+
+### DEC-451 — Preset changes with custom access
+**Status:** Approved  
+**Decision:** Preserve custom access settings when the role preset changes and show a summary of resulting access.
+
+### DEC-452 — Permission areas
+**Status:** Approved  
+**Decision:** Provide separate permission controls for each main wedding area, including tasks, schedule, guests, contacts, vendors, budget, documents, and notes.
+
+### DEC-453 — Downloads and exports
+**Status:** Approved  
+**Decision:** Downloads and exports require permission beyond View access.
+
+### DEC-454 — Scope of edit access
+**Status:** Approved  
+**Decision:** Edit access applies only to records assigned or explicitly shared with the member.
+
+### DEC-455 — Download and export controls
+**Status:** Approved  
+**Decision:** Use one combined Download/Export permission.
+
+### DEC-456 — Creating records with Edit access
+**Status:** Approved  
+**Decision:** Edit access includes creating records in that area.
+
+### DEC-457 — Area permissions and explicit record sharing
+**Status:** Approved  
+**Decision:** Area permission sets the maximum access; record sharing selects which records are in scope.
+
+### DEC-458 — Authority to share individual records
+**Status:** Approved  
+**Decision:** Either partner or the assigned lead planner may share or unshare records, within couple-defined restrictions.
+
+### DEC-459 — Visibility of record shares
+**Status:** Approved  
+**Decision:** Show decision-makers which members a record is shared with and their effective access.
+
+### DEC-460 — Removing area View permission
+**Status:** Approved  
+**Decision:** Warn decision-makers about affected shares; area permission takes priority over a record share.
+
+### DEC-461 — History after unsharing a record
+**Status:** Approved  
+**Decision:** Remove the member's access but preserve their edits, comments, and activity history on the record.
+
+### DEC-462 — Notifications on record-share changes
+**Status:** Approved  
+**Decision:** Notify the affected member when record access is granted or removed.
+
+### DEC-463 — Activity history for individual record shares
+**Status:** Approved  
+**Decision:** Do not log individual record share/unshare changes in workspace activity history.
+
+### DEC-464 — Attribution after record access removal
+**Status:** Approved  
+**Decision:** Keep the member's name on earlier comments and activity and show that their access was removed.
+
+### DEC-465 — Delivery of record-share notifications
+**Status:** Approved  
+**Decision:** Follow the affected member's notification preferences and the established timing rules for important changes.
+
+### DEC-466 — Other recipients of record-share notifications
+**Status:** Approved  
+**Decision:** Also notify the other partner and assigned lead planner.
+
+### DEC-467 — Detail in coordinator/helper invitation preview
+**Status:** Approved  
+**Decision:** Show role, area permissions, and specifically shared records in the invitation preview.
+
+### DEC-468 — Access changes during pending invitation
+**Status:** Approved  
+**Decision:** Update the invitation preview and notify the invitee if access changes while the invitation is pending.
+
+### DEC-469 — Acceptance after pending invite access changes
+**Status:** Approved  
+**Decision:** Require the invitee to accept the latest access details.
+
+### DEC-470 — Invitation expiry after access changes
+**Status:** Approved  
+**Decision:** Keep the invitation's original seven-day expiry date after access changes.
+
+### DEC-471 — Stale invitation preview during acceptance
+**Status:** Approved  
+**Decision:** If the invitee opened an earlier preview, require review and acceptance of the latest access details.
+
+### DEC-472 — Effective timing of permission reductions
+**Status:** Approved  
+**Decision:** Apply permission reductions immediately across the workspace, including open sessions.
+
+### DEC-473 — Notification of active member access changes
+**Status:** Approved  
+**Decision:** Notify an active member of any effective-access change.
+
+### DEC-474 — Review before permission reduction
+**Status:** Approved  
+**Decision:** Before saving a permission reduction, show the access being removed and affected records.
+
+### DEC-475 — Assigned tasks after access reduction
+**Status:** Approved  
+**Decision:** Keep assigned tasks and history and flag tasks for review and reassignment if access reduction removes task access.
+
+### DEC-476 — Member with no area permissions
+**Status:** Approved  
+**Decision:** Keep the person as a workspace member with no area access if all their area permissions are removed.
+
+### DEC-477 — Wedding decision statuses
+**Status:** Approved  
+**Decision:** Use Open, Decided, Deferred, and Cancelled statuses.
+
+### DEC-478 — Structured decision options and outcomes
+**Status:** Approved  
+**Decision:** Let users add selectable options, record the chosen option, and include an optional rationale.
+
+### DEC-479 — Decision due dates and reminders
+**Status:** Approved  
+**Decision:** Allow an optional due date and optional reminder for each decision.
+
+### DEC-480 — Decision ownership
+**Status:** Approved  
+**Decision:** Decisions belong to the couple and do not have an individual owner.
+
+### DEC-481 — Links from decisions to wedding records
+**Status:** Approved  
+**Decision:** Allow decisions to link to relevant wedding records.
+
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -5092,6 +5278,12 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-474 | 2026-10-21 | Review before permission reduction | Show access being removed and affected records | Approved |
 | DEC-475 | 2026-10-21 | Assigned tasks after access reduction | Preserve tasks/history and flag for review and reassignment | Approved |
 | DEC-476 | 2026-10-21 | Member with no area permissions | Keep as workspace member with no area access | Approved |
+
+| DEC-477 | 2026-10-21 | Wedding decision statuses | Open, Decided, Deferred, and Cancelled | Approved |
+| DEC-478 | 2026-10-21 | Decision options and outcome | Selectable options; record chosen option and optional rationale | Approved |
+| DEC-479 | 2026-10-21 | Decision due dates and reminders | Optional due date and optional reminder | Approved |
+| DEC-480 | 2026-10-21 | Decision ownership | Decisions belong to the couple; no individual owner | Approved |
+| DEC-481 | 2026-10-21 | Decision links | Link decisions to relevant wedding records | Approved |
 
 ## 10. Document maintenance rules
 
