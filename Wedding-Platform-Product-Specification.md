@@ -68,7 +68,7 @@ Provide comments with replies attached to individual workspace records, such as 
 ### 4.12 Reports and exports
 Budget summaries, vendor lists, contacts, timelines, and printable wedding-day materials.
 
-**Scope note:** MVP scope is approved for the areas specified in DEC-316–335. Other modules and planner-facing capabilities remain candidates, not committed MVP requirements. The basic Inspiration and Contacts MVP selections have explicit boundaries; other module priorities and acceptance criteria remain to be designed.
+**Scope note:** MVP inclusions and boundaries are recorded in the applicable decisions in Section 6, including DEC-316–421. A decision commits only the specific behavior stated in it; related features remain candidates unless separately approved. The basic Inspiration and Contacts MVP selections have explicit boundaries, and vendor accounts are excluded from the product (DEC-416).
 
 ## 5. Key cross-module behavior — proposed
 
