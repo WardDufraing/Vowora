@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 36.0  
+**Version:** 37.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -47,7 +47,7 @@ Couples maintain vendor records manually; planners and planning organizations us
 Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224). If a person's wedding access is revoked, online access ends immediately; any saved offline copy is invalidated and removed the next time that device reconnects (DEC-225).
 
 ### 4.6 Contacts
-Maintain a central wedding-workspace directory for vendors, venues, planners, guests, helpers, emergency contacts, and other key stakeholders. Contact records include name, role/company, phone, email, address, and notes. Suggest contact types such as Vendor, Venue, Planner, Guest, Helper, and Emergency Contact. Each contact can be Shared or Private, and can link to multiple records within the wedding workspace. Flag likely duplicate contacts for authorized users to review, link, or merge; never block or merge automatically (DEC-250–254).
+Maintain a central wedding-workspace directory for vendors, venues, planners, guests, helpers, emergency contacts, and other key stakeholders. Contact records include name, role/company, phone, email, address, and notes. A contact may have multiple labeled phone numbers and email addresses, with one phone number or email marked as preferred (DEC-256, DEC-259). Suggest contact types such as Vendor, Venue, Planner, Guest, Helper, and Emergency Contact; allow multiple types per contact and couple-created custom types (DEC-251, DEC-255, DEC-257). Search names, companies, and contact details, and filter by type and linked records (DEC-258). Each contact can be Shared or Private, and can link to multiple records within the wedding workspace. Flag likely duplicate contacts for authorized users to review, link, or merge; never block or merge automatically (DEC-250–254).
 
 ### 4.7 Guest list and attendance tracking
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
@@ -3226,6 +3226,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Define duplicate indicators and merge safeguards in detailed design. Preserve appropriate record links and attribution when merging.
 
+### DEC-255 — Multiple contact types per record
+**Status:** Approved  
+**Decision:** Allow a contact to have multiple types, such as Vendor and Guest.
+
+**Consequences:** Contact types are organizational labels and do not independently change access permissions.
+
+### DEC-256 — Multiple labeled phone numbers and email addresses
+**Status:** Approved  
+**Decision:** Allow multiple phone numbers and email addresses on a contact, with a label for each entry.
+
+**Consequences:** Exact label choices and validation remain for detailed design.
+
+### DEC-257 — Couple-created contact types
+**Status:** Approved  
+**Decision:** Keep the suggested contact types and allow couples to create custom types.
+
+**Consequences:** Rename, reorder, archive, and deletion behavior remains open. Custom types do not create new permission roles.
+
+### DEC-258 — Contact directory search and filters
+**Status:** Approved  
+**Decision:** Search contact names, companies, and contact details; filter contacts by type and linked records.
+
+**Consequences:** Results must respect each contact’s Shared or Private visibility and current workspace permissions.
+
+### DEC-259 — Preferred contact method
+**Status:** Approved  
+**Decision:** Let users mark a phone number or email address as the preferred contact method for a contact.
+
+**Consequences:** This is informational guidance for wedding collaborators; it does not authorize the platform to contact that person.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3238,7 +3268,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-255 (current):** Can a contact have multiple contact types, such as both Vendor and Guest?
+- **Q-260 (current):** Should couples be able to import contacts from their device or an external contact service?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3741,6 +3771,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-253 | 2026-10-21 | Contact visibility | Choose Shared or Private visibility for each contact under workspace permissions | Approved |
 
 | DEC-254 | 2026-10-21 | Possible duplicate contacts | Flag for review; authorized users may link or merge; never block or merge automatically | Approved |
+
+| DEC-255 | 2026-10-21 | Multiple contact types | Allow one contact to have multiple types | Approved |
+
+| DEC-256 | 2026-10-21 | Multiple labeled contact methods | Allow multiple labeled phone numbers and email addresses | Approved |
+
+| DEC-257 | 2026-10-21 | Custom contact types | Keep suggested types and allow couples to create custom types | Approved |
+
+| DEC-258 | 2026-10-21 | Contact search and filtering | Search names, companies, and details; filter by type and linked records | Approved |
+
+| DEC-259 | 2026-10-21 | Preferred contact method | Let users mark a phone number or email as preferred | Approved |
 
 ## 10. Document maintenance rules
 
