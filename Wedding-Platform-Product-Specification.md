@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 86.0  
+**Version:** 87.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -73,7 +73,7 @@ Budget summaries, vendor lists, contacts, timelines, and printable wedding-day m
 ### 4.13 Wedding decisions
 **MVP scope:** Include a basic decision tracker with statuses, options, due dates, and links (DEC-482). The dashboard’s unresolved-decisions card is also part of the MVP (DEC-288, DEC-330).
 
-**Approved behavior:** Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining change history. Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
+**Approved behavior:** Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Send reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date. Cancel a reminder if the decision is marked Decided or Cancelled before it is sent. If the due date or follow-up date changes, cancel the old reminder and schedule a new one (DEC-499–501). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining a decision change history that shows who changed it, when, and previous and new values. All members with View access to the decision can see this history (DEC-495, DEC-497–498). Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
 
 ## 5. Key cross-module behavior — proposed
 
@@ -4534,6 +4534,26 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved  
 **Decision:** Any member with Edit access to Decisions may reopen a Decided decision.
 
+### DEC-497 — Decision change history details
+**Status:** Approved  
+**Decision:** Show who changed a decision, when, and the previous and new values.
+
+### DEC-498 — Visibility of decision change history
+**Status:** Approved  
+**Decision:** Make decision change history visible to all members with View access to that decision.
+
+### DEC-499 — Timing of decision reminders
+**Status:** Approved  
+**Decision:** Send optional reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date.
+
+### DEC-500 — Reminders after decision resolution
+**Status:** Approved  
+**Decision:** Cancel reminders when a decision is marked Decided or Cancelled before the reminder is sent.
+
+### DEC-501 — Reminders after decision date changes
+**Status:** Approved  
+**Decision:** Cancel the old reminder and schedule a new one when the due date or follow-up date changes.
+
 
 
 ## 7. Proposed experience principles — pending validation
@@ -5360,6 +5380,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-494 | 2026-10-21 | Custom decision outcomes | Allow a custom outcome with optional explanation | Approved |
 | DEC-495 | 2026-10-21 | Editing Decided decisions | Allow edits while Decided; retain change history | Approved |
 | DEC-496 | 2026-10-21 | Authority to reopen a decision | Any member with Edit access to Decisions | Approved |
+| DEC-497 | 2026-10-21 | Decision change history details | Show actor, time, and previous/new values | Approved |
+| DEC-498 | 2026-10-21 | Decision history visibility | Visible to all members with View access to the decision | Approved |
+| DEC-499 | 2026-10-21 | Decision reminder timing | 9 a.m. in each recipient’s local timezone on chosen date | Approved |
+| DEC-500 | 2026-10-21 | Decision reminders after resolution | Cancel on Decided or Cancelled status | Approved |
+| DEC-501 | 2026-10-21 | Decision reminders after date changes | Cancel old reminder and schedule a new one | Approved |
 
 ## 10. Document maintenance rules
 
