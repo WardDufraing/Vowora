@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 30.0  
+**Version:** 31.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -44,7 +44,7 @@ Couples maintain vendor records manually; planners and planning organizations us
 **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
-Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224).
+Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224). If a person's wedding access is revoked, online access ends immediately; any saved offline copy is invalidated and removed the next time that device reconnects (DEC-225).
 
 ### 4.6 Contacts
 Central directory for vendors, helpers, family, emergency contacts, and key stakeholders, with appropriate privacy controls.
@@ -53,7 +53,7 @@ Central directory for vendors, helpers, family, emergency contacts, and key stak
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
-Contracts, quotations, invoices, shared files, private notes, and relevant attachments.
+Provide a searchable, categorized document library. Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Notes are shared with the wedding workspace (DEC-229).
 
 ### 4.9 Inspiration
 Ideas, references, moodboards, favorites, and related vendor options.
@@ -3046,6 +3046,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Scope and follow-up:** Approves core printable/PDF contents. Page layout, print options, and essential contact fields remain for detailed design.
 
+### DEC-225 — Remove saved offline schedule after access revocation
+**Status:** Approved  
+**Decision:** Option A — Revoke online access immediately. Because a disconnected device cannot be reached remotely, invalidate and remove its saved offline schedule the next time it reconnects.
+
+**Consequences:** Clearly explain that removal is pending while a device remains offline; do not imply that the platform can remotely erase a disconnected device. The saved schedule remains read-only while available offline.
+
+### DEC-226 — Searchable document library linked to workspace records
+**Status:** Approved  
+**Decision:** Option A — Organize documents in a searchable library with categories and links to relevant vendors, budget/finance records, tasks, and other workspace records. Linked records remain in their own modules; linking does not create duplicate copies.
+
+**Consequences:** Default categories and search/filter details remain for later design.
+
+### DEC-227 — Per-document Shared or Private visibility
+**Status:** Approved  
+**Decision:** Option B — Choose Shared or Private visibility for each document, applying the existing wedding workspace permission model.
+
+**Consequences:** Define precise visibility semantics and authorized roles during detailed permissions design. A private document must not be exposed through links, search, exports, or notifications to unauthorized users.
+
+### DEC-228 — Replacing a document discards the prior file
+**Status:** Approved  
+**Decision:** Replace the old file. A replacement becomes the current document, and the prior file content is not retained as a document version.
+
+**Consequences:** Confirm replacement clearly before it occurs. Any separately required audit metadata remains subject to global audit and retention rules; this decision does not create file-version history.
+
+### DEC-229 — Workspace notes are shared
+**Status:** Approved  
+**Decision:** Share all workspace notes with the wedding workspace.
+
+**Consequences:** Do not describe notes as private in the module overview. Apply existing workspace permissions; note-specific private visibility is not included in this decision.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3058,7 +3088,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-225 (current):** What should happen to a saved offline schedule if that person’s wedding access is revoked?
+- **Q-230 (current):** Which default categories should the searchable document library provide?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3501,6 +3531,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-223 | 2026-10-21 | Offline schedule includes run sheet and essential contacts | Make timeline, locations, responsibilities, statuses, and essential day-of contacts available offline (Option A) | Approved |
 
 | DEC-224 | 2026-10-21 | Printable/PDF run sheet includes operational details and essential contacts | Include timeline, locations, responsibilities, statuses, and essential day-of contacts in the printable/PDF (Option A) | Approved |
+
+| DEC-225 | 2026-10-21 | Offline schedule after access revocation | Revoke online access immediately and remove the saved local copy when the device next reconnects (Option A) | Approved |
+
+| DEC-226 | 2026-10-21 | Searchable document library and linked records | Use categories and search; link documents to related vendors, finances, tasks, and workspace records without duplicating them (Option A) | Approved |
+
+| DEC-227 | 2026-10-21 | Per-document visibility | Let the uploader choose Shared or Private visibility for each document, subject to workspace permissions (Option B) | Approved |
+
+| DEC-228 | 2026-10-21 | Document replacement behavior | Replace the old file without retaining prior file content as a version (user selection) | Approved |
+
+| DEC-229 | 2026-10-21 | Workspace notes visibility | Share all workspace notes with the wedding workspace (user selection) | Approved |
 
 ## 10. Document maintenance rules
 
