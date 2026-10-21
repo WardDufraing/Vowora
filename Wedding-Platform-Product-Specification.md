@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 115.0  
+**Version:** 116.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -4932,6 +4932,18 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Keep the main timeline view chronological and use phase as a filter rather than grouping the primary view by phase.
 
+### DEC-596 — Task and milestone phase lists
+**Status:** Approved
+**Decision:** Keep task planning phases and milestone topic phases separate because they organize different things.
+
+### DEC-597 — Separate timeline phase filters
+**Status:** Approved
+**Decision:** Show separate Task Phase and Milestone Phase filters in the combined timeline.
+
+### DEC-598 — Multiple phases in a timeline filter
+**Status:** Approved
+**Decision:** Allow users to select multiple phases in a timeline filter; show items matching any selected phase.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -5855,6 +5867,9 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-593 | 2026-10-21 | Planning phase timeline filter | Add phase as a combined-timeline filter | Approved |
 | DEC-594 | 2026-10-21 | Suggested milestone phases | Venue, Vendors, Guest List, Attire, Ceremony & Reception, Travel, Final Preparations | Approved |
 | DEC-595 | 2026-10-21 | Timeline organization by phase | Keep chronological main view; use phase as a filter | Approved |
+| DEC-596 | 2026-10-21 | Task and milestone phase lists | Keep separate; they organize different things | Approved |
+| DEC-597 | 2026-10-21 | Separate timeline phase filters | Show Task Phase and Milestone Phase filters | Approved |
+| DEC-598 | 2026-10-21 | Multiple phases in a timeline filter | Show items matching any selected phase | Approved |
 
 ## 10. Document maintenance rules
 
