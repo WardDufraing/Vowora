@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 41.0  
+**Version:** 42.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -32,7 +32,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 ## 4. Proposed modules — not yet approved for MVP
 
 ### 4.1 Wedding overview
-**Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. Each summary should lead to its corresponding detailed area when available. Exact widget layout, content thresholds, permissions, and customization remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
+**Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Whether the dashboard uses one fixed layout or allows each partner to arrange a personal view remains unresolved (Q-280). Exact content thresholds, permissions, and customization remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
 Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
@@ -3376,6 +3376,24 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Define archive visibility and who may restore tasks in detailed permissions design. Archiving must not silently break dependencies or linked records.
 
+### DEC-282 — Dashboard task card shows overdue and upcoming tasks
+**Status:** Approved  
+**Decision:** Show overdue tasks and the next few upcoming tasks on the couple-facing wedding overview.
+
+**Consequences:** Exact count and ordering of upcoming tasks remain for detailed design. Selecting a task should open its task detail or planning list.
+
+### DEC-283 — Dashboard budget card shows financial progress
+**Status:** Approved  
+**Decision:** Summarize total budget, committed costs, amount paid, and upcoming payments on the wedding overview.
+
+**Consequences:** Respect financial permissions and show clear links to the detailed budget. Exact thresholds and visual indicators remain for detailed design.
+
+### DEC-284 — Dashboard guest card shows confirmed count and progress
+**Status:** Approved  
+**Decision:** Show confirmed headcount and confirmation progress, including adult and child totals.
+
+**Consequences:** Derive counts from the confirmed guest groups and link to the guest list. Do not imply that the app sends invitations or collects guest-submitted RSVPs.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3388,7 +3406,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-280 (current):** How much control should couples have over the wedding overview dashboard layout?
+- **Q-280 (current):** Should both partners use one fixed dashboard layout, or should each partner arrange a personal view? Your two selections pointed to different answers.
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3941,6 +3959,12 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-278 | 2026-10-21 | Completed task list placement | Keep completed tasks in a collapsed, accessible Completed section | Approved |
 
 | DEC-279 | 2026-10-21 | Archiving obsolete tasks | Archive while preserving links and activity; allow restoration | Approved |
+
+| DEC-282 | 2026-10-21 | Dashboard task card | Show overdue and the next few upcoming tasks | Approved |
+
+| DEC-283 | 2026-10-21 | Dashboard budget card | Show total budget, committed costs, amount paid, and upcoming payments | Approved |
+
+| DEC-284 | 2026-10-21 | Dashboard guest-progress card | Show confirmed headcount and progress with adult/child totals | Approved |
 
 ## 10. Document maintenance rules
 
