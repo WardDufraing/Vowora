@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 32.0  
+**Version:** 33.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -53,7 +53,7 @@ Central directory for vendors, helpers, family, emergency contacts, and key stak
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
-Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). Notes are shared with the wedding workspace (DEC-229).
+Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239).
 
 ### 4.9 Inspiration
 Ideas, references, moodboards, favorites, and related vendor options.
@@ -3106,6 +3106,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Reminders are optional. Detailed reminder timing, recipients, and handling of replaced documents remain for later design.
 
+### DEC-235 — Review carried-over expiry details after document replacement
+**Status:** Approved  
+**Decision:** When a document is replaced, carry its expiry or renewal date and reminder forward, then ask the user to review and confirm those details.
+
+**Consequences:** Do not silently assume the replacement has the same expiry or renewal terms. Reminder timing and recipients follow later reminder design.
+
+### DEC-236 — Recoverable document trash
+**Status:** Approved  
+**Decision:** Move deleted documents to a recoverable trash for 30 days, with restore available during that period.
+
+**Consequences:** Define who can restore or permanently remove an item, and what happens to linked records and reminders, during detailed permissions and retention design.
+
+### DEC-237 — Searchable notes list with optional organization
+**Status:** Approved  
+**Decision:** Present workspace notes in a searchable list and allow optional categories or tags.
+
+**Consequences:** Notes remain usable without categorization; exact category/tag controls and search fields remain for later design.
+
+### DEC-238 — Link notes to related wedding records
+**Status:** Approved  
+**Decision:** Allow notes to link to vendors, tasks, documents, and other relevant wedding workspace records.
+
+**Consequences:** Links should navigate to the existing record without duplicating it and must respect the linked record's access permissions.
+
+### DEC-239 — Latest note editor and time, without prior text versions
+**Status:** Approved  
+**Decision:** Show the latest editor and edit time for each note, but do not retain or offer restoration of earlier note text versions.
+
+**Consequences:** This is a lightweight attribution indicator, not a note version history. Any global audit requirements remain separately applicable.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3118,7 +3148,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-235 (current):** When a document with an expiry or renewal reminder is replaced, should its reminder date carry over to the replacement?
+- **Q-240 (current):** What basic editing tools should shared notes support?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3581,6 +3611,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-233 | 2026-10-21 | Custom document categories | Keep defaults and allow couples to create custom categories | Approved |
 
 | DEC-234 | 2026-10-21 | Document expiry and renewal reminders | Allow an optional expiry/renewal date and reminder on documents | Approved |
+
+| DEC-235 | 2026-10-21 | Expiry details on document replacement | Carry expiry/renewal dates and reminders forward, then prompt the user to review and confirm | Approved |
+
+| DEC-236 | 2026-10-21 | Document deletion and recovery | Keep deleted documents in a recoverable 30-day trash | Approved |
+
+| DEC-237 | 2026-10-21 | Notes organization | Use a searchable notes list with optional categories or tags | Approved |
+
+| DEC-238 | 2026-10-21 | Notes linked to workspace records | Allow notes to link to vendors, tasks, documents, and other relevant records | Approved |
+
+| DEC-239 | 2026-10-21 | Note edit attribution without version history | Show latest editor and time; do not retain prior note versions | Approved |
 
 ## 10. Document maintenance rules
 
