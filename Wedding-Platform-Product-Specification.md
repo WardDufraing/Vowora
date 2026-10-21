@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 89.0  
+**Version:** 90.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -73,7 +73,7 @@ Budget summaries, vendor lists, contacts, timelines, and printable wedding-day m
 ### 4.13 Wedding decisions
 **MVP scope:** Include a basic decision tracker with statuses, options, due dates, and links (DEC-482). The dashboard’s unresolved-decisions card is also part of the MVP (DEC-288, DEC-330).
 
-**Approved behavior:** Keep decisions in a chronological list without search or filters. Order Open and Deferred decisions first by due date, then show Decided and Cancelled decisions below. Provide suggested categories such as Venue, Budget, and Attire, and allow custom categories. Any member with Edit access to Decisions can create and manage custom categories. Couples can rename, reorder, and hide suggested categories. Hiding a suggested category preserves existing assignments but prevents new assignments until it is restored. Removing a custom category makes its decisions uncategorized and moves the category to a 30-day trash with restore available. Assign at most one optional category to a decision; uncategorized decisions are allowed (DEC-502–511). Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Send reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date. Cancel a reminder if the decision is marked Decided or Cancelled before it is sent. If the due date or follow-up date changes, cancel the old reminder and schedule a new one (DEC-499–501). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining a decision change history that shows who changed it, when, and previous and new values. All members with View access to the decision can see this history (DEC-495, DEC-497–498). Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
+**Approved behavior:** Keep decisions in a chronological list without search or filters. Order Open and Deferred decisions first by due date, then show Decided and Cancelled decisions below. Provide suggested categories such as Venue, Budget, and Attire, and allow custom categories. Any member with Edit access to Decisions can create and manage custom categories. Couples can rename, reorder, and hide suggested categories. Hiding a suggested category preserves existing assignments but prevents new assignments until it is restored. Removing a custom category requires confirmation showing its name and the number of decisions that will become uncategorized. Move it to a 30-day trash with restore available. A member with Edit access to Decisions may restore it; restore prior assignments only for decisions that are still uncategorized. When 30 days elapse, permanently delete the category and keep its decisions uncategorized. Members with Edit access may permanently delete it from trash before then, after confirmation. Assign at most one optional category to a decision; uncategorized decisions are allowed (DEC-502–511). Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Send reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date. Cancel a reminder if the decision is marked Decided or Cancelled before it is sent. If the due date or follow-up date changes, cancel the old reminder and schedule a new one (DEC-499–501). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining a decision change history that shows who changed it, when, and previous and new values. All members with View access to the decision can see this history (DEC-495, DEC-497–498). Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
 
 ## 5. Key cross-module behavior — proposed
 
@@ -4594,6 +4594,26 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved  
 **Decision:** Keep removed custom categories in a 30-day trash with restore available.
 
+### DEC-512 — Restoring decision categories
+**Status:** Approved  
+**Decision:** Any member with Edit access to Decisions may restore a custom category from trash.
+
+### DEC-513 — Restoring category assignments
+**Status:** Approved  
+**Decision:** On restore, reinstate previous assignments only for decisions that remain uncategorized.
+
+### DEC-514 — Permanent deletion after category trash period
+**Status:** Approved  
+**Decision:** Permanently delete a custom category after 30 days and leave its decisions uncategorized.
+
+### DEC-515 — Early permanent deletion of category
+**Status:** Approved  
+**Decision:** Allow permanent deletion from trash before 30 days after confirmation.
+
+### DEC-516 — Confirmation before moving category to trash
+**Status:** Approved  
+**Decision:** Show the category name and the number of decisions that will become uncategorized.
+
 
 
 ## 7. Proposed experience principles — pending validation
@@ -5435,6 +5455,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-509 | 2026-10-21 | Removing a decision category | Keep decisions and make them uncategorized | Approved |
 | DEC-510 | 2026-10-21 | Hiding a suggested category | Keep assignments; prevent new assignments until restored | Approved |
 | DEC-511 | 2026-10-21 | Recovering removed custom categories | 30-day trash with restore available | Approved |
+| DEC-512 | 2026-10-21 | Restoring decision categories | Any member with Edit access to Decisions | Approved |
+| DEC-513 | 2026-10-21 | Restoring category assignments | Reassign prior decisions only if still uncategorized | Approved |
+| DEC-514 | 2026-10-21 | Category after 30-day trash period | Permanently delete; leave decisions uncategorized | Approved |
+| DEC-515 | 2026-10-21 | Early permanent category deletion | Allow after confirmation | Approved |
+| DEC-516 | 2026-10-21 | Confirmation before category removal | Show category name and count of affected decisions | Approved |
 
 ## 10. Document maintenance rules
 
