@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 48.0  
+**Version:** 49.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -56,7 +56,7 @@ Couples maintain a guest list in the app; the app does not send wedding invitati
 Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
 
 ### 4.9 Inspiration
-**Proposed module; MVP inclusion remains undecided.** Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
+**Proposed module; MVP inclusion remains undecided.** Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Hide Private ideas completely from people without access, including when they appear on shared boards. Show each idea's creator and date added. Couples may rename, reorder, or hide suggested boards and create custom boards. Search titles, notes, and source URLs across boards, and filter by board. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Do not send notifications for comments or replies on Inspiration ideas, including @mentions; other record comments continue to follow general notification rules (DEC-247, DEC-311–315). Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
 Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
@@ -3550,6 +3550,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Private ideas remain protected by their visibility rules. Deleted ideas follow the 30-day recoverable trash decision in DEC-305.
 
+### DEC-311 — Search inspiration across boards
+**Status:** Approved  
+**Decision:** Search idea titles, notes, and source URLs across boards, and allow filtering by board.
+
+**Consequences:** Search results must respect per-idea visibility. Hide Private ideas completely from users without access.
+
+### DEC-312 — Show inspiration idea creator and date
+**Status:** Approved  
+**Decision:** Show who added each idea and when it was added.
+
+**Consequences:** Do not expose creator or idea metadata to people who cannot view a Private idea.
+
+### DEC-313 — Hide inaccessible Private ideas completely
+**Status:** Approved  
+**Decision:** Hide Private ideas entirely from users without access, even when the idea is placed on a shared board.
+
+**Consequences:** Do not show placeholders, counts, or other indicators that reveal the hidden idea's existence.
+
+### DEC-314 — Couples may manage suggested inspiration boards
+**Status:** Approved  
+**Decision:** Let couples rename, reorder, or hide suggested boards, as well as create custom boards.
+
+**Consequences:** Board-management permissions for other workspace roles remain subject to detailed permission design.
+
+### DEC-315 — No comment notifications for Inspiration
+**Status:** Approved  
+**Decision:** Do not send notifications for comments or replies on Inspiration ideas, including @mentions.
+
+**Consistency with DEC-247:** This is a module-specific exception. Mentions in comments on other records continue to notify authorized mentioned people under DEC-247, subject to user preferences and delivery rules.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3562,7 +3592,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-311 (current):** Should couples be able to search and filter inspiration ideas across all boards?
+- **Q-316 (current):** Should Inspiration be included in the initial MVP release?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4173,6 +4203,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-309 | 2026-10-21 | Inspiration source link display | Show clickable URLs only, without previews | Approved |
 
 | DEC-310 | 2026-10-21 | Inspiration idea deletion rights | Allow members with Inspiration edit permission to delete subject to idea visibility | Approved |
+
+| DEC-311 | 2026-10-21 | Inspiration search and filtering | Search titles, notes, and URLs across boards; filter by board | Approved |
+
+| DEC-312 | 2026-10-21 | Inspiration idea attribution | Show creator and date added | Approved |
+
+| DEC-313 | 2026-10-21 | Private idea visibility | Hide inaccessible Private ideas completely, including on shared boards | Approved |
+
+| DEC-314 | 2026-10-21 | Suggested board management | Let couples rename, reorder, and hide suggested boards and create custom ones | Approved |
+
+| DEC-315 | 2026-10-21 | Inspiration comment notifications | Do not notify for comments/replies on Inspiration ideas, including mentions; other record comments follow general rules | Approved |
 
 ## 10. Document maintenance rules
 
