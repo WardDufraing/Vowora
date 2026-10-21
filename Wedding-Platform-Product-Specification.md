@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 45.0  
+**Version:** 46.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -56,7 +56,7 @@ Couples maintain a guest list in the app; the app does not send wedding invitati
 Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
 
 ### 4.9 Inspiration
-**Proposed module; MVP inclusion remains undecided.** Couples can save an inspiration idea with an image, note, and optional source link; organize ideas in topic-based boards such as Venue, Attire, and Decor; and place one idea on multiple boards without duplicating it. Boards use a visual grid with simple sorting. Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–295).
+**Proposed module; MVP inclusion remains undecided.** Couples can save an inspiration idea with an image, note, and optional source link; organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
 Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
@@ -3460,6 +3460,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** This preserves Inspiration as a standalone collection. The module remains a candidate and is not thereby committed to MVP.
 
+### DEC-296 — Suggested and custom inspiration boards
+**Status:** Approved  
+**Decision:** Start with suggested topic boards and let couples create custom boards.
+
+**Consequences:** Custom board management permissions and behavior remain for detailed design.
+
+### DEC-297 — Per-idea privacy in Inspiration
+**Status:** Approved  
+**Decision:** Share inspiration ideas with the wedding workspace by default, with optional Private visibility for each idea.
+
+**Consequences:** Board membership must not reveal a Private idea to users who cannot view it. Apply current workspace permissions to idea images, notes, and source links.
+
+### DEC-298 — Manual and date-added sorting for inspiration ideas
+**Status:** Approved  
+**Decision:** Let users arrange ideas manually within a board and provide sorting by date added.
+
+**Consequences:** Exact ordering controls and how manual order interacts with date sorting remain for detailed design.
+
+### DEC-299 — Remove an idea from one board or delete it everywhere
+**Status:** Approved  
+**Decision:** Removing an idea from a board removes only that board placement. Provide a separate action to delete the idea from every board.
+
+**Consequences:** Confirm global deletion clearly and apply applicable recovery rules if an inspiration trash is later defined.
+
+### DEC-300 — Deleting a board keeps its ideas
+**Status:** Approved  
+**Decision:** Deleting a board removes the board but keeps its ideas in the main inspiration collection.
+
+**Consequences:** Ideas that appeared on multiple boards remain in the collection and on their other boards. Confirm the effect before deleting a board.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3472,7 +3502,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-296 (current):** Should inspiration boards start with suggested topics, and can couples create their own?
+- **Q-301 (current):** Should an inspiration idea require an image, or can couples save text-only ideas?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4053,6 +4083,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-294 | 2026-10-21 | Moodboard presentation | Use a visual grid with simple sorting | Approved |
 
 | DEC-295 | 2026-10-21 | Inspiration links to other modules | Keep inspiration separate from vendors, tasks, and other modules | Approved |
+
+| DEC-296 | 2026-10-21 | Suggested and custom inspiration boards | Provide suggested topic boards and allow couples to create custom boards | Approved |
+
+| DEC-297 | 2026-10-21 | Inspiration idea visibility | Share by default, with optional Private visibility per idea | Approved |
+
+| DEC-298 | 2026-10-21 | Sorting inspiration ideas | Allow manual arrangement and sorting by date added | Approved |
+
+| DEC-299 | 2026-10-21 | Removing inspiration ideas | Remove from one board separately from deleting the idea from all boards | Approved |
+
+| DEC-300 | 2026-10-21 | Deleting inspiration boards | Delete the board but retain its ideas in the main inspiration collection | Approved |
 
 ## 10. Document maintenance rules
 
