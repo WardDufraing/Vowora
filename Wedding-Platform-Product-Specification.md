@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 107.0  
+**Version:** 108.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -4836,6 +4836,18 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Permanently delete the milestone, its comments, and its task links. Leave linked task records unchanged.
 
+### DEC-572 — Milestone description
+**Status:** Approved
+**Decision:** Include an optional description on each milestone.
+
+### DEC-573 — Milestone accountability
+**Status:** Approved
+**Decision:** Milestones belong to the couple and do not have an accountable owner. Tasks can have owners.
+
+### DEC-574 — Milestone planning phases
+**Status:** Approved
+**Decision:** Organize milestones by suggested planning phases and allow couples to create custom phases.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -5735,6 +5747,9 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-569 | 2026-10-21 | Early permanent deletion of milestones | Timeline editors may delete early after confirmation | Approved |
 | DEC-570 | 2026-10-21 | Final notice before milestone deletion | Notify decision-makers 7 days before automatic deletion | Approved |
 | DEC-571 | 2026-10-21 | Effects of permanent milestone deletion | Delete milestone, comments, task links; keep linked tasks | Approved |
+| DEC-572 | 2026-10-21 | Milestone description | Optional description | Approved |
+| DEC-573 | 2026-10-21 | Milestone accountability | Milestones belong to couple; tasks can have owners | Approved |
+| DEC-574 | 2026-10-21 | Milestone planning phases | Suggested phases plus custom phases | Approved |
 
 ## 10. Document maintenance rules
 
