@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 43.0  
+**Version:** 44.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -32,7 +32,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 ## 4. Proposed modules — not yet approved for MVP
 
 ### 4.1 Wedding overview
-**Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Exact content thresholds, permissions, and remaining customization details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
+**Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); the next few milestones with their dates and progress (DEC-287); and unresolved decisions needing attention, with links to review them (DEC-288). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
 Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
@@ -3400,6 +3400,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** A partner's layout changes do not alter the other partner's view or wedding data. Define the specific layout controls during detailed design.
 
+### DEC-286 — Wedding date and days remaining on the overview
+**Status:** Approved  
+**Decision:** Show the wedding date and the number of days remaining on the couple-facing overview.
+
+**Consequences:** Define behavior when the wedding date is unset, in the past, or changes in detailed design.
+
+### DEC-287 — Upcoming milestones with dates and progress
+**Status:** Approved  
+**Decision:** Show the next few planning milestones with their dates and progress on the overview.
+
+**Consequences:** Exact count and progress calculation remain for detailed design. The card should link to the detailed planning timeline.
+
+### DEC-288 — Surface unresolved decisions on the overview
+**Status:** Approved  
+**Decision:** Show unresolved decisions that need attention, with links to review them.
+
+**Consequences:** Define how an item is identified as needing attention and how resolved decisions leave the card.
+
+### DEC-289 — Dashboard quick actions
+**Status:** Approved  
+**Decision:** Provide shortcuts to add a task, guest, vendor, or budget item from the overview.
+
+**Consequences:** Each shortcut must respect workspace permissions and open the relevant creation flow.
+
+### DEC-290 — Role-filtered overview for helpers and coordinators
+**Status:** Approved  
+**Decision:** Helpers and coordinators see the same wedding overview, filtered to information their role allows them to access.
+
+**Consequences:** Hide restricted card content without leaking its existence or details. This does not grant new permissions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3412,7 +3442,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-286 (current):** How should the wedding countdown appear on the couple-facing overview?
+- **Q-291 (current):** How should couples save inspiration ideas to the platform?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3973,6 +4003,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-284 | 2026-10-21 | Dashboard guest-progress card | Show confirmed headcount and progress with adult/child totals | Approved |
 
 | DEC-285 | 2026-10-21 | Couple dashboard layout | Start with a shared fixed layout; allow each partner to independently rearrange their view while wedding data remains shared | Approved |
+
+| DEC-286 | 2026-10-21 | Wedding countdown card | Show the wedding date and days remaining | Approved |
+
+| DEC-287 | 2026-10-21 | Dashboard milestone card | Show the next few milestones with dates and progress | Approved |
+
+| DEC-288 | 2026-10-21 | Dashboard decisions card | Show unresolved decisions needing attention with review links | Approved |
+
+| DEC-289 | 2026-10-21 | Dashboard quick actions | Add shortcuts for creating a task, guest, vendor, or budget item | Approved |
+
+| DEC-290 | 2026-10-21 | Helper and coordinator dashboard | Show the overview filtered to the viewer’s existing permissions | Approved |
 
 ## 10. Document maintenance rules
 
