@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 33.0  
+**Version:** 34.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -53,13 +53,13 @@ Central directory for vendors, helpers, family, emergency contacts, and key stak
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
-Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239).
+Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
 
 ### 4.9 Inspiration
 Ideas, references, moodboards, favorites, and related vendor options.
 
 ### 4.10 Collaboration and notifications
-Invitations, role-based permissions, comments, change history, assignments, alerts, and reminders.
+Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of key workspace changes, including who made each change and when (DEC-242); keep activity visibility subject to workspace permissions. Deliver notifications in-app, with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
 
 ### 4.11 Planner business dashboard
 Multiple weddings, client overview, planner teams, workload, deadlines, and reusable templates. Invited organizations can assign staff without individual preapproval; couples can see assigned staff, receive change notifications, and block particular employees. Internal planner-only information must remain distinct from shared client information.
@@ -3136,6 +3136,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** This is a lightweight attribution indicator, not a note version history. Any global audit requirements remain separately applicable.
 
+### DEC-240 — Basic formatting for shared notes
+**Status:** Approved  
+**Decision:** Support headings, bullets, and checklists in shared notes.
+
+**Consequences:** Keep note editing focused on these basic structures; richer media and embedded files are not included by this decision.
+
+### DEC-241 — Record-level comments with replies
+**Status:** Approved  
+**Decision:** Allow comments and replies attached to individual wedding workspace records, including tasks and vendor records.
+
+**Consequences:** Comments remain connected to the record being discussed and follow that record's permissions. Further design should define editing, deletion, mention, and notification behavior.
+
+### DEC-242 — Activity history for key workspace changes
+**Status:** Approved  
+**Decision:** Show key changes with the person who made each change and when it happened.
+
+**Consequences:** Define the key-change event list and retention rules in detailed design. Activity history must respect access permissions and should not expose restricted record content.
+
+### DEC-243 — In-app notifications with optional email or push
+**Status:** Approved  
+**Decision:** Provide in-app notifications and let users optionally receive them by email or push notification.
+
+**Consequences:** Permission checks must still apply when a notification is opened; delivery channel selection does not grant access to the underlying record.
+
+### DEC-244 — Per-area notification preferences
+**Status:** Approved  
+**Decision:** Let each user choose which notification areas to receive, including areas such as tasks, guests, and schedule changes.
+
+**Consequences:** Keep category choices understandable and allow notification delivery channels to be configured separately under DEC-243.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3148,7 +3178,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-240 (current):** What basic editing tools should shared notes support?
+- **Q-245 (current):** Which types of workspace changes should appear in the activity history?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3621,6 +3651,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-238 | 2026-10-21 | Notes linked to workspace records | Allow notes to link to vendors, tasks, documents, and other relevant records | Approved |
 
 | DEC-239 | 2026-10-21 | Note edit attribution without version history | Show latest editor and time; do not retain prior note versions | Approved |
+
+| DEC-240 | 2026-10-21 | Shared note editing tools | Support headings, bullets, and checklists | Approved |
+
+| DEC-241 | 2026-10-21 | Record-level discussion | Attach comments and replies to individual workspace records | Approved |
+
+| DEC-242 | 2026-10-21 | Workspace activity history | Show key changes with actor and time | Approved |
+
+| DEC-243 | 2026-10-21 | Notification delivery channels | Provide in-app notifications with optional email or push delivery | Approved |
+
+| DEC-244 | 2026-10-21 | Notification preferences | Let users select notification areas such as tasks, guests, and schedule changes | Approved |
 
 ## 10. Document maintenance rules
 
