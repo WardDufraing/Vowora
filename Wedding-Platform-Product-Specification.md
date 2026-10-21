@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 38.0  
+**Version:** 39.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -41,7 +41,7 @@ Track an overall budget and category allocations alongside individual cost recor
 Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
-**Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
+**Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion (DEC-193–195). Use Not started, In progress, Blocked, and Complete statuses. Tasks may remain undated in a separate undated list until a due date is known. Tasks support simple checklists, while substantial subtasks can be separate tasks. Authorized users may reopen completed tasks while keeping completion activity visible. Allow optional reminders per task, with a suggested reminder before the due date (DEC-265–269). Detailed reminder timing, task templates, and MVP commitment remain undecided.
 
 ### 4.5 Wedding-day schedule and coordination
 Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224). Authorized users may select emergency contacts to include in those materials (DEC-264). If a person's wedding access is revoked, online access ends immediately; any saved offline copy is invalidated and removed the next time that device reconnects (DEC-225).
@@ -3286,6 +3286,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Apply contact visibility permissions and include only selected, authorized contact details in exported or offline material.
 
+### DEC-265 — Standard planning task statuses
+**Status:** Approved  
+**Decision:** Use Not started, In progress, Blocked, and Complete as the standard task statuses.
+
+**Consequences:** Define status transitions and the relationship between Blocked status and prerequisite-task links in detailed design.
+
+### DEC-266 — Undated tasks remain available
+**Status:** Approved  
+**Decision:** Allow a task to have no due date and show it in an undated list until a date is known.
+
+**Consequences:** Undated tasks remain part of the planning task list and can still be assigned, linked, and completed.
+
+### DEC-267 — Checklists and separate subtasks
+**Status:** Approved  
+**Decision:** Support simple checklists within a task. More substantial subtasks can be represented as separate tasks.
+
+**Consequences:** Checklist items do not automatically receive separate owners or due dates; use full tasks when independent tracking is needed.
+
+### DEC-268 — Reopen completed tasks with completion activity retained
+**Status:** Approved  
+**Decision:** An authorized user may reopen a completed task; retain the completion activity in the task history.
+
+**Consequences:** Reopening returns the task to an active status while preserving its earlier completion event and attribution.
+
+### DEC-269 — Optional per-task reminders
+**Status:** Approved  
+**Decision:** Let users set optional reminders on individual tasks, with a suggested reminder before the due date.
+
+**Consequences:** Exact default lead time, reminder recipients, and delivery channels remain for detailed design and must respect each user's notification preferences.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3298,7 +3328,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-265 (current):** How should couples create and organize their wedding planning tasks?
+- **Q-270 (current):** If the wedding date changes, how should due dates in the starter plan be handled?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3821,6 +3851,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-263 | 2026-10-21 | Deleting linked contacts | Archive and preserve links; require review before permanent deletion | Approved |
 
 | DEC-264 | 2026-10-21 | Emergency contacts in offline/PDF schedules | Let authorized users select emergency contacts for inclusion | Approved |
+
+| DEC-265 | 2026-10-21 | Planning task statuses | Use Not started, In progress, Blocked, and Complete | Approved |
+
+| DEC-266 | 2026-10-21 | Tasks without due dates | Allow undated tasks and show them in an undated list | Approved |
+
+| DEC-267 | 2026-10-21 | Task checklists and subtasks | Support simple checklists and represent substantial subtasks as separate tasks | Approved |
+
+| DEC-268 | 2026-10-21 | Reopening completed tasks | Allow authorized users to reopen tasks while preserving completion activity | Approved |
+
+| DEC-269 | 2026-10-21 | Per-task reminders | Allow optional reminders per task with a suggested pre-due-date reminder | Approved |
 
 ## 10. Document maintenance rules
 
