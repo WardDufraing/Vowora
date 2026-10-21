@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 34.0  
+**Version:** 35.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -59,7 +59,7 @@ Provide a searchable document library with default categories for contracts, quo
 Ideas, references, moodboards, favorites, and related vendor options.
 
 ### 4.10 Collaboration and notifications
-Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of key workspace changes, including who made each change and when (DEC-242); keep activity visibility subject to workspace permissions. Deliver notifications in-app, with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
+Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
 
 ### 4.11 Planner business dashboard
 Multiple weddings, client overview, planner teams, workload, deadlines, and reusable templates. Invited organizations can assign staff without individual preapproval; couples can see assigned staff, receive change notifications, and block particular employees. Internal planner-only information must remain distinct from shared client information.
@@ -3166,6 +3166,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Keep category choices understandable and allow notification delivery channels to be configured separately under DEC-243.
 
+### DEC-245 — Activity history covers key wedding workspace changes
+**Status:** Approved  
+**Decision:** Include changes to access, tasks, schedule, guests, budget, and documents in the activity history, with actor and time (DEC-242).
+
+**Consequences:** Apply current permission checks when showing event details. Exact event granularity and retention remain for detailed design.
+
+### DEC-246 — Users may edit or delete their own comments
+**Status:** Approved  
+**Decision:** Let a user edit or delete their own comments. Show when a comment was edited; preserve replies and activity history.
+
+**Consequences:** Define how a deleted comment appears within an existing reply thread and how comment edits/deletions are reflected in the activity history.
+
+### DEC-247 — Authorized @mentions in record comments
+**Status:** Approved  
+**Decision:** Support @mentions in comments. Notify a mentioned person only if they are authorized to view the related record.
+
+**Consequences:** Recheck access when the notification is delivered and when opened. A mention must not disclose the existence or content of an inaccessible record.
+
+### DEC-248 — Immediate important notifications and optional routine digest
+**Status:** Approved  
+**Decision:** Deliver important changes immediately and offer a digest option for routine updates.
+
+**Consequences:** Define which events are important, digest frequency, time zone, and how user notification preferences affect each channel.
+
+### DEC-249 — Read controls in the in-app notification inbox
+**Status:** Approved  
+**Decision:** Track unread notifications and let users mark an individual notification or all notifications as read.
+
+**Consequences:** Preserve notification access checks when opening from the inbox. Read state does not change access to the underlying record.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3178,7 +3208,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-245 (current):** Which types of workspace changes should appear in the activity history?
+- **Q-250 (current):** Which information should each contact record contain by default?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3661,6 +3691,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-243 | 2026-10-21 | Notification delivery channels | Provide in-app notifications with optional email or push delivery | Approved |
 
 | DEC-244 | 2026-10-21 | Notification preferences | Let users select notification areas such as tasks, guests, and schedule changes | Approved |
+
+| DEC-245 | 2026-10-21 | Workspace activity history scope | Include access, task, schedule, guest, budget, and document changes with actor and time | Approved |
+
+| DEC-246 | 2026-10-21 | Editing and deleting comments | Users may edit or delete their own comments; show edits and preserve replies and activity history | Approved |
+
+| DEC-247 | 2026-10-21 | Comment mentions | Support @mentions and notify only people authorized to view the linked record | Approved |
+
+| DEC-248 | 2026-10-21 | Notification timing | Deliver important changes immediately and offer a digest for routine notifications | Approved |
+
+| DEC-249 | 2026-10-21 | In-app notification inbox controls | Track unread state and allow marking individual or all notifications as read | Approved |
 
 ## 10. Document maintenance rules
 
