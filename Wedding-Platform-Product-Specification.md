@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 85.0  
+**Version:** 86.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -73,7 +73,7 @@ Budget summaries, vendor lists, contacts, timelines, and printable wedding-day m
 ### 4.13 Wedding decisions
 **MVP scope:** Include a basic decision tracker with statuses, options, due dates, and links (DEC-482). The dashboard’s unresolved-decisions card is also part of the MVP (DEC-288, DEC-330).
 
-**Approved behavior:** Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be reopened to Open while retaining its prior outcome and history (DEC-487, DEC-491). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
+**Approved behavior:** Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining change history. Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
 
 ## 5. Key cross-module behavior — proposed
 
@@ -4514,6 +4514,26 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved  
 **Decision:** Return a reopened decision to Open and retain its previous outcome in history.
 
+### DEC-492 — Decision editing authority
+**Status:** Approved  
+**Decision:** Any member with Edit access to Decisions may create or edit decision details, including the title, options, and rationale.
+
+### DEC-493 — Open-ended decisions
+**Status:** Approved  
+**Decision:** Allow decisions without predefined options.
+
+### DEC-494 — Custom decision outcomes
+**Status:** Approved  
+**Decision:** Allow a custom outcome with an optional explanation when recording a decision.
+
+### DEC-495 — Editing a Decided decision
+**Status:** Approved  
+**Decision:** Allow edits to options or outcomes while a decision remains Decided; retain the change history.
+
+### DEC-496 — Authority to reopen a decision
+**Status:** Approved  
+**Decision:** Any member with Edit access to Decisions may reopen a Decided decision.
+
 
 
 ## 7. Proposed experience principles — pending validation
@@ -5335,6 +5355,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-489 | 2026-10-21 | Marking a decision Decided | Any member with Edit access to Decisions | Approved |
 | DEC-490 | 2026-10-21 | Deferred follow-up and original due date | Follow-up date replaces original due date | Approved |
 | DEC-491 | 2026-10-21 | Status after reopening a decision | Return to Open; retain prior outcome in history | Approved |
+| DEC-492 | 2026-10-21 | Decision editing authority | Any member with Edit access to Decisions can create/edit details | Approved |
+| DEC-493 | 2026-10-21 | Open-ended decisions | Allow decisions without predefined options | Approved |
+| DEC-494 | 2026-10-21 | Custom decision outcomes | Allow a custom outcome with optional explanation | Approved |
+| DEC-495 | 2026-10-21 | Editing Decided decisions | Allow edits while Decided; retain change history | Approved |
+| DEC-496 | 2026-10-21 | Authority to reopen a decision | Any member with Edit access to Decisions | Approved |
 
 ## 10. Document maintenance rules
 
