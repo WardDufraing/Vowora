@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 51.0  
+**Version:** 52.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -32,13 +32,13 @@ The product should offer a welcoming, simple experience for couples and a more e
 ## 4. Proposed modules — not yet approved for MVP
 
 ### 4.1 Wedding overview
-**Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); the next few milestones with their dates and progress (DEC-287); and unresolved decisions needing attention, with links to review them (DEC-288). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
+**MVP scope:** Include the approved combined couple-facing overview of tasks, budget, guests, decisions, milestones, and countdown (DEC-330). **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); the next few milestones with their dates and progress (DEC-287); and unresolved decisions needing attention, with links to review them (DEC-288). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
-Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
+**MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
 
 ### 4.3 Vendor options, comparisons, and decisions
-Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
+**MVP scope:** Include the full defined vendor comparison and decision workflow (DEC-329). Planner organization directory details remain governed by the separately defined planner model and their applicable MVP scope. Couples maintain vendor records manually; planners and planning organizations use an organization-owned directory that can be reused across weddings. Provide a customizable starter set of service categories and category-aware common and specialized fields, with optional custom fields. Flag likely duplicates for authorized users to review, link, or merge; never merge automatically. Support structured side-by-side comparisons, a guided but skippable decision status flow, one primary selection per service category with additional selections for distinct needs, and links to relevant wedding contacts, documents, finances, and tasks (DEC-182–192).
 
 ### 4.4 Long-term planning timeline and tasks
 **MVP scope:** Include all task behavior defined here and in DEC-193–195 and DEC-265–279 (DEC-318). **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. When the wedding date changes, preview proposed due-date changes for unfinished starter-plan tasks and ask before applying them; do not automatically shift dates (DEC-270). Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion (DEC-193–195). Show overdue indicators without changing task status, and show prerequisite blockers without automatically changing status; users manage task status themselves (DEC-271–272). Organize tasks by wedding-planning phase, with filters for owner, status, and due date (DEC-273). Notify assignees when assigned or when due dates change, but not for routine description edits (DEC-274). Use Not started, In progress, Blocked, and Complete statuses. Tasks may remain undated in a separate undated list until a due date is known. Tasks support simple checklists, while substantial subtasks can be separate tasks. Allow completion with unfinished checklist items after a warning and confirmation. Blocked tasks may include an optional short reason or link to a blocking task. Notify the owner and task collaborators when the due date changes. Move completed tasks to a collapsed but accessible Completed section. Archive tasks that are no longer needed while preserving links and activity and allowing restoration (DEC-275–279). Authorized users may reopen completed tasks while keeping completion activity visible. Allow optional reminders per task, with a suggested reminder before the due date (DEC-265–269). Detailed reminder timing, task templates, and MVP commitment remain undecided.
@@ -53,10 +53,10 @@ Couples maintain vendor records manually; planners and planning organizations us
 **MVP scope:** Include all guest tracking behavior defined in this section and DEC-203–209 (DEC-319). Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
-Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
+**MVP scope:** Include all defined document and notes behavior (DEC-327). Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
 
 ### 4.9 Inspiration
-**MVP scope:** Include a basic idea collection with suggested topic boards only; each idea belongs to one board, Private visibility is available per idea, and users can search by title. Defer custom boards, multiple-board placement, and personal favorites (DEC-316, DEC-321–325). Other behavior below describes the broader proposed module and is not automatically part of MVP; remaining boundaries are open (Q-326 and subsequent scope decisions). Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Hide Private ideas completely from people without access, including when they appear on shared boards. Show each idea's creator and date added. Couples may rename, reorder, or hide suggested boards and create custom boards. Search titles, notes, and source URLs across boards, and filter by board. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Do not send notifications for comments or replies on Inspiration ideas, including @mentions; other record comments continue to follow general notification rules (DEC-247, DEC-311–315). Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
+**MVP scope:** Include a basic idea collection with suggested topic boards only; each idea belongs to one board, Private visibility is available per idea, and users can search by title. Defer custom boards, multiple-board placement, personal favorites, and comments/replies (DEC-316, DEC-321–326). Other behavior below describes the broader proposed module and is not automatically part of MVP; remaining boundaries are open. Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Hide Private ideas completely from people without access, including when they appear on shared boards. Show each idea's creator and date added. Couples may rename, reorder, or hide suggested boards and create custom boards. Search titles, notes, and source URLs across boards, and filter by board. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Do not send notifications for comments or replies on Inspiration ideas, including @mentions; other record comments continue to follow general notification rules (DEC-247, DEC-311–315). Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
 Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
@@ -67,7 +67,7 @@ Multiple weddings, client overview, planner teams, workload, deadlines, and reus
 ### 4.12 Reports and exports
 Budget summaries, vendor lists, contacts, timelines, and printable wedding-day materials.
 
-**Scope note:** MVP scope is approved only for the areas specified in DEC-316–320. Other modules remain candidates, not committed MVP requirements. Detailed boundaries within the basic Inspiration and Contacts MVP selections remain open (Q-321 and subsequent scope decisions); priorities and acceptance criteria for other modules remain to be designed.
+**Scope note:** MVP scope is approved for the areas specified in DEC-316–330. Other modules and planner-facing capabilities remain candidates, not committed MVP requirements. The basic Inspiration and Contacts MVP selections have explicit boundaries; other module priorities and acceptance criteria remain to be designed.
 
 ## 5. Key cross-module behavior — proposed
 
@@ -3640,6 +3640,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Personal favorites remain a later-release feature under DEC-308.
 
+### DEC-326 — Defer Inspiration comments and replies from MVP
+**Status:** Approved  
+**Decision:** Keep comments and replies on Inspiration ideas out of the initial MVP; focus the basic collection on saving and browsing ideas.
+
+**Consistency with broader design:** Comments and replies remain part of the later proposed Inspiration behavior under DEC-304.
+
+### DEC-327 — Full defined Documents and Notes behavior in MVP
+**Status:** Approved  
+**Decision:** Include all document and notes behavior defined in the specification in the initial MVP.
+
+**Consequences:** This includes the searchable library, categories, per-document Shared/Private visibility, linked records, replacement behavior, expiry reminders, recoverable trash, and shared notes behavior with its defined organization, links, and edit attribution.
+
+### DEC-328 — Core itemized budget tracking in MVP
+**Status:** Approved  
+**Decision:** Include itemized costs, quotes, deposits, due dates, and payment tracking in the initial MVP.
+
+**Consequences:** This scope covers the core budget workflow. Other financial reporting or advanced behavior remains subject to its applicable scope decisions.
+
+### DEC-329 — Full defined vendor comparison and decision workflow in MVP
+**Status:** Approved  
+**Decision:** Include the full vendor comparison and decision workflow described in the specification.
+
+**Consequences:** This includes structured comparisons and the guided vendor decision flow. Planner organization directory and business-only details remain subject to their separate MVP scope.
+
+### DEC-330 — Couple-facing overview dashboard in MVP
+**Status:** Approved  
+**Decision:** Include the approved combined overview of tasks, budget, guests, decisions, milestones, and wedding countdown in the initial MVP.
+
+**Consequences:** Dashboard cards remain subject to role permissions and approved layout behavior. This does not itself commit every underlying module beyond the scope decisions recorded separately.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3652,7 +3682,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-326 (current):** Should comments and replies on Inspiration ideas be included in the MVP?
+- **Q-331 (current):** Should the planner-facing multi-wedding dashboard be included in the MVP?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4293,6 +4323,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-324 | 2026-10-21 | Inspiration MVP search | Include title search only | Approved |
 
 | DEC-325 | 2026-10-21 | Inspiration MVP favorites | Defer personal favorites to a later release | Approved |
+
+| DEC-326 | 2026-10-21 | Inspiration comments MVP scope | Defer comments and replies; focus MVP on saving and browsing ideas | Approved |
+
+| DEC-327 | 2026-10-21 | Documents and Notes MVP scope | Include all defined document and notes behavior | Approved |
+
+| DEC-328 | 2026-10-21 | Budget MVP scope | Include itemized costs, quotes, deposits, due dates, and payment tracking | Approved |
+
+| DEC-329 | 2026-10-21 | Vendor comparison MVP scope | Include the full defined comparison and decision workflow | Approved |
+
+| DEC-330 | 2026-10-21 | Couple overview dashboard MVP scope | Include the approved combined tasks, budget, guests, decisions, milestones, and countdown overview | Approved |
 
 ## 10. Document maintenance rules
 
