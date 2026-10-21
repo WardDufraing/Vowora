@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 37.0  
+**Version:** 38.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -44,10 +44,10 @@ Couples maintain vendor records manually; planners and planning organizations us
 **Selected as the next module for detailed product design (DEC-055).** Offer an editable, date-based starter plan with common wedding milestones. Tasks can have one accountable owner, optional collaborators, and optional links to prerequisite tasks; dependencies should surface blockers without preventing work or completion. Detailed reminder rules, task templates, and MVP commitment remain undecided (DEC-193–195).
 
 ### 4.5 Wedding-day schedule and coordination
-Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224). If a person's wedding access is revoked, online access ends immediately; any saved offline copy is invalidated and removed the next time that device reconnects (DEC-225).
+Use one chronological master run sheet with sections or filters for each event. Schedule items have start and end times, with a visible TBD state until times are known, plus locations, vendor arrivals, responsibilities, key contacts, and operational notes. Authorized couples, lead planners, and assigned coordinators can update the schedule before and during the event. During the wedding, items can be marked Planned, In progress, Complete, or Delayed. A delay can suggest later timing adjustments for authorized review; it does not shift the schedule automatically. Notify people assigned to affected items when a time, location, or responsibility changes. Show the latest schedule without a schedule-specific edit history. Coordinators may explicitly save the schedule for offline read-only use; saved copies refresh whenever the app is online and show the last sync time, plus a warning when offline that a copy may be outdated. The offline copy and printable/PDF run sheet include the timeline, locations, responsibilities, statuses, and essential day-of contacts (DEC-210–224). Authorized users may select emergency contacts to include in those materials (DEC-264). If a person's wedding access is revoked, online access ends immediately; any saved offline copy is invalidated and removed the next time that device reconnects (DEC-225).
 
 ### 4.6 Contacts
-Maintain a central wedding-workspace directory for vendors, venues, planners, guests, helpers, emergency contacts, and other key stakeholders. Contact records include name, role/company, phone, email, address, and notes. A contact may have multiple labeled phone numbers and email addresses, with one phone number or email marked as preferred (DEC-256, DEC-259). Suggest contact types such as Vendor, Venue, Planner, Guest, Helper, and Emergency Contact; allow multiple types per contact and couple-created custom types (DEC-251, DEC-255, DEC-257). Search names, companies, and contact details, and filter by type and linked records (DEC-258). Each contact can be Shared or Private, and can link to multiple records within the wedding workspace. Flag likely duplicate contacts for authorized users to review, link, or merge; never block or merge automatically (DEC-250–254).
+Maintain a central wedding-workspace directory for vendors, venues, planners, guests, helpers, emergency contacts, and other key stakeholders. Contacts are entered manually; device contact import and automatic synchronization are not supported (DEC-260). Contact records include name, role/company, phone, email, address, and notes. A contact may have multiple labeled phone numbers and email addresses, with one phone number or email marked as preferred (DEC-256, DEC-259). Suggest contact types such as Vendor, Venue, Planner, Guest, Helper, and Emergency Contact; allow multiple types per contact and couple-created custom types (DEC-251, DEC-255, DEC-257). Search names, companies, and contact details, and filter by type and linked records (DEC-258). Each contact can be Shared or Private as a whole record, and can link to multiple records within the wedding workspace (DEC-252, DEC-253, DEC-262). Contact records remain separate between wedding workspaces; authorized users may explicitly copy a contact into another workspace, creating an independent record (DEC-261). Archive deleted contacts and preserve their links; require review before permanent deletion (DEC-263). Flag likely duplicate contacts for authorized users to review, link, or merge; never block or merge automatically (DEC-250–254).
 
 ### 4.7 Guest list and attendance tracking
 Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
@@ -3256,6 +3256,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** This is informational guidance for wedding collaborators; it does not authorize the platform to contact that person.
 
+### DEC-260 — Manual contact entry only
+**Status:** Approved  
+**Decision:** Couples and collaborators add contacts manually; do not provide device contact import.
+
+**Consequences:** No contact data is imported from a device or external address book. Manual entry uses the approved contact fields and validation.
+
+### DEC-261 — Separate contact records for each wedding workspace
+**Status:** Approved  
+**Decision:** Keep contact records separate between wedding workspaces. Allow an authorized user to explicitly copy a contact into another workspace, creating an independent record.
+
+**Consequences:** Changes to one workspace's copy do not change another. Copying must respect access permissions and make the destination clear to the user.
+
+### DEC-262 — Contact visibility applies to the whole record
+**Status:** Approved  
+**Decision:** Apply Shared or Private visibility to the contact record as a whole, not to individual fields.
+
+**Consequences:** If a contact is Private, its fields and linked contact details are not visible to unauthorized workspace members.
+
+### DEC-263 — Archive linked contacts before permanent deletion
+**Status:** Approved  
+**Decision:** Archive a contact when deleted if it is linked to other records, preserving those links. Require review before permanent deletion.
+
+**Consequences:** Define who can restore or permanently delete archived contacts and what the review shows in detailed design.
+
+### DEC-264 — Select emergency contacts for offline and printable schedules
+**Status:** Approved  
+**Decision:** Let authorized users select which emergency contacts to include in the saved offline schedule and printable/PDF run sheet.
+
+**Consequences:** Apply contact visibility permissions and include only selected, authorized contact details in exported or offline material.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3268,7 +3298,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-260 (current):** Should couples be able to import contacts from their device or an external contact service?
+- **Q-265 (current):** How should couples create and organize their wedding planning tasks?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -3781,6 +3811,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-258 | 2026-10-21 | Contact search and filtering | Search names, companies, and details; filter by type and linked records | Approved |
 
 | DEC-259 | 2026-10-21 | Preferred contact method | Let users mark a phone number or email as preferred | Approved |
+
+| DEC-260 | 2026-10-21 | Contact entry method | Require manual contact entry; no device import or automatic sync (user selection) | Approved |
+
+| DEC-261 | 2026-10-21 | Contacts across wedding workspaces | Keep records separate; allow explicit copy into another wedding as an independent record | Approved |
+
+| DEC-262 | 2026-10-21 | Contact visibility scope | Apply Shared or Private visibility to the whole contact record | Approved |
+
+| DEC-263 | 2026-10-21 | Deleting linked contacts | Archive and preserve links; require review before permanent deletion | Approved |
+
+| DEC-264 | 2026-10-21 | Emergency contacts in offline/PDF schedules | Let authorized users select emergency contacts for inclusion | Approved |
 
 ## 10. Document maintenance rules
 
