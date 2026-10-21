@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 88.0  
+**Version:** 89.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -73,7 +73,7 @@ Budget summaries, vendor lists, contacts, timelines, and printable wedding-day m
 ### 4.13 Wedding decisions
 **MVP scope:** Include a basic decision tracker with statuses, options, due dates, and links (DEC-482). The dashboard’s unresolved-decisions card is also part of the MVP (DEC-288, DEC-330).
 
-**Approved behavior:** Keep decisions in a chronological list without search or filters. Order Open and Deferred decisions first by due date, then show Decided and Cancelled decisions below. Provide suggested categories such as Venue, Budget, and Attire, and allow custom categories. Assign at most one optional category to a decision; uncategorized decisions are allowed (DEC-502–506). Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Send reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date. Cancel a reminder if the decision is marked Decided or Cancelled before it is sent. If the due date or follow-up date changes, cancel the old reminder and schedule a new one (DEC-499–501). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining a decision change history that shows who changed it, when, and previous and new values. All members with View access to the decision can see this history (DEC-495, DEC-497–498). Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
+**Approved behavior:** Keep decisions in a chronological list without search or filters. Order Open and Deferred decisions first by due date, then show Decided and Cancelled decisions below. Provide suggested categories such as Venue, Budget, and Attire, and allow custom categories. Any member with Edit access to Decisions can create and manage custom categories. Couples can rename, reorder, and hide suggested categories. Hiding a suggested category preserves existing assignments but prevents new assignments until it is restored. Removing a custom category makes its decisions uncategorized and moves the category to a 30-day trash with restore available. Assign at most one optional category to a decision; uncategorized decisions are allowed (DEC-502–511). Decisions belong to the couple and have no individual owner. Each decision has a status of Open, Decided, Deferred, or Cancelled. Members with Edit access to Decisions may create and edit decision details. A decision may be open-ended without predefined options, and its recorded outcome may be a custom choice with an optional explanation. Users can define selectable options, record the selected outcome, and add an optional rationale. A decision may have an optional due date and reminder and may link to relevant wedding records (DEC-477–481). An optional reminder goes to both partners and the assigned lead planner if that planner has access (DEC-486). Send reminders at 9 a.m. in each recipient's local timezone on the chosen reminder date. Cancel a reminder if the decision is marked Decided or Cancelled before it is sent. If the due date or follow-up date changes, cancel the old reminder and schedule a new one (DEC-499–501). Coordinators and helpers have a separate View/Edit permission area for Decisions (DEC-483). Decision records support the shared comments-and-replies behavior (DEC-484). Show all Open and Deferred decisions in the dashboard’s needs-attention card (DEC-485). Any member with Edit access to Decisions may mark a decision as Decided (DEC-489). Allow a Decided decision to be edited while it remains Decided, retaining a decision change history that shows who changed it, when, and previous and new values. All members with View access to the decision can see this history (DEC-495, DEC-497–498). Members with Edit access to Decisions may also reopen a Decided decision to Open while retaining its prior outcome and history (DEC-487, DEC-491, DEC-495–496). Deferred decisions may have an optional follow-up date and reminder; the follow-up date replaces the original due date (DEC-488, DEC-490).
 
 ## 5. Key cross-module behavior — proposed
 
@@ -4574,6 +4574,26 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved  
 **Decision:** Allow decisions to remain uncategorized.
 
+### DEC-507 — Custom decision category permissions
+**Status:** Approved  
+**Decision:** Any member with Edit access to Decisions may create and manage custom decision categories.
+
+### DEC-508 — Managing suggested decision categories
+**Status:** Approved  
+**Decision:** Couples may rename, reorder, or hide suggested decision categories.
+
+### DEC-509 — Removing a decision category
+**Status:** Approved  
+**Decision:** Keep decisions assigned to a removed category and make them uncategorized.
+
+### DEC-510 — Hiding a suggested decision category
+**Status:** Approved  
+**Decision:** Preserve existing category assignments; hide the category from new assignments until it is restored.
+
+### DEC-511 — Recovering removed decision categories
+**Status:** Approved  
+**Decision:** Keep removed custom categories in a 30-day trash with restore available.
+
 
 
 ## 7. Proposed experience principles — pending validation
@@ -5410,6 +5430,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-504 | 2026-10-21 | Decision categories | Suggested categories plus custom categories | Approved |
 | DEC-505 | 2026-10-21 | Category count per decision | One category per decision | Approved |
 | DEC-506 | 2026-10-21 | Optional decision categories | Allow uncategorized decisions | Approved |
+| DEC-507 | 2026-10-21 | Custom decision category permissions | Any member with Edit access to Decisions | Approved |
+| DEC-508 | 2026-10-21 | Managing suggested decision categories | Couples may rename, reorder, and hide them | Approved |
+| DEC-509 | 2026-10-21 | Removing a decision category | Keep decisions and make them uncategorized | Approved |
+| DEC-510 | 2026-10-21 | Hiding a suggested category | Keep assignments; prevent new assignments until restored | Approved |
+| DEC-511 | 2026-10-21 | Recovering removed custom categories | 30-day trash with restore available | Approved |
 
 ## 10. Document maintenance rules
 
