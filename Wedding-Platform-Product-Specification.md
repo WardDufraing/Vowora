@@ -4162,9 +4162,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- Exact roles and permission defaults remain open; continue discovery in the access-control questions.
-
-- Exact roles and permission defaults.
+- **Q-411 (current):** Which standard permission presets should be available for non-couple wedding workspace members?
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
 - Module-by-module MVP scope.
