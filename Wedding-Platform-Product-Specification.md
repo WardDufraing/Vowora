@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 68.0  
+**Version:** 69.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -15,8 +15,9 @@ Create a shared wedding planning website and app where couples and professional 
 
 - **Couples:** Both partners have individual accounts and equal control over their shared wedding, including budgets, vendors, schedules, guests, and collaborators. Neither partner can unilaterally remove the other. A second partner can join via email invitation or secure link/code, with appropriate verification.
 - **Professional wedding planners:** Manage multiple weddings and collaborate with couples and team members.
-- **Wedding-day coordinators:** A hired coordinator, friend, or family member can access operational information such as the schedule, contacts, and assigned responsibilities, using preset roles with customizable access (DEC-007) and configurable access expiration (DEC-008).
-- **Other helpers and vendors:** May eventually receive narrowly scoped access where useful; exact scope is undecided.
+- **Wedding-day coordinators:** A hired coordinator, friend, or family member can access operational information such as the schedule, contacts, and assigned responsibilities, using preset roles with customizable access (DEC-007) and configurable access expiration (DEC-008). In the MVP, the coordinator preset includes the wedding-day schedule, essential contacts, and tasks assigned to that coordinator (DEC-412).
+- **Other helpers:** May receive a helper preset in the MVP. By default, helpers can access tasks assigned to them and records explicitly shared with them (DEC-413).
+- **Vendors:** Vendor accounts are deferred beyond the MVP; couples and planners manage vendor information (DEC-414).
 
 An account may participate in multiple weddings and may hold different roles in different workspaces. A professional planner may also be a couple member for their own wedding.
 
@@ -59,7 +60,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include a basic idea collection with suggested topic boards only; each idea belongs to one board, Private visibility is available per idea, and users can search by title. Defer custom boards, multiple-board placement, personal favorites, and comments/replies (DEC-316, DEC-321–326). Other behavior below describes the broader proposed module and is not automatically part of MVP; remaining boundaries are open. Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Hide Private ideas completely from people without access, including when they appear on shared boards. Show each idea's creator and date added. Couples may rename, reorder, or hide suggested boards and create custom boards. Search titles, notes, and source URLs across boards, and filter by board. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Do not send notifications for comments or replies on Inspiration ideas, including @mentions; other record comments continue to follow general notification rules (DEC-247, DEC-311–315). Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
-Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, document, vendor service-category, and custom field definition changes, including who made each change and when. Do not log custom field value changes or planner-only vendor note edits (DEC-396, DEC-398). Record custom field definition changes with the manager, action, field name, and time (DEC-400). For vendor category changes, record the category change but not deleted custom field values (DEC-395). Organization staff with access to the vendor can see its activity; couples can see activity for linked wedding vendors they can access (DEC-397). Show events grouped by day with the most recent day first and the most recent events first within each day; provide no search or filters (DEC-402, DEC-408–409). Display timestamps in the viewer's local time and identify the timezone (DEC-410). Link each event to the related wedding record when the viewer has permission to access it (DEC-403). Keep activity history viewable in the app only; do not offer activity history exports (DEC-404). Retain activity history until one year after the latest saved wedding date; if no wedding date is set, retain it until one year after workspace creation (DEC-401, DEC-406–407). Vendor-related events use the same retention period (DEC-399). Activity history does not generate notifications independently; notifications follow the rules for each underlying change (DEC-405). Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
+Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, document, vendor service-category, and custom field definition changes, including who made each change and when. Do not log custom field value changes or planner-only vendor note edits (DEC-396, DEC-398). Record custom field definition changes with the manager, action, field name, and time (DEC-400). For vendor category changes, record the category change but not deleted custom field values (DEC-395). Organization staff with access to the vendor can see its activity; couples can see activity for linked wedding vendors they can access (DEC-397). Show events grouped by day with the most recent day first and the most recent events first within each day; provide no search or filters (DEC-402, DEC-408–409). Display timestamps in the viewer's local time and identify the timezone (DEC-410). Link each event to the related wedding record when the viewer has permission to access it (DEC-403). Keep activity history viewable in the app only; do not offer activity history exports (DEC-404). Retain activity history until one year after the latest saved wedding date; if no wedding date is set, retain it until one year after workspace creation (DEC-401, DEC-406–407). Vendor-related events use the same retention period (DEC-399). Activity history does not generate notifications independently; notifications follow the rules for each underlying change (DEC-405). Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). For the MVP, include planner, coordinator, and helper permission presets; defer vendor accounts (DEC-411). Either partner and the assigned lead planner may adjust coordinator/helper access, with the lead planner acting only within the couple's restrictions (DEC-415). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
 
 ### 4.11 Planner workspace and business tools
 **MVP scope:** Include a planner-facing multi-wedding dashboard showing assigned weddings and actions needing attention (DEC-331); organization staff assignment to weddings and access setting (DEC-332); basic private client and business notes kept separate from each couple's shared wedding workspace (DEC-333); an organization-wide vendor directory reusable across weddings alongside wedding-specific vendor records (DEC-334); and reusable task and timeline templates (DEC-335). The dashboard flags overdue and upcoming tasks, budget payments due, schedule changes, and unresolved decisions (DEC-337), following the combined portfolio and action-center direction in DEC-038. Organization managers manage staff; assigned planners can manage access for their own weddings using role-based permissions, adjustable within the couple's restrictions (DEC-336, DEC-347). When a staff member leaves or is deactivated, revoke wedding access immediately, preserve their activity history, and flag their assignments for reassignment. An organization manager reviews and reassigns them (DEC-351, DEC-359). Do not notify couples about staff assignment changes caused by a departure; separately initiated lead planner changes continue to follow DEC-352 notification rules (DEC-360). Show all staff assigned to a wedding and identify one lead planner, while allowing multiple staff to be assigned (DEC-345). The lead planner coordinates the team but receives no additional permissions solely because of that designation (DEC-346). Organization managers or the current lead planner may change the lead planner, and the couple is notified when this is a separately initiated lead change (DEC-352, DEC-360). Private business notes support a title and text, with an optional link to a client or wedding, and are not visible to couples unless explicitly shared through the wedding workspace (DEC-340). Planners can build reusable templates from scratch or save selected tasks and timeline items from an existing wedding (DEC-339). When applying a template to a wedding with existing planning data, preview it and select items to add; do not automatically replace or remove existing items (DEC-353). Wedding vendor records link to the live organization vendor profile rather than copying a snapshot (DEC-338). All organization staff can view organization vendor profiles, with editing limited by role (DEC-354). Workload views, template content and application behavior, and the exact private business record model remain open.
@@ -4150,6 +4151,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Viewers can distinguish local display time from the time recorded by another collaborator.
 
+### DEC-411 — MVP non-couple permission presets
+**Status:** Approved  
+**Decision:** Include planner, coordinator, and helper permission presets in the MVP; defer vendor accounts.
+
+**Consequences:** Couples and planners manage vendor information during the MVP rather than inviting vendor accounts.
+
+### DEC-412 — Coordinator default access
+**Status:** Approved  
+**Decision:** By default, coordinators can access the wedding-day schedule, essential contacts, and tasks assigned to them.
+
+**Consequences:** Broader access must be explicitly granted within couple-set restrictions.
+
+### DEC-413 — Helper default access
+**Status:** Approved  
+**Decision:** By default, helpers can access tasks assigned to them and records explicitly shared with them.
+
+**Consequences:** Helpers do not receive workspace-wide access by default.
+
+### DEC-414 — Vendor sign-in in the MVP
+**Status:** Approved  
+**Decision:** Do not include vendor sign-in accounts in the MVP; couples and planners manage vendor information.
+
+**Consequences:** Vendor account access remains a possible later capability.
+
+### DEC-415 — Adjusting coordinator and helper access
+**Status:** Approved  
+**Decision:** Either partner and the assigned lead planner may adjust coordinator/helper access; the lead planner must stay within the couple's restrictions.
+
+**Consequences:** This extends the lead planner's operational access-management responsibility without granting broader permissions solely from the lead designation.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -4162,7 +4193,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-411 (current):** Which standard permission presets should be available for non-couple wedding workspace members?
+- **Q-416 (current):** How should couples and planners invite coordinators and helpers to a wedding workspace?
 - Invitation, approval, and ownership-transfer workflows.
 - Planner organization and team model.
 - Module-by-module MVP scope.
@@ -4891,6 +4922,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-408 | 2026-10-21 | Activity sort order | Show most recent entries first | Approved |
 | DEC-409 | 2026-10-21 | Activity grouping | Group by day, most recent day first | Approved |
 | DEC-410 | 2026-10-21 | Activity timestamp timezone | Show viewer local time and identify timezone | Approved |
+| DEC-411 | 2026-10-21 | MVP non-couple permission presets | Include planner, coordinator, and helper; defer vendor accounts | Approved |
+| DEC-412 | 2026-10-21 | Coordinator default access | Schedule, essential contacts, and assigned tasks | Approved |
+| DEC-413 | 2026-10-21 | Helper default access | Assigned tasks and explicitly shared records | Approved |
+| DEC-414 | 2026-10-21 | Vendor sign-in in MVP | Defer vendor accounts; couples/planners manage vendor data | Approved |
+| DEC-415 | 2026-10-21 | Adjusting coordinator/helper access | Either partner or assigned lead planner within couple restrictions | Approved |
 
 ## 10. Document maintenance rules
 
