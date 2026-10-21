@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 47.0  
+**Version:** 48.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -56,7 +56,7 @@ Couples maintain a guest list in the app; the app does not send wedding invitati
 Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
 
 ### 4.9 Inspiration
-**Proposed module; MVP inclusion remains undecided.** Couples can save an inspiration idea as text-only or with one image, with an optional note and source link. Allow only one image per idea. Workspace members with permission to edit Inspiration may add ideas. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
+**Proposed module; MVP inclusion remains undecided.** Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
 Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, and document changes, including who made each change and when (DEC-242, DEC-245); keep activity visibility subject to workspace permissions. Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
@@ -3520,6 +3520,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Define who may restore or permanently remove ideas in detailed permissions design. Restoring an idea should restore its board placements where possible.
 
+### DEC-306 — Link-only inspiration ideas
+**Status:** Approved  
+**Decision:** Allow an inspiration idea to consist only of a source link, without text or an image.
+
+**Consistency with DEC-291/301:** Images and notes are optional; an idea can be text-only, image-based, link-only, or combine these fields.
+
+### DEC-307 — Short title for each inspiration idea
+**Status:** Approved  
+**Decision:** Require a short title for every inspiration idea; the note remains optional.
+
+**Consequences:** Define title length and validation in detailed design.
+
+### DEC-308 — Personal favorites for inspiration ideas
+**Status:** Approved  
+**Decision:** Let each person favorite ideas for their own view.
+
+**Consequences:** Favorites are personal and do not change the shared idea or other users' favorites.
+
+### DEC-309 — Clickable source URL without preview
+**Status:** Approved  
+**Decision:** Show source links as clickable URLs only; do not generate a preview.
+
+**Consequences:** The destination remains visible as a link. No automatic page title, image, or summary is displayed.
+
+### DEC-310 — Delete ideas based on Inspiration edit permission
+**Status:** Approved  
+**Decision:** Members with permission to edit Inspiration may delete an idea, subject to its visibility.
+
+**Consequences:** Private ideas remain protected by their visibility rules. Deleted ideas follow the 30-day recoverable trash decision in DEC-305.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -3532,7 +3562,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-306 (current):** Should an inspiration idea be allowed to contain only a source link, without text or an image?
+- **Q-311 (current):** Should couples be able to search and filter inspiration ideas across all boards?
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4133,6 +4163,16 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-304 | 2026-10-21 | Comments on inspiration ideas | Allow comments and replies on each idea | Approved |
 
 | DEC-305 | 2026-10-21 | Deleted inspiration ideas | Keep in a recoverable 30-day trash | Approved |
+
+| DEC-306 | 2026-10-21 | Link-only inspiration ideas | Allow ideas that consist only of a source link | Approved |
+
+| DEC-307 | 2026-10-21 | Inspiration idea titles | Require a short title and keep notes optional | Approved |
+
+| DEC-308 | 2026-10-21 | Personal inspiration favorites | Let each person favorite ideas for their own view | Approved |
+
+| DEC-309 | 2026-10-21 | Inspiration source link display | Show clickable URLs only, without previews | Approved |
+
+| DEC-310 | 2026-10-21 | Inspiration idea deletion rights | Allow members with Inspiration edit permission to delete subject to idea visibility | Approved |
 
 ## 10. Document maintenance rules
 
