@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 67.0  
+**Version:** 68.0  
 **Last updated:** 21 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -59,7 +59,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include a basic idea collection with suggested topic boards only; each idea belongs to one board, Private visibility is available per idea, and users can search by title. Defer custom boards, multiple-board placement, personal favorites, and comments/replies (DEC-316, DEC-321–326). Other behavior below describes the broader proposed module and is not automatically part of MVP; remaining boundaries are open. Each inspiration idea has a short title and may include an optional note, one image, or a source link; link-only ideas are allowed. Show source links as clickable URLs without previews. Each person can favorite ideas for their own view. Workspace members with permission to edit Inspiration may add or delete ideas, subject to idea visibility. Ideas support comments and replies and deleted ideas remain recoverable in a 30-day trash (DEC-301–305, DEC-306–310). Organize ideas in suggested topic-based boards such as Venue, Attire, and Decor; and create custom boards. One idea may appear on multiple boards without duplication. Boards use a visual grid; users may arrange ideas manually or sort by date added. Ideas are shared with the wedding workspace by default, with optional Private visibility per idea. Hide Private ideas completely from people without access, including when they appear on shared boards. Show each idea's creator and date added. Couples may rename, reorder, or hide suggested boards and create custom boards. Search titles, notes, and source URLs across boards, and filter by board. Removing an idea from a board removes only that board placement; a separate action deletes the idea from all boards. Deleting a board keeps its ideas in the main inspiration collection. Do not send notifications for comments or replies on Inspiration ideas, including @mentions; other record comments continue to follow general notification rules (DEC-247, DEC-311–315). Inspiration ideas remain separate from vendors, tasks, and other modules, without cross-module links (DEC-291–300).
 
 ### 4.10 Collaboration and notifications
-Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, document, vendor service-category, and custom field definition changes, including who made each change and when. Do not log custom field value changes or planner-only vendor note edits (DEC-396, DEC-398). Record custom field definition changes with the manager, action, field name, and time (DEC-400). For vendor category changes, record the category change but not deleted custom field values (DEC-395). Organization staff with access to the vendor can see its activity; couples can see activity for linked wedding vendors they can access (DEC-397). Show events in chronological order without search or filters (DEC-402). Link each event to the related wedding record when the viewer has permission to access it (DEC-403). Keep activity history viewable in the app only; do not offer activity history exports (DEC-404). Retain activity history until one year after the wedding date (DEC-401); vendor-related events use the same retention period (DEC-399). Activity history does not generate notifications independently; notifications follow the rules for each underlying change (DEC-405). Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
+Provide comments with replies attached to individual workspace records, such as tasks and vendor records (DEC-241). Show an activity history of access, task, schedule, guest, budget, document, vendor service-category, and custom field definition changes, including who made each change and when. Do not log custom field value changes or planner-only vendor note edits (DEC-396, DEC-398). Record custom field definition changes with the manager, action, field name, and time (DEC-400). For vendor category changes, record the category change but not deleted custom field values (DEC-395). Organization staff with access to the vendor can see its activity; couples can see activity for linked wedding vendors they can access (DEC-397). Show events grouped by day with the most recent day first and the most recent events first within each day; provide no search or filters (DEC-402, DEC-408–409). Display timestamps in the viewer's local time and identify the timezone (DEC-410). Link each event to the related wedding record when the viewer has permission to access it (DEC-403). Keep activity history viewable in the app only; do not offer activity history exports (DEC-404). Retain activity history until one year after the latest saved wedding date; if no wedding date is set, retain it until one year after workspace creation (DEC-401, DEC-406–407). Vendor-related events use the same retention period (DEC-399). Activity history does not generate notifications independently; notifications follow the rules for each underlying change (DEC-405). Let users edit or delete their own comments; show when comments were edited and preserve replies and activity history (DEC-246). Support @mentions in comments and notify mentioned people only when they are authorized to view that record (DEC-247). Deliver important notifications immediately and offer a digest for routine updates (DEC-248), in-app with optional email or push delivery (DEC-243). Let each user choose which notification areas to receive, such as tasks, guests, and schedule changes (DEC-244). The in-app inbox tracks unread notifications and supports marking one or all as read (DEC-249). Invitations, role-based permissions, assignments, alerts, and reminders follow their respective access and notification rules.
 
 ### 4.11 Planner workspace and business tools
 **MVP scope:** Include a planner-facing multi-wedding dashboard showing assigned weddings and actions needing attention (DEC-331); organization staff assignment to weddings and access setting (DEC-332); basic private client and business notes kept separate from each couple's shared wedding workspace (DEC-333); an organization-wide vendor directory reusable across weddings alongside wedding-specific vendor records (DEC-334); and reusable task and timeline templates (DEC-335). The dashboard flags overdue and upcoming tasks, budget payments due, schedule changes, and unresolved decisions (DEC-337), following the combined portfolio and action-center direction in DEC-038. Organization managers manage staff; assigned planners can manage access for their own weddings using role-based permissions, adjustable within the couple's restrictions (DEC-336, DEC-347). When a staff member leaves or is deactivated, revoke wedding access immediately, preserve their activity history, and flag their assignments for reassignment. An organization manager reviews and reassigns them (DEC-351, DEC-359). Do not notify couples about staff assignment changes caused by a departure; separately initiated lead planner changes continue to follow DEC-352 notification rules (DEC-360). Show all staff assigned to a wedding and identify one lead planner, while allowing multiple staff to be assigned (DEC-345). The lead planner coordinates the team but receives no additional permissions solely because of that designation (DEC-346). Organization managers or the current lead planner may change the lead planner, and the couple is notified when this is a separately initiated lead change (DEC-352, DEC-360). Private business notes support a title and text, with an optional link to a client or wedding, and are not visible to couples unless explicitly shared through the wedding workspace (DEC-340). Planners can build reusable templates from scratch or save selected tasks and timeline items from an existing wedding (DEC-339). When applying a template to a wedding with existing planning data, preview it and select items to add; do not automatically replace or remove existing items (DEC-353). Wedding vendor records link to the live organization vendor profile rather than copying a snapshot (DEC-338). All organization staff can view organization vendor profiles, with editing limited by role (DEC-354). Workload views, template content and application behavior, and the exact private business record model remain open.
@@ -4092,9 +4092,9 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 ### DEC-401 — Workspace activity history retention
 **Status:** Approved  
-**Decision:** Delete workspace activity history one year after the wedding date.
+**Decision:** Delete workspace activity history one year after the latest saved wedding date; when no wedding date exists, delete it one year after workspace creation.
 
-**Consequences:** Vendor-related activity follows the same retention period (DEC-399). The retention rule for workspaces without a wedding date remains open.
+**Consequences:** Vendor-related activity follows the same retention period (DEC-399). When the wedding date changes, update the deletion date to one year after the latest saved date (DEC-407).
 
 ### DEC-402 — Activity history display and filtering
 **Status:** Approved  
@@ -4120,6 +4120,36 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Consequences:** Activity visibility and notification delivery remain separate behaviors.
 
+### DEC-406 — Retention without a wedding date
+**Status:** Approved  
+**Decision:** When a workspace has no wedding date, delete its activity history one year after workspace creation.
+
+**Consequences:** This provides a retention deadline even before the couple sets a wedding date.
+
+### DEC-407 — Retention after a wedding date change
+**Status:** Approved  
+**Decision:** Base the activity-history deletion date on the latest saved wedding date.
+
+**Consequences:** Changes to the wedding date update the retention deadline.
+
+### DEC-408 — Activity list sort order
+**Status:** Approved  
+**Decision:** Show the most recent activity entries first.
+
+**Consequences:** This order applies within the chronological activity view.
+
+### DEC-409 — Activity history grouped by day
+**Status:** Approved  
+**Decision:** Group the activity history by day, with the most recent day first.
+
+**Consequences:** Activity events remain chronological within each day, with the newest entries first.
+
+### DEC-410 — Activity timestamp timezone
+**Status:** Approved  
+**Decision:** Display activity timestamps in the viewer's local time and identify the timezone.
+
+**Consequences:** Viewers can distinguish local display time from the time recorded by another collaborator.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -4132,7 +4162,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ## 8. Open decisions
 
 - **Q-181 (deferred):** If a scheduled report continues using preserved filters after its shared preset is deleted, should the schedule owner be notified?
-- **Q-406 (current):** How long should activity history be retained for a workspace that has no wedding date?
+- Exact roles and permission defaults remain open; continue discovery in the access-control questions.
 
 - Exact roles and permission defaults.
 - Invitation, approval, and ownership-transfer workflows.
@@ -4858,6 +4888,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-403 | 2026-10-21 | Activity links | Link to records only when viewer has permission | Approved |
 | DEC-404 | 2026-10-21 | Activity history export | App viewing only; no export | Approved |
 | DEC-405 | 2026-10-21 | Notifications from activity history | Underlying change rules govern; no independent activity notifications | Approved |
+| DEC-406 | 2026-10-21 | Activity retention without wedding date | Delete one year after workspace creation | Approved |
+| DEC-407 | 2026-10-21 | Activity retention after date change | Base deadline on latest saved wedding date | Approved |
+| DEC-408 | 2026-10-21 | Activity sort order | Show most recent entries first | Approved |
+| DEC-409 | 2026-10-21 | Activity grouping | Group by day, most recent day first | Approved |
+| DEC-410 | 2026-10-21 | Activity timestamp timezone | Show viewer local time and identify timezone | Approved |
 
 ## 10. Document maintenance rules
 
