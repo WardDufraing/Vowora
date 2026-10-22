@@ -5654,6 +5654,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Use the same configurable permissions as custom Event Attendance parts (Option C). Both partners may restore hidden default or custom Event Attendance parts. Planners may restore them only when the couple has granted the relevant Event Attendance management permission and the planner has appropriate guest-management access. Restoring makes the part available in active guest-management views without changing existing guest assignments.
 
+### DEC-773 — Detailed Event Attendance totals with overall summary
+**Status:** Approved
+**Decision:** Display confirmed and unconfirmed adult and child headcounts separately for each Event Attendance part, alongside an overall unique-person summary that counts each guest once even when they attend multiple parts (Option C — Detailed totals with overall summary). Preserve the distinction between event-part totals (which can overlap) and the overall unique guest count, and follow the existing group-level confirmation rules.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6880,6 +6884,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-771 | 2026-10-22 | Hiding unused Event Attendance parts | Authorized members can hide and restore parts without assignments; assigned parts cannot be hidden (Option B) | Approved |
 
 | DEC-772 | 2026-10-22 | Restoring hidden Event Attendance parts | Both partners may restore; planners require couple-granted Event Attendance management permission and guest-management access (Option C) | Approved |
+
+| DEC-773 | 2026-10-22 | Detailed Event Attendance totals with overall summary | Per-part confirmed/unconfirmed adult/child counts plus overall unique-person summary, avoiding double counting (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
