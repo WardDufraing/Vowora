@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-115
+> Approved architecture decisions: ARCH-001–ARCH-120
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -138,6 +138,11 @@ Architecture principles:
 | GDPR request orchestration | Verified, tracked rights requests with cross-domain discovery, portable exports/erasure and safe audit evidence | ARCH-113 A |
 | API compatibility | Additive evolution within /api/v1, contract checks and new versions for breaking changes | ARCH-114 A |
 | Offline snapshot refresh | Explicit read-only save and refresh, authorized version checks and visible staleness | ARCH-115 A |
+| Outbox failure handling | Bounded exponential backoff with jitter, leases, inspectable failed state and controlled replay | ARCH-116 A |
+| Tenant query indexes | Scope-first composite indexes informed by real query plans and workload measurements | ARCH-117 A |
+| Session revocation | Server-enforced revocation with client cache/snapshot invalidation on detection | ARCH-118 A |
+| Notification deduplication | Stable event-recipient-channel delivery keys and idempotent outcome tracking | ARCH-119 A |
+| API verification | OpenAPI/Zod conformance, generated-client compatibility and breaking-change checks in CI | ARCH-120 A |
 
 ## 3. Logical system architecture
 
@@ -210,9 +215,9 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use appropriate foreign keys, constraints, indexes and transactions.
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409), preserve client input, and present latest server values alongside user edits where practical for guided retry or merge. Never silently merge sensitive financial or permission changes.
 - Application services own bounded Drizzle transactions for multi-step changes, including domain records, audit events and transactional outbox writes; repositories accept the supplied transaction context and do not independently split atomic operations. Keep external side effects outside database transactions, using recoverable outbox dispatch and idempotent retries.
-- Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
+- Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. Retry transient dispatch failures with bounded exponential backoff and jitter, lease expiry, attempt counters and alerts; move exhausted events to an inspectable failed/dead-letter state with authorized controlled replay preserving stable event identity. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
 - PostgreSQL search uses domain-owned searchable projections with full-text/trigram indexes and a shared search API; update projections transactionally where practical or via recoverable domain-event processing. Enforce current record, wedding and organization authorization at query time, never treating index membership as permission.
-- Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); tune indexes based on observed workload and avoid logging sensitive query values.
+- Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); prefer scope-first composite indexes combining wedding_id/organization_id with observed status/date/order query patterns, validate query plans, and avoid logging sensitive query values.
 - Avoid cross-tenant cache leakage: cache keys and invalidation must include the necessary permission scope.
 
 ## 7. API and authentication
@@ -221,7 +226,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use typed domain errors mapped to RFC 9457 Problem Details (`application/problem+json`) responses with stable machine-readable codes, correlation IDs, safe user-facing messages and sanitized field-validation extensions. Keep sensitive diagnostics in protected logs and Sentry.
 - Use React Hook Form with Zod and accessible shared field components for complex web forms; server validation and authorization remain authoritative.
 - Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, using versioned opaque signed cursors containing deterministic sort values and unique tie-breakers. Bind and validate cursors against query filters, sort and authorization scope; a cursor is never an access token. Use documented allowlisted explicit query parameters (e.g. status, search, sort and cursor) with Zod validation and OpenAPI contracts; introduce complex filter syntax only for product-justified cases. Use consistent response envelopes; simpler bounded queries may be used where appropriate.
-- Maintain versioned contract-first Zod/OpenAPI schemas; generate typed clients for web and future Expo apps, and validate API response conformance and backward compatibility in CI. Generated clients do not bypass server authorization.
+- Maintain versioned contract-first Zod/OpenAPI schemas; generate typed clients for web and future Expo apps, and validate success/error response conformance against OpenAPI/Zod, generated-client consumer compatibility, breaking changes and authorization behavior in CI. Generated clients do not bypass server authorization.
 - Support future Expo clients without depending on browser-only Server Actions.
 - Use Better Auth or an approved equivalent; confirm Neon/Drizzle integration and native client support before implementation.
 - Web uses secure HTTP-only cookie sessions with relevant CSRF protections. Implement supported device/session visibility and revocation and reauthentication for sensitive actions; optional MFA is a capability, not a newly mandated product policy. Verify Better Auth support and adapter behavior before implementation.
@@ -265,7 +270,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries. Apply per-resource Trigger.dev concurrency keys to incompatible file processing, report generation and lifecycle operations; recheck authoritative PostgreSQL state and use idempotency because concurrency controls alone cannot guarantee exactly-once execution.
 - Dispatch durable PostgreSQL outbox events to Trigger.dev via a scheduled lightweight polling dispatcher using atomic claims/leases, bounded retries, stuck-event monitoring and recovery; avoid an always-on worker initially. The outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Keep background job payloads minimal: stable resource/operation IDs and necessary non-sensitive metadata, not trusted permission snapshots. Reload authoritative tenant scope, lifecycle state and current policy at execution, with idempotency keys. Define narrowly scoped system authority for legitimate scheduled lifecycle jobs when an initiating user's access no longer exists; never default all jobs to unrestricted privileges. Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
-- Resolve notification recipients, permitted channels, user preferences, timing and deduplication through a centralized policy engine, honoring all product-approved module rules. Recheck authorization at execution time. Store in-app notifications in PostgreSQL as the authoritative inbox; derive email delivery from domain events without duplicating inbox entries.
+- Resolve notification recipients, permitted channels, user preferences, timing and deduplication through a centralized policy engine, honoring all product-approved module rules. Recheck authorization at execution time. Store in-app notifications in PostgreSQL as the authoritative inbox; derive email delivery from domain events without duplicating inbox entries. Persist stable event-recipient-channel delivery keys and outcomes to deduplicate retries across outbox dispatch, Trigger.dev execution and Resend callbacks without suppressing distinct approved reminders.
 - Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration. Authenticate the sending domain with SPF, DKIM and an appropriate DMARC policy; verify Resend webhook signatures and process delivery, bounce and complaint events idempotently, with privacy-safe tracking.
 
 ## 11. Lifecycle, audit, security and observability
@@ -296,7 +301,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 Future architecture decisions should resolve, among other items:
 - Risk-based reauthentication freshness thresholds/methods, permission-scope version mechanics and policy test coverage
 - Module-specific API filter allowlists, Problem Details extension field definitions and cursor signing/key rotation
-- Outbox polling cadence, lease duration, retention, retry thresholds and monitoring; schedule reconciliation cadence
+- Outbox polling cadence, lease duration, retry limits, dead-letter replay permissions and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
 - Concrete managed Redis provider, rate-limit thresholds and sensitive-route failover behavior
 - Feature flag storage schema, concrete scope precedence ordering and cache TTL/invalidation
@@ -311,7 +316,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-115 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-120 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
