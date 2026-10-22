@@ -5646,6 +5646,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Authorized members can drag and drop all Event Attendance parts, including Ceremony, Reception, Dinner, Dance Party, and custom parts, into any display order (Option B — Fully customizable order). Reordering changes presentation order only and preserves existing guest assignments and event-part identity.
 
+### DEC-771 — Hiding unused Event Attendance parts
+**Status:** Approved
+**Decision:** Authorized members may hide default or custom Event Attendance parts only when they have no guest assignments (Option B — Hide unused parts). Hidden parts are omitted from active guest-management views and may be restored later. Parts with existing assignments cannot be hidden until those assignments are removed or reassigned. Hiding does not delete the part.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6868,6 +6872,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-769 | 2026-10-22 | Renaming custom Event Attendance parts | Rename immediately everywhere without additional confirmation; preserve guest assignments (Option A) | Approved |
 
 | DEC-770 | 2026-10-22 | Reordering Event Attendance parts | Authorized members may freely drag and drop default and custom event parts; guest assignments remain unchanged (Option B) | Approved |
+
+| DEC-771 | 2026-10-22 | Hiding unused Event Attendance parts | Authorized members can hide and restore parts without assignments; assigned parts cannot be hidden (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
