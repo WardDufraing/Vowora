@@ -5754,6 +5754,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 12, Option B — Set initial standard monthly professional planner subscription prices at **Solo €29/month, Studio €79/month, and Agency €149/month, excluding applicable VAT**. These prices correspond to the capacity limits approved in PHASE1-BIZ-011 (Solo: 1 staff/10 active weddings; Studio: 5 staff/30 active weddings; Agency: 20 staff/100 active weddings). These are approved initial pricing assumptions, subject to validation with prospective planners before launch; no annual billing discount, free trial, promotions, or future price adjustment policy is implied by this decision. Taxes must be calculated and disclosed according to applicable requirements. Planner-funded couple Premium remains governed by PHASE1-BIZ-005 and PHASE1-BIZ-006.
 
+### PHASE1-BIZ-013 — Monthly or annual planner billing with two months free
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 13, Option B — Professional planner subscriptions support **monthly billing or annual billing at the equivalent of ten monthly payments (two months free)**. The approved prices, excluding applicable VAT, are: **Solo €29/month or €290/year; Studio €79/month or €790/year; Agency €149/month or €1,490/year**. Annual subscriptions are billed upfront for the year; the standard monthly prices and tier capacity limits remain unchanged. Renewal, cancellation, proration, tier-switching, refunds, and failed-payment handling are not settled by this decision and require separately defined policies. Planner-funded couple Premium entitlements already granted remain lasting under PHASE1-BIZ-005 and PHASE1-BIZ-006.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7030,6 +7034,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-011 | 2026-10-22 | Planner subscription capacity limits | Solo 1 staff/10 active weddings; Studio 5/30; Agency 20/100 (Option B) | Approved |
 
 | PHASE1-BIZ-012 | 2026-10-22 | Monthly planner subscription pricing | Solo €29, Studio €79, Agency €149 per month, excluding applicable VAT (Option B) | Approved |
+
+| PHASE1-BIZ-013 | 2026-10-22 | Professional planner annual billing | Monthly or annual; annual price equals 10 monthly payments (two months free): Solo €290, Studio €790, Agency €1,490, excluding VAT (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
