@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-100
+> Approved architecture decisions: ARCH-001–ARCH-105
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -123,6 +123,11 @@ Architecture principles:
 | Security headers | Centralized reviewed CSP, HSTS, content-type, referrer and framing policies | ARCH-098 A |
 | Retention registry | Typed central registry of product-defined lifecycle triggers, notices and deletion actions | ARCH-099 A |
 | Incident response | Lightweight severity-based playbooks, ownership, recovery and post-incident review | ARCH-100 A |
+| Preview database | One shared non-production preview database with controlled migrations and synthetic data | ARCH-101 B |
+| Distributed rate limiting | Managed Redis-compatible counters, provisioned when needed, with sensitive-route fail-safe policies | ARCH-102 A |
+| Editing conflict UX | Optimistic version checks, preserved local input and guided conflict comparison/merge | ARCH-103 A |
+| Audit tamper resistance | Restricted insert-only application access and periodic integrity verification | ARCH-104 A |
+| Recovery exercises | Quarterly PostgreSQL/R2 restore drills plus checks after major infrastructure changes | ARCH-105 A |
 
 ## 3. Logical system architecture
 
@@ -193,7 +198,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Model wedding-day wall-clock dates and times with the wedding's IANA time zone, preserving intended local schedule times; represent actual scheduled execution instants in UTC where appropriate and test daylight-saving gaps/overlaps.
 - Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
 - Use appropriate foreign keys, constraints, indexes and transactions.
-- Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
+- Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409), preserve client input, and present latest server values alongside user edits where practical for guided retry or merge. Never silently merge sensitive financial or permission changes.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
 - Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
 - PostgreSQL search uses domain-owned searchable projections with full-text/trigram indexes and a shared search API; update projections transactionally where practical or via recoverable domain-event processing. Enforce current record, wedding and organization authorization at query time, never treating index membership as permission.
@@ -259,20 +264,20 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Coordinate product-policy-driven deletion of relational data, R2 files, exports, snapshots and scheduled jobs with persistent lifecycle deadlines/states, idempotent Trigger.dev cleanup, partial-failure retries, reconciliation and privacy-safe completion evidence. Honor all approved final notices, retention periods and applicable legal exceptions.
 - Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
 - Use provider-managed encryption at rest for PostgreSQL and R2 and TLS in transit. Apply selective application-level field encryption to specifically identified high-risk data when justified, with documented key management and awareness of impacts on searching/indexing. Encryption does not replace scoped authorization.
-- Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
+- Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; enforce insert-only application database privileges, restrict privileged modification and periodically check audit continuity/integrity, recognizing that database administrators are not cryptographically excluded; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
 - Use privacy-conscious structured logs, Sentry and provider metrics for application errors, Trigger.dev job failures, database health, email delivery and critical user journeys. Configure actionable alerts and lightweight incident playbooks covering severity, accountable responders, containment, communication, recovery and post-incident review for data exposure, identity failures, database outages, jobs and email delivery; scrub personal information, secrets, financial data and document content from telemetry.
-- Layer authorization, validation, a centrally reviewed security-header baseline (Content Security Policy, HSTS, MIME-sniffing protection, referrer policy and framing restrictions), CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Test narrow route-specific CSP exceptions for authentication, approved integrations and safe R2 previews; do not broadly disable protections. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
+- Layer authorization, validation, a centrally reviewed security-header baseline (Content Security Policy, HSTS, MIME-sniffing protection, referrer policy and framing restrictions), CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Test narrow route-specific CSP exceptions for authentication, approved integrations and safe R2 previews; do not broadly disable protections. Use a managed Redis-compatible distributed rate limiter (e.g. Upstash Redis) with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
 - Use typed environment configuration and PostgreSQL-backed feature flags with safe defaults and audited changes. Evaluate flags authoritatively on the server, with documented deterministic precedence across global, environment, organization, wedding and user overrides; default unknown flags to disabled, audit changes, and use short-lived permission-aware caching with invalidation. Flags never grant permissions.
 
 ## 12. Environments, CI/CD and recovery
 
 - Use local development, isolated preview environments and production. Add permanent staging when justified.
-- Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
+- Use one shared, dedicated non-production Neon database for trusted preview deployments (ARCH-101 B), with synthetic data, controlled/serialized schema migrations, stable preview schema expectations and no destructive cross-preview tests; preview branches can interfere and must never access production credentials or data. Keep this preview database separate from the shared CI test database, whose test runs use isolated schemas.\n- Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
 - Use a dedicated persistent shared Neon cloud **test** database (ARCH-061 C), never production credentials/data. Run real PostgreSQL repository, transaction and multi-tenant permission tests with deterministic synthetic fixtures. Create a separate PostgreSQL schema for each CI test run within the persistent shared Neon test database; apply migrations and deterministic fixtures in that schema and clean it afterward. Ensure Drizzle, authentication tables and connections consistently select the intended schema; serialize operations on genuinely shared infrastructure. Validate schema compatibility in tooling before relying on this isolation. Keep fixtures reproducible and include weddings, organizations, guests, payments, permissions and edge cases.
 - GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
 - Use expand-and-contract database migrations: introduce backward-compatible additions first, deploy compatible code, and remove legacy structures only after old versions are retired. Roll back application deployments through Vercel when necessary, retaining schema compatibility; recover database changes with carefully reviewed corrective forward migrations rather than assuming reverse migrations are safe. Apply production migrations once through a controlled step, with predeployment checks and a documented recovery path.
 - Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout. Use a formal risk-proportionate release checklist covering relevant automated tests, security, accessibility, migration validation, backup/recovery and critical user journeys. Require enhanced manual review for sensitive schema, authorization and high-impact changes without burdening trivial UI fixes with identical procedures.
-- Define explicit recovery point (RPO) and recovery time (RTO) targets before production launch, validate their feasibility against the chosen Neon plan, and document backup retention and coordinated PostgreSQL/R2 restore procedures. Periodically test recovery; no numeric targets are approved yet.
+- Define explicit recovery point (RPO) and recovery time (RTO) targets before production launch, validate their feasibility against the chosen Neon plan, and document backup retention and coordinated PostgreSQL/R2 restore procedures. Test representative PostgreSQL and R2 restores quarterly and after significant infrastructure changes, recording consistency checks and measured outcomes against targets once approved; no numeric targets are approved yet.
 - Verify provider-specific plan limits and commercial hosting terms before launch.
 - Optimize observed bottlenecks first; introduce independent services only if measured requirements justify them.
 
@@ -283,20 +288,20 @@ Future architecture decisions should resolve, among other items:
 - API filtering syntax, Problem Details extension field definitions and cursor signing/key rotation
 - Outbox polling cadence, lease duration, retention, retry thresholds and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
-- Managed rate-limit provider, concrete thresholds and failover behavior
+- Concrete managed Redis provider, rate-limit thresholds and sensitive-route failover behavior
 - Feature flag storage schema, concrete scope precedence ordering and cache TTL/invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
 - Concrete upload limits, malware scanner integration, file state transition rules, preview sandbox policy, retry/rejection rules and encryption field selection
 - Alert thresholds, incident severity definitions/ownership and risk-tiered release checklist criteria
 - Mobile token integration details and additional offline data protections
 - Shared test database schema selection compatibility and CI concurrency controls
-- Concrete migration rollout sequencing, numeric RPO/RTO targets and provider plan constraints
+- Shared preview database migration coordination, concrete production rollout sequencing, numeric RPO/RTO targets and provider plan constraints
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-100 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-105 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
