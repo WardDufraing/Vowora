@@ -5790,6 +5790,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 21, Option B — A professional planner's requested subscription downgrade is **scheduled for the end of the current paid billing period**, rather than applied immediately. Until that period ends, the organization retains its currently paid tier's features, active-wedding capacity, and active-staff seat allowance, subject to normal subscription and permission rules. Clearly show the pending lower tier, its limits, the effective date, and any capacity or staffing changes required. At the billing-period boundary, apply the new tier and its lower limits; if active-wedding usage exceeds capacity, preserve existing authorized editing while blocking additional active weddings and reactivation under PHASE1-BIZ-019. If staff exceed the new allowance, enforce the manager-selected active staff set and preserve inactive staff records under PHASE1-BIZ-020. Do not issue a mid-period prorated refund solely for the scheduled downgrade. Billing-period-end behavior applies to both monthly and annual subscriptions; precise renewal and cancellation interactions, pending-downgrade cancellation, and staff-selection failure handling remain open for subsequent decisions.
 
+### PHASE1-BIZ-022 — Immediate planner upgrades with prorated billing
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 22, Option A — A professional planner organization may upgrade from its current paid subscription tier to a higher tier **immediately during an active billing period**. Upon successful collection or authorization of the prorated upgrade charge, activate the higher tier's features, active-wedding capacity, and active-staff allowance without waiting for renewal. Charge the prorated difference between the higher and lower tier prices for the unused remainder of the **existing** billing period, using the applicable monthly or annual plan pricing and tax treatment. Preserve the current renewal date and billing cadence; do not restart a full billing period solely because of the upgrade. Show the amount due, applicable taxes, effective date, and new limits before confirmation, and provide a receipt. Do not activate unpaid upgrade entitlements if the payment fails; maintain existing paid-tier access and allow retry subject to subscription-status rules. Existing wedding access, couple-owned data, and valid wedding-specific Premium are not reduced by the upgrade. If a scheduled downgrade is pending, its interaction with an immediate upgrade must be resolved separately. This rule complements end-of-period downgrades under PHASE1-BIZ-021.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7084,6 +7088,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-020 | 2026-10-22 | Staff-seat overage after planner downgrade | Allow downgrade, retain staff records, and have manager select active staff within new tier limit; excess staff inactive (Option B) | Approved |
 
 | PHASE1-BIZ-021 | 2026-10-22 | Planner subscription downgrade effective date | Apply downgrade at end of current paid billing period; preserve existing tier until then (Option B) | Approved |
+
+| PHASE1-BIZ-022 | 2026-10-22 | Planner subscription upgrade timing and billing | Activate higher tier immediately upon successful prorated payment; keep existing renewal date (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
