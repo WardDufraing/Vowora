@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-125
+> Approved architecture decisions: ARCH-001–ARCH-130
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -148,6 +148,11 @@ Architecture principles:
 | Job payload contracts | Versioned Zod-validated background-job payloads and queued-job compatibility checks | ARCH-123 A |
 | Wedding ownership handover | Explicit product-aligned ownership/handover state machine with transactional permissions and audit | ARCH-124 A |
 | Endpoint risk protection | Public/authenticated/sensitive/high-cost endpoint tiers with proportionate rate limits and monitoring | ARCH-125 A |
+| Authentication abuse protection | Progressive distributed login/recovery throttling, risk signals and step-up challenges without easy lockout abuse | ARCH-126 A |
+| Migration rehearsal | Automated isolated migration rehearsal, compatibility tests and destructive-change detection before production approval | ARCH-127 A |
+| File processing recovery | Idempotent upload/scan/promotion/preview stages with retries, stuck-state reconciliation and safe cleanup | ARCH-128 A |
+| Performance validation | Critical-journey performance budgets and representative datasets with measured real-user outcomes | ARCH-129 A |
+| Audit event contracts | Typed, versioned audit event schemas with stable identity, actor/scope, correlation and privacy-safe metadata | ARCH-130 A |
 
 ## 3. Logical system architecture
 
@@ -301,6 +306,14 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Verify provider-specific plan limits and commercial hosting terms before launch.
 - Optimize observed bottlenecks first; introduce independent services only if measured requirements justify them.
 
+### Approved operational refinements (ARCH-126–130)
+
+- **Authentication protection:** Apply distributed throttling and progressive delays to login, password reset, recovery and other account-sensitive entry points. Combine risk signals with proportionate step-up challenges; avoid account-enumeration leaks and easily weaponized permanent lockouts. Keep server-side authorization and session protections authoritative.
+- **Migration rehearsal:** Before approving production schema changes, run pending Drizzle/SQL migrations against an isolated representative non-production schema/database with deterministic fixtures, application/contract compatibility tests and detection or review of destructive operations. Do not run destructive rehearsals against the shared preview database; retain expand-and-contract and controlled single-run production migrations.
+- **File processing recovery:** Represent upload validation, quarantine, malware scanning, promotion and eligible preview generation as idempotent, recoverable states. Retry transient technical errors with bounded policy, reconcile stuck or abandoned uploads and clean rejected objects safely. Scanner failures must fail closed; checksums and object versioning remain mandatory.
+- **Performance:** Set measurable budgets for critical dashboards, large guest lists, financial tables and wedding-day schedules; exercise representative synthetic datasets and monitor real-user latency/Core Web Vitals. Select concrete numerical budgets after baseline measurement rather than assuming targets.
+- **Audit schema:** Define typed, versioned domain audit event contracts with stable event types, actor, tenant/resource identifiers, correlation IDs and minimized structured change metadata. Preserve historical interpretation across schema evolution while enforcing append-only privileges, integrity checks and product-approved retention/privacy constraints.
+
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
@@ -316,12 +329,13 @@ Future architecture decisions should resolve, among other items:
 - Mobile token integration details and additional offline data protections
 - Shared test database schema selection compatibility and CI concurrency controls
 - Shared preview database migration coordination, concrete production rollout sequencing, numeric RPO/RTO targets and provider plan constraints
+- Concrete progressive auth throttling/challenge thresholds, migration rehearsal fixtures, file recovery limits, performance budgets and audit event schema catalog
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-125 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-130 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
