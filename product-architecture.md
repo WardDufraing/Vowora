@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-095
+> Approved architecture decisions: ARCH-001–ARCH-100
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -118,6 +118,11 @@ Architecture principles:
 | Private downloads | Current authorization before short-lived R2 signed URL issuance and audit of sensitive downloads | ARCH-093 A |
 | Money calculations | Shared deterministic typed financial domain calculations, integer minor units and tested rounding/allocation | ARCH-094 A |
 | Deletion orchestration | Product-policy-driven lifecycle states, idempotent cleanup and reconciliation across PostgreSQL/R2/jobs | ARCH-095 A |
+| Reauthentication | Risk-based recent-authentication checks for classified high-impact actions | ARCH-096 A |
+| Deployment rollback | Application rollback with backward-compatible schema and corrective forward migrations | ARCH-097 A |
+| Security headers | Centralized reviewed CSP, HSTS, content-type, referrer and framing policies | ARCH-098 A |
+| Retention registry | Typed central registry of product-defined lifecycle triggers, notices and deletion actions | ARCH-099 A |
+| Incident response | Lightweight severity-based playbooks, ownership, recovery and post-incident review | ARCH-100 A |
 
 ## 3. Logical system architecture
 
@@ -178,7 +183,7 @@ Organize modules around product capabilities, including:
 - Notifications, email, exports, audit and retention
 - Dashboards and authorized search
 
-Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Define resource/action rules and policy evaluation in reviewed typed code; persist memberships, role assignments, customizable grants and record visibility in PostgreSQL with audited/versioned changes and permission-cache invalidation. Custom grants cannot override hard tenant boundaries. Maintain versioned permission scopes for affected users, weddings and organizations; explicitly invalidate relevant caches on membership, ownership, role, grant or visibility changes, and recheck sensitive actions against current authoritative grants. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Maintain an explicit permission matrix for roles, custom grants, organization/wedding membership and record visibility, and exercise allowed and denied access with real cross-tenant tests across API mutations/reads, search, exports, file access and background jobs. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
+Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Define resource/action rules and policy evaluation in reviewed typed code; persist memberships, role assignments, customizable grants and record visibility in PostgreSQL with audited/versioned changes and permission-cache invalidation. Custom grants cannot override hard tenant boundaries. Maintain versioned permission scopes for affected users, weddings and organizations; explicitly invalidate relevant caches on membership, ownership, role, grant or visibility changes, and recheck sensitive actions against current authoritative grants. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Maintain an explicit permission matrix for roles, custom grants, organization/wedding membership and record visibility, and exercise allowed and denied access with real cross-tenant tests across API mutations/reads, search, exports, file access and background jobs. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission escalation, exports and permanent deletion) and applies risk-based recent-authentication checks, authorization, explicit confirmation and audit without overriding product-approved workflows. Set short freshness windows and require stronger verification only where risk warrants it; the precise thresholds and accepted methods remain to be defined.
 
 ## 6. Persistence and consistency
 
@@ -227,7 +232,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - Separate intentionally public assets (e.g. marketing and approved public imagery) from private wedding documents, guest information and exports using distinct R2 access boundaries, preferably separate buckets or equivalently enforced isolation. Store private-file metadata and access policies in PostgreSQL.
 - Define a centralized upload policy with module-specific allowed types, maximum sizes and upload counts; validate file metadata and actual content server-side rather than trusting client-provided extensions or MIME types.
-- Track file transitions in PostgreSQL with an explicit state machine (pending upload, uploaded/quarantined, scanning, ready, rejected, failed and deleted), enforcing legal transitions, retry policies and abandoned-upload cleanup. Only `ready` objects may be previewed or downloaded.\n- Authorize each private download before issuing a short-lived signed R2 URL; use non-guessable private object keys and audit sensitive downloads. A previously issued URL may remain valid until expiry even after access revocation.
+- Track file transitions in PostgreSQL with an explicit state machine (pending upload, uploaded/quarantined, scanning, ready, rejected, failed and deleted), enforcing legal transitions, retry policies and abandoned-upload cleanup. Only `ready` objects may be previewed or downloaded.
+- Authorize each private download before issuing a short-lived signed R2 URL; use non-guessable private object keys and audit sensitive downloads. A previously issued URL may remain valid until expiry even after access revocation.
 - Direct incoming uploads into private quarantine. Process asynchronously through controlled Trigger.dev workflows with content validation and malware scanning; promote files for authorized access only after successful checks. On scan failure, timeout or unavailable scanner, keep the file inaccessible and retry or reject according to policy. Scanning implementation/provider remains to be chosen.
 - Offer browser previews for approved, malware-scanned safe images and PDFs using short-lived authorized access and appropriate sandbox/content-security controls; other supported file types may remain download-only. Private R2 objects never become public through previews.
 - Generate PDF and XLSX exports server-side from shared report models through Trigger.dev for heavier workloads, store artifacts privately in R2 and recheck access at both generation and download. Honor product-defined snapshot retention, formats and filters.
@@ -249,13 +255,13 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 ## 11. Lifecycle, audit, security and observability
 
-- Centralize record lifecycle policies, while honoring module-specific retention, trash, archive, final-notice and deletion requirements in the product specification.
+- Centralize record lifecycle policies in a typed retention registry mapping data categories to product-approved triggers, deadlines, notices and deletion actions, with module-specific policies and automated tests. Honor module-specific trash, archive, final-notice and deletion requirements in the product specification; do not invent periods or silently enable operational overrides.
 - Coordinate product-policy-driven deletion of relational data, R2 files, exports, snapshots and scheduled jobs with persistent lifecycle deadlines/states, idempotent Trigger.dev cleanup, partial-failure retries, reconciliation and privacy-safe completion evidence. Honor all approved final notices, retention periods and applicable legal exceptions.
 - Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
 - Use provider-managed encryption at rest for PostgreSQL and R2 and TLS in transit. Apply selective application-level field encryption to specifically identified high-risk data when justified, with documented key management and awareness of impacts on searching/indexing. Encryption does not replace scoped authorization.
 - Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
-- Use privacy-conscious structured logs, Sentry and provider metrics for application errors, Trigger.dev job failures, database health, email delivery and critical user journeys. Configure actionable alerts and proportionate escalation/recovery procedures; scrub personal information, secrets, financial data and document content from telemetry.
-- Layer authorization, validation, secure headers, CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
+- Use privacy-conscious structured logs, Sentry and provider metrics for application errors, Trigger.dev job failures, database health, email delivery and critical user journeys. Configure actionable alerts and lightweight incident playbooks covering severity, accountable responders, containment, communication, recovery and post-incident review for data exposure, identity failures, database outages, jobs and email delivery; scrub personal information, secrets, financial data and document content from telemetry.
+- Layer authorization, validation, a centrally reviewed security-header baseline (Content Security Policy, HSTS, MIME-sniffing protection, referrer policy and framing restrictions), CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Test narrow route-specific CSP exceptions for authentication, approved integrations and safe R2 previews; do not broadly disable protections. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
 - Use typed environment configuration and PostgreSQL-backed feature flags with safe defaults and audited changes. Evaluate flags authoritatively on the server, with documented deterministic precedence across global, environment, organization, wedding and user overrides; default unknown flags to disabled, audit changes, and use short-lived permission-aware caching with invalidation. Flags never grant permissions.
 
 ## 12. Environments, CI/CD and recovery
@@ -264,7 +270,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
 - Use a dedicated persistent shared Neon cloud **test** database (ARCH-061 C), never production credentials/data. Run real PostgreSQL repository, transaction and multi-tenant permission tests with deterministic synthetic fixtures. Create a separate PostgreSQL schema for each CI test run within the persistent shared Neon test database; apply migrations and deterministic fixtures in that schema and clean it afterward. Ensure Drizzle, authentication tables and connections consistently select the intended schema; serialize operations on genuinely shared infrastructure. Validate schema compatibility in tooling before relying on this isolation. Keep fixtures reproducible and include weddings, organizations, guests, payments, permissions and edge cases.
 - GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
-- Use expand-and-contract database migrations: introduce backward-compatible additions first, deploy compatible code, and remove legacy structures only after old versions are retired. Apply production migrations once through a controlled step, with predeployment checks and a documented recovery path.
+- Use expand-and-contract database migrations: introduce backward-compatible additions first, deploy compatible code, and remove legacy structures only after old versions are retired. Roll back application deployments through Vercel when necessary, retaining schema compatibility; recover database changes with carefully reviewed corrective forward migrations rather than assuming reverse migrations are safe. Apply production migrations once through a controlled step, with predeployment checks and a documented recovery path.
 - Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout. Use a formal risk-proportionate release checklist covering relevant automated tests, security, accessibility, migration validation, backup/recovery and critical user journeys. Require enhanced manual review for sensitive schema, authorization and high-impact changes without burdening trivial UI fixes with identical procedures.
 - Define explicit recovery point (RPO) and recovery time (RTO) targets before production launch, validate their feasibility against the chosen Neon plan, and document backup retention and coordinated PostgreSQL/R2 restore procedures. Periodically test recovery; no numeric targets are approved yet.
 - Verify provider-specific plan limits and commercial hosting terms before launch.
@@ -273,7 +279,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
-- Sensitive-action reauthentication thresholds, permission-scope version mechanics and policy test coverage
+- Risk-based reauthentication freshness thresholds/methods, permission-scope version mechanics and policy test coverage
 - API filtering syntax, Problem Details extension field definitions and cursor signing/key rotation
 - Outbox polling cadence, lease duration, retention, retry thresholds and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
@@ -281,7 +287,7 @@ Future architecture decisions should resolve, among other items:
 - Feature flag storage schema, concrete scope precedence ordering and cache TTL/invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
 - Concrete upload limits, malware scanner integration, file state transition rules, preview sandbox policy, retry/rejection rules and encryption field selection
-- Alert thresholds, escalation ownership and risk-tiered release checklist criteria
+- Alert thresholds, incident severity definitions/ownership and risk-tiered release checklist criteria
 - Mobile token integration details and additional offline data protections
 - Shared test database schema selection compatibility and CI concurrency controls
 - Concrete migration rollout sequencing, numeric RPO/RTO targets and provider plan constraints
@@ -290,7 +296,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-095 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-100 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
