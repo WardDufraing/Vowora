@@ -5742,6 +5742,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 9, Option A — The advertised standard one-time couple Premium price is **€59 inclusive of applicable VAT**. For consumer-facing purchases, €59 is the total price rather than a €59 pre-tax base to which VAT is added at checkout. Calculate the appropriate VAT component based on applicable jurisdictional tax rules, and disclose the relevant tax breakdown on checkout/receipt as required. Tax calculation, invoicing, place-of-supply treatment, and any legally required market-specific disclosures must comply with applicable law. This decision does not set professional planner B2B prices or tax treatment and does not independently approve regional pricing changes.
 
+### PHASE1-BIZ-010 — Three professional planner subscription tiers
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 10, Option B — Launch with **three recurring professional planner subscription tiers: Solo, Studio, and Agency**. Solo serves independent planners; Studio serves growing small teams; Agency serves larger planning organizations. Tiers will have distinct staff/member allowances, active-wedding limits, and eligible professional capabilities, consistent with PHASE1-BIZ-004. Specific thresholds, feature differentiation, monthly/annual prices, trial policies, and upgrade/downgrade behavior remain open for approval. Custom enterprise contracts are not part of the initial standard tier lineup. Planner-funded couple Premium follows PHASE1-BIZ-005 and PHASE1-BIZ-006.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7012,6 +7016,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-008 | 2026-10-22 | Couple Premium price | Fixed one-time price of €59 per wedding; tax and refund policies pending | Approved |
 
 | PHASE1-BIZ-009 | 2026-10-22 | VAT treatment for couple Premium | €59 consumer price includes applicable VAT (Option A) | Approved |
+
+| PHASE1-BIZ-010 | 2026-10-22 | Professional planner subscription tier lineup | Three tiers: Solo, Studio, Agency (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
