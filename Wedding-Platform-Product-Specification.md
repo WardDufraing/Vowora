@@ -5834,6 +5834,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 32, Option A — If a professional planner organization's paid subscription already has a **scheduled voluntary cancellation**, do not allow an authorized manager to schedule a tier downgrade while that cancellation remains pending. Explain that automatic renewal is disabled and the subscription is due to end at the current paid-through date. Provide a direct self-service path to reverse the cancellation under PHASE1-BIZ-024, including explicit confirmation of the renewed billing obligation, before permitting a new downgrade request under PHASE1-BIZ-030. Do not silently cancel the pending cancellation, re-enable recurring payments, create a new downgrade, or allow both changes to coexist. Preserve the current paid tier and its features/limits until the paid period ends under PHASE1-BIZ-023, subject to ordinary subscription status and permissions. Record a successful cancellation reversal and any subsequent downgrade as separate auditable actions. Protect couple-owned wedding data, independent couple access, and previously granted wedding-specific Premium. This rule makes the reverse ordering of PHASE1-BIZ-031 explicit.
 
+### PHASE1-BIZ-033 — Require cancellation reversal before planner-tier upgrade
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 33, Option A — When a professional planner organization has a **scheduled voluntary subscription cancellation**, block requests to upgrade to a higher subscription tier while the cancellation remains pending. Explain that automatic renewal is currently disabled and show the paid-through date. Require an authorized organization manager to **explicitly reverse the scheduled cancellation first**, using the self-service confirmation and renewal-price disclosure in PHASE1-BIZ-024, before permitting an upgrade. Only after successful cancellation reversal may the manager request an immediate tier upgrade and pay the prorated price difference under PHASE1-BIZ-022. Do not implicitly restore automatic renewal as a side effect of attempting an upgrade, charge for an upgrade while cancellation remains pending, or activate higher-tier entitlements before successful payment. Keep the existing paid tier and cancellation date unchanged if the manager declines or fails to reverse cancellation. Record the reversal and upgrade as distinct auditable actions and provide clear confirmations. This complements the restriction on downgrades during pending cancellation in PHASE1-BIZ-032, without affecting couple-owned data, independent couple access, or previously validly granted wedding-specific Premium.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7150,6 +7154,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-031 | 2026-10-22 | Priority of scheduled cancellation versus pending downgrade | Cancellation supersedes and removes pending downgrade; current paid tier continues to paid-through date (Option A) | Approved |
 
 | PHASE1-BIZ-032 | 2026-10-22 | Downgrade request while subscription cancellation is pending | Block downgrade scheduling until manager explicitly reverses pending cancellation (Option A) | Approved |
+
+| PHASE1-BIZ-033 | 2026-10-22 | Upgrade request while planner cancellation is pending | Require explicit self-service cancellation reversal before immediate prorated upgrade (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
