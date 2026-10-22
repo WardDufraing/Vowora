@@ -5778,6 +5778,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 18, Option A — When a professional planner organization is already at its subscription tier's active-wedding limit, **block reactivation of an archived wedding** into active planning. Explain that the active-wedding capacity has been reached and offer the planner a choice to archive or otherwise free an eligible active-wedding slot, or upgrade to a tier with sufficient capacity, before retrying. Do not silently reactivate the wedding, permit temporary over-capacity, or create a read-only reactivated state as a workaround. Keep the archived wedding and its historical records intact while reactivation is blocked. This capacity restriction governs planner-managed reactivation and must not remove couple-owned data, previously validly granted wedding-specific Premium, or the couple's independent access. Count the wedding toward capacity once reactivation succeeds, consistent with PHASE1-BIZ-011 and PHASE1-BIZ-017. Exact permissions and any couple-initiated reopening flows remain subject to separate lifecycle decisions.
 
+### PHASE1-BIZ-019 — Allow plan downgrade while restricting excess capacity
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 19, Option B — A professional planner organization may downgrade to a subscription tier whose active-wedding limit is lower than the number of weddings it currently manages. **Do not automatically archive, delete, lock, or make existing weddings read-only solely because of the downgrade.** Existing authorized weddings remain accessible and editable, subject to normal wedding permissions and subscription-payment status. While the organization is at or above the new tier's active-wedding capacity, prevent it from creating additional planner-managed active weddings or reactivating archived weddings. Once active-wedding usage falls below the tier limit, normal creation/reactivation may resume up to the limit. Clearly display current usage, the new tier's limit, and steps to regain capacity (archive eligible completed weddings or upgrade). Preserve couple-owned wedding data, independent couple access, and valid wedding-specific Premium entitlements. This over-capacity continuation applies to **existing** active weddings only and does not override the reactivation block in PHASE1-BIZ-018. Handling of staff-seat overages, downgrade timing, billing adjustments, and any cancellation interactions require separate decisions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7066,6 +7070,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-017 | 2026-10-22 | Definition of active wedding for planner capacity | Planning and upcoming weddings count; completed archived weddings do not (Option B) | Approved |
 
 | PHASE1-BIZ-018 | 2026-10-22 | Reactivating archived weddings at planner capacity | Block reactivation until an active slot is freed or the planner upgrades; preserve archived records (Option A) | Approved |
+
+| PHASE1-BIZ-019 | 2026-10-22 | Planner downgrade below existing active-wedding usage | Allow downgrade and continued editing of existing weddings, but block new active weddings and reactivation until within capacity (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
