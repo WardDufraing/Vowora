@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-140
+> Approved architecture decisions: ARCH-001–ARCH-145
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -163,6 +163,11 @@ Architecture principles:
 | Feature rollout safety | Scoped staged rollout, audited emergency kill switches and server-authoritative permission-safe flags | ARCH-138 A |
 | Generated document security | Safe PDF/XLSX rendering, spreadsheet formula escaping and resource-bounded isolated jobs | ARCH-139 A |
 | Operational health checks | Separate minimal liveness, dependency-aware readiness and privacy-safe synthetic user-journey checks | ARCH-140 A |
+| Permanent deletion execution | Two-phase access-blocking deletion intent, idempotent cross-provider cleanup and reconciliation | ARCH-141 A |
+| Tenant-aware caching | Validated tenant-scoped cache keys with user/permission versioning and access-change invalidation | ARCH-142 A |
+| Time-zone-aware scheduling | Persist local recurrence intent and IANA zone, calculate UTC runs with explicit DST/reconciliation policy | ARCH-143 A |
+| Deployment smoke tests | Automated safe post-release critical-path checks with alerts and documented rollback escalation | ARCH-144 A |
+| Migration database identity | Dedicated controlled schema-migration credential separate from least-privilege runtime identities | ARCH-145 A |
 
 ## 3. Logical system architecture
 
@@ -340,6 +345,14 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - **Generated documents:** Treat all user-provided text as untrusted during PDF and XLSX rendering; neutralize spreadsheet formulas, sanitize or safely render rich content, block arbitrary remote fetches and bound CPU/memory/time in isolated Trigger.dev jobs. Keep generated artifacts private, authorized and subject to product retention.
 - **Health checks:** Distinguish lightweight liveness from dependency-aware readiness and synthetic checks for representative critical journeys. Protect diagnostic details and secrets; avoid restart loops or public leakage caused by transient provider outages.
 
+### Approved operational refinements (ARCH-141–145)
+
+- **Two-phase deletion:** Persist authorized deletion intent only after all product-defined notice periods and retention conditions are met; immediately block normal access to resources entering final deletion, then coordinate idempotent PostgreSQL, R2, export and pending-job cleanup. Reconcile partial failures, verify completion and retain only legally/product-permitted privacy-safe audit evidence. Do not assume deletion is an atomic cross-provider transaction.
+- **Tenant-aware caches:** Include validated wedding/organization scope and relevant actor/permission-scope version in private cache identity, both for server caches and TanStack Query keys. Invalidate on membership, ownership, visibility or permission changes and never reuse private responses across tenants; server authorization remains authoritative.
+- **Local schedule semantics:** Persist local wall-clock recurrence, selected IANA time zone and product policy; compute UTC execution instants with explicit daylight-saving gap/overlap handling and idempotent missed-run reconciliation. Preserve product-defined rules for time-zone-change pauses, reminders, catch-up and retries.
+- **Production smoke tests:** After Vercel releases, run automated privacy-safe checks using synthetic accounts for authentication, scoped REST access, critical read paths and essential background dependencies. Alert and follow the documented application rollback/incident process on failures; never automatically reverse database migrations.
+- **Migration privilege separation:** Execute controlled production Drizzle/SQL migrations using a dedicated narrowly managed schema-change identity only in approved deployment workflows. Application, jobs and read-only monitoring identities use separate least-privilege runtime credentials; test permissions and secret rotation.
+
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
@@ -356,13 +369,14 @@ Future architecture decisions should resolve, among other items:
 - Mobile token integration details and additional offline data protections
 - Shared test database schema selection compatibility and CI concurrency controls
 - Shared preview database migration coordination, concrete production rollout sequencing, numeric RPO/RTO targets and provider plan constraints
+- Deletion reconciliation thresholds, cache version invalidation details, DST ambiguity rules, smoke-test journeys and migration credential provisioning
 - Concrete progressive auth throttling/challenge thresholds, migration rehearsal fixtures, file recovery limits, performance budgets and audit event schema catalog
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-140 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-145 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
