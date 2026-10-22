@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-080
+> Approved architecture decisions: ARCH-001–ARCH-085
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -103,6 +103,11 @@ Architecture principles:
 | Localization formatting | next-intl and Intl formatting with locale preferences separate from wedding time zones | ARCH-078 A |
 | Schedule time semantics | Wedding-local wall-clock dates/times, IANA zone and UTC execution instants | ARCH-079 A |
 | Notification policy | Centralized permission-aware recipient/channel/preference/timing resolution and deduplication | ARCH-080 A |
+| Search projections | Domain-owned PostgreSQL full-text/trigram projections, recoverable updates and query-time authorization | ARCH-081 A |
+| Document previews | Secure browser previews for scanned safe images/PDFs with short-lived authorization | ARCH-082 A |
+| Report generation | Shared report models, server-side PDF/XLSX generation via Trigger.dev and private R2 | ARCH-083 A |
+| Calendar components | Accessible shared date/time primitives and specialized timeline/schedule views | ARCH-084 A |
+| Schedule reconciliation | Persist business schedules in PostgreSQL; reconcile missed Trigger.dev executions without violating product policies | ARCH-085 A |
 
 ## 3. Logical system architecture
 
@@ -170,12 +175,13 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Neon PostgreSQL is the transactional system of record. Use a supported serverless-compatible pooled connection strategy for Vercel, with environment-specific connection limits and bounded transactions. Verify the selected driver supports Drizzle, Better Auth, and transactional outbox operations before implementation.
 - Drizzle schema and reviewed, version-controlled migrations define database changes.
 - Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.
-- Model wedding-day wall-clock dates and times with the wedding's IANA time zone, preserving intended local schedule times; represent actual scheduled execution instants in UTC where appropriate and test daylight-saving gaps/overlaps.\n- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
+- Model wedding-day wall-clock dates and times with the wedding's IANA time zone, preserving intended local schedule times; represent actual scheduled execution instants in UTC where appropriate and test daylight-saving gaps/overlaps.
+- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
 - Use appropriate foreign keys, constraints, indexes and transactions.
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
 - Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
-- PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.
+- PostgreSQL search uses domain-owned searchable projections with full-text/trigram indexes and a shared search API; update projections transactionally where practical or via recoverable domain-event processing. Enforce current record, wedding and organization authorization at query time, never treating index membership as permission.
 - Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); tune indexes based on observed workload and avoid logging sensitive query values.
 - Avoid cross-tenant cache leakage: cache keys and invalidation must include the necessary permission scope.
 
@@ -202,7 +208,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Zustand only for appropriate shared client state; local React state for local controls.
 - Start with refresh/invalidation for collaboration; add targeted real-time delivery when needed.
 - Target WCAG 2.2 AA through semantic controls, keyboard access, screen reader validation, responsive layouts, automated checks and manual testing. Integrate axe-based and keyboard checks into CI, with scheduled manual screen-reader and real-device checks for critical journeys and complex controls.
-- Use next-intl and Intl APIs for locale-aware dates, numbers, currencies and pluralization, with tested translation fallbacks and translation-ready models. Keep individual locale preferences independent from the wedding's IANA time zone; share locale conventions and resources where feasible, without coupling mobile to Next.js.
+- Build accessible reusable calendar/date/time primitives and specialized task timeline and wedding-day schedule views; introduce a calendar library only when demonstrably beneficial. Preserve wedding-local time semantics and keyboard accessibility.\n- Use next-intl and Intl APIs for locale-aware dates, numbers, currencies and pluralization, with tested translation fallbacks and translation-ready models. Keep individual locale preferences independent from the wedding's IANA time zone; share locale conventions and resources where feasible, without coupling mobile to Next.js.
 - Track Core Web Vitals, route bundle sizes and responsiveness of critical planning interactions. Define performance budgets and introduce code splitting, virtualization, prefetching and additional caching based on measured need, while preserving accessibility and authorization.
 - Preserve user-entered text rather than silently translating it.
 
@@ -212,7 +218,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Define a centralized upload policy with module-specific allowed types, maximum sizes and upload counts; validate file metadata and actual content server-side rather than trusting client-provided extensions or MIME types.
 - Issue short-lived signed upload/download URLs only after server authorization; a previously issued URL may remain valid until expiry.
 - Direct incoming uploads into private quarantine. Process asynchronously through controlled Trigger.dev workflows with content validation and malware scanning; promote files for authorized access only after successful checks. On scan failure, timeout or unavailable scanner, keep the file inaccessible and retry or reject according to policy. Scanning implementation/provider remains to be chosen.
-- Use Trigger.dev for longer-running PDF/Excel generation and file processing; authorize again when the job runs.
+- Offer browser previews for approved, malware-scanned safe images and PDFs using short-lived authorized access and appropriate sandbox/content-security controls; other supported file types may remain download-only. Private R2 objects never become public through previews.\n- Generate PDF and XLSX exports server-side from shared report models through Trigger.dev for heavier workloads, store artifacts privately in R2 and recheck access at both generation and download. Honor product-defined snapshot retention, formats and filters.\n- Use Trigger.dev for longer-running PDF/Excel generation and file processing; authorize again when the job runs.
 - Centralize exports, while implementing imports only for modules explicitly permitted by the product specification.
 - The wedding-day PWA supports explicitly saved, read-only IndexedDB snapshots containing only the selected essential schedule and emergency-contact data, with version and saved-at/staleness information. Clear locally accessible snapshots on logout, warn about shared devices, and remove revoked data after reconnection; offline remote revocation cannot be guaranteed.
 - Detect revoked access and remove saved snapshots on reconnection. Offline revocation cannot be guaranteed before reconnection.
@@ -220,7 +226,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 10. Jobs, notifications and email
 
 - Trigger.dev owns technical execution, retries and job status (ARCH-016 B).
-- PostgreSQL stores business records needed by the product: schedules, report history, notification inbox, recipient permissions and generated artifact metadata. Do not duplicate Trigger.dev's internal execution ledger.
+- Persist business schedule definitions and next-due state in PostgreSQL, use Trigger.dev to execute jobs, and periodically reconcile overdue/missed executions with idempotent scheduling. Reconciliation must respect product-approved pause, retry, catch-up, recipient and notification rules and must not duplicate delivery.\n- PostgreSQL stores business records needed by the product: schedules, report history, notification inbox, recipient permissions and generated artifact metadata. Do not duplicate Trigger.dev's internal execution ledger.
 - Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries.
 - Dispatch durable PostgreSQL outbox events to Trigger.dev via a scheduled lightweight polling dispatcher using atomic claims/leases, bounded retries, stuck-event monitoring and recovery; avoid an always-on worker initially. The outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
@@ -255,12 +261,12 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 Future architecture decisions should resolve, among other items:
 - Detailed policy storage and sensitive-action reauthentication thresholds
 - API cursor encoding, filtering syntax and error envelope fields
-- Outbox polling cadence, lease duration, retention, retry thresholds and monitoring
+- Outbox polling cadence, lease duration, retention, retry thresholds and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
-- Concrete upload limits, malware scanner integration, retry/rejection rules and encryption field selection
+- Concrete upload limits, malware scanner integration, preview sandbox policy, retry/rejection rules and encryption field selection
 - Alert thresholds, escalation ownership and risk-tiered release checklist criteria
 - Mobile token integration details and additional offline data protections
 - Shared test database schema isolation and CI concurrency controls
@@ -270,7 +276,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-080 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-085 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
