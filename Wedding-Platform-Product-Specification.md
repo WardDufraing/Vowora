@@ -5766,6 +5766,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 15, Option B — A planner organization using a 14-day free trial may demonstrate and evaluate Premium capabilities but **cannot grant a lasting wedding-specific Premium entitlement to a couple while on trial**. Such an entitlement is granted only after the organization activates an eligible paid Solo, Studio, or Agency subscription **and** the couple has claimed/accepted the wedding and explicitly accepted the planner relationship under PHASE1-BIZ-006. A trial alone, even with couple acceptance, is insufficient. Once validly granted following paid activation, the couple retains Premium for that wedding after planner departure or subscription cancellation under PHASE1-BIZ-005. Trial demonstration must not misrepresent temporary access as permanent; any trial-only access or limits must be clearly communicated. Exact trial-expiration handling remains to be defined.
 
+### PHASE1-BIZ-016 — Fourteen-day planner subscription grace period then read-only
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 16, Option B — When a professional planner subscription expires or a renewal payment fails, provide a **14-day grace period** to resolve the subscription issue, during which existing professional editing access continues subject to the organization's existing permissions and tier limits. If the subscription is not restored by the end of the grace period, professional access becomes **read-only**: authorized planner staff may view existing weddings and information they were already permitted to see, but cannot edit or create professional wedding data until a qualifying subscription is restored. This billing state must never override a couple's ability to revoke planner access or restrict private information. Couples retain their independent wedding access and any previously validly granted lasting Premium entitlement under PHASE1-BIZ-005 and PHASE1-BIZ-006. No wedding data is automatically deleted merely due to subscription expiry. Grace-period eligibility for voluntary cancellation, notification timing, failed-payment retries, and treatment of plan-limit changes require implementation policy before launch.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7048,6 +7052,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-014 | 2026-10-22 | Professional planner trial | 14-day free trial of selected planner tier, with anti-abuse safeguards (Option B) | Approved |
 
 | PHASE1-BIZ-015 | 2026-10-22 | Trial planner entitlement to grant lasting couple Premium | Only after eligible paid subscription activation and couple acceptance; trial cannot grant lasting Premium (Option B) | Approved |
+
+| PHASE1-BIZ-016 | 2026-10-22 | Planner subscription expiry behavior | 14-day grace period, then authorized planner access read-only until paid restoration; couples retain access and Premium (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
