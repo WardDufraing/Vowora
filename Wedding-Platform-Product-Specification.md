@@ -5682,6 +5682,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Record each creation, update, or removal of an Event Attendance capacity limit in the wedding's activity history (Option C — Detailed change history). Each entry identifies the actor, timestamp, affected event part and capacity category (combined, adult, or child), and previous and new values, including transitions between configured and unset limits. Apply existing guest-management activity visibility rules.
 
+### DEC-780 — Compact Event Attendance capacity dashboard summary
+**Status:** Approved
+**Decision:** Show a compact guest attendance summary card on the couple's main wedding dashboard with relevant Event Attendance capacity warnings and a direct link to detailed guest management (Option B — Compact dashboard summary). Keep per-part confirmed/potential occupancy, remaining places, and full capacity breakdown in guest management rather than displaying every part's detail on the main dashboard. Respect existing dashboard personalization and guest-data access permissions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6922,6 +6926,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-778 | 2026-10-22 | Event Attendance capacity editing permissions | Any member with Edit access to Guests may manage capacity limits (Option B) | Approved |
 
 | DEC-779 | 2026-10-22 | Detailed Event Attendance capacity change history | Log actor, time, event part, and previous/new combined or adult/child capacity values (Option C) | Approved |
+
+| DEC-780 | 2026-10-22 | Compact Event Attendance capacity dashboard summary | Compact guest attendance card with capacity warnings and link to detailed guest management (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
