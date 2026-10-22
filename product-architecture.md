@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-135
+> Approved architecture decisions: ARCH-001–ARCH-140
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -158,6 +158,11 @@ Architecture principles:
 | Export lifecycle | Durable PostgreSQL export states, idempotent Trigger.dev execution and private R2 artifacts | ARCH-133 A |
 | Authorization regression tests | Policy matrix and targeted negative tests for changed permissions, ownership and visibility | ARCH-134 A |
 | Deployment topology | Single Vercel Next.js web/API deployment initially, Trigger.dev background execution and separable boundaries | ARCH-135 A |
+| Email delivery reconciliation | Durable message/delivery records, authenticated idempotent Resend webhooks and supported reconciliation | ARCH-136 A |
+| Database saturation protection | Neon-compatible pooled connection budgets, bounded concurrency, timeouts and backpressure | ARCH-137 A |
+| Feature rollout safety | Scoped staged rollout, audited emergency kill switches and server-authoritative permission-safe flags | ARCH-138 A |
+| Generated document security | Safe PDF/XLSX rendering, spreadsheet formula escaping and resource-bounded isolated jobs | ARCH-139 A |
+| Operational health checks | Separate minimal liveness, dependency-aware readiness and privacy-safe synthetic user-journey checks | ARCH-140 A |
 
 ## 3. Logical system architecture
 
@@ -327,6 +332,14 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - **Authorization regression:** Maintain a role/resource/action policy matrix and targeted negative tests whenever tenant scope, ownership, membership, custom grants or record visibility changes. Exercise API, background jobs, search, exports and signed file access with real database fixtures.
 - **Deployment topology:** Initially deploy the Next.js web UI and versioned REST API together on Vercel, with Trigger.dev as a separate background execution service. Preserve application-service, domain and API contracts so extraction into independent deployments remains possible when justified by actual scaling or operational needs.
 
+### Approved operational refinements (ARCH-136–140)
+
+- **Email delivery:** Persist provider message identifiers, attempts and business-visible delivery outcomes in PostgreSQL. Authenticate Resend webhook signatures, process callbacks idempotently and reconcile missing/delayed statuses where supported. Provider acceptance is not proof of delivery; preserve product-defined notification and reminder rules.
+- **Database saturation:** Use Neon-compatible pooled connections with explicit connection and concurrency budgets, bounded transactions, statement/connection timeouts, backpressure and saturation monitoring. Avoid network/provider calls while holding PostgreSQL transactions open.
+- **Feature rollout:** Support audited, scoped, staged feature rollout with server-authoritative emergency kill switches, safe cache invalidation and monitored rollback. Flags cannot grant access, bypass legal/product retention requirements or silently change approved product policy.
+- **Generated documents:** Treat all user-provided text as untrusted during PDF and XLSX rendering; neutralize spreadsheet formulas, sanitize or safely render rich content, block arbitrary remote fetches and bound CPU/memory/time in isolated Trigger.dev jobs. Keep generated artifacts private, authorized and subject to product retention.
+- **Health checks:** Distinguish lightweight liveness from dependency-aware readiness and synthetic checks for representative critical journeys. Protect diagnostic details and secrets; avoid restart loops or public leakage caused by transient provider outages.
+
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
@@ -335,6 +348,7 @@ Future architecture decisions should resolve, among other items:
 - Outbox polling cadence, lease duration, retry limits, dead-letter replay permissions and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
 - Concrete managed Redis provider, rate-limit thresholds and sensitive-route failover behavior
+- Neon connection/concurrency budgets, document-generation resource ceilings, email reconciliation timing and health-check thresholds
 - Feature flag storage schema, concrete scope precedence ordering and cache TTL/invalidation
 - GDPR verification methods, operational deadlines, personal-data inventory categories and cross-domain discovery coverage
 - Concrete upload limits, malware scanner integration, file state transition rules, preview sandbox policy, retry/rejection rules and encryption field selection
@@ -348,7 +362,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-135 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-140 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
