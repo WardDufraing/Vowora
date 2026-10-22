@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-040
+> Approved architecture decisions: ARCH-001–ARCH-045
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -63,6 +63,11 @@ Architecture principles:
 | API collections | Cursor pagination with validated typed filtering/sorting and consistent envelopes | ARCH-038 A |
 | Event consistency | Transactional outbox with idempotent dispatch/consumption | ARCH-039 A |
 | Web design system | Tailwind CSS, shadcn/ui, Radix primitives and centralized design tokens | ARCH-040 A |
+| Financial amounts | Integer currency minor units with ISO 4217 codes, explicit rounding and safe arithmetic | ARCH-041 A |
+| Data access organization | Domain-owned repositories and application services; no direct domain queries from route handlers | ARCH-042 A |
+| R2 asset boundaries | Separate intentionally public assets from private documents and exports | ARCH-043 A |
+| Session security | Managed secure sessions, device/session listing and revocation, sensitive-action reauthentication; optional MFA capability | ARCH-044 A |
+| Error handling | Typed domain errors, standardized safe API responses and correlation IDs | ARCH-045 A |
 
 ## 3. Logical system architecture
 
@@ -123,32 +128,35 @@ Organize modules around product capabilities, including:
 - Notifications, email, exports, audit and retention
 - Dashboards and authorized search
 
-Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Feature flags never confer permission.
+Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Feature flags never confer permission.
 
 ## 6. Persistence and consistency
 
 - Neon PostgreSQL is the transactional system of record.
 - Drizzle schema and reviewed, version-controlled migrations define database changes.
-- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.\n- Use appropriate foreign keys, constraints, indexes and transactions.
+- Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.\n- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
+- Use appropriate foreign keys, constraints, indexes and transactions.
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
-- For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.\n- Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
+- For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
+- Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
 - PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.
 - Avoid cross-tenant cache leakage: cache keys and invalidation must include the necessary permission scope.
 
 ## 7. API and authentication
 
 - REST endpoints are versioned from the outset (initially /api/v1).
-- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
+- Use typed domain errors mapped to standardized HTTP responses with stable machine-readable codes, correlation IDs and safe user-facing messages. Keep sensitive diagnostics in protected logs and Sentry.\n- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
 - Support future Expo clients without depending on browser-only Server Actions.
 - Use Better Auth or an approved equivalent; confirm Neon/Drizzle integration and native client support before implementation.
-- Web uses secure HTTP-only cookie sessions with relevant CSRF protections.
+- Web uses secure HTTP-only cookie sessions with relevant CSRF protections. Implement supported device/session visibility and revocation and reauthentication for sensitive actions; optional MFA is a capability, not a newly mandated product policy. Verify Better Auth support and adapter behavior before implementation.
 - Future native apps use a supported secure token/session transport, including secure storage, refresh and revocation.
 - Authentication identifies a user; domain authorization independently determines allowed actions.
 - Maintain compatibility for deployed mobile versions through deliberate API evolution.
 
 ## 8. Frontend, accessibility and localization
 
-- Next.js for web; TanStack Query for server state, caching and mutation invalidation.\n- Use Tailwind CSS with shadcn/ui and Radix primitives for accessible web components; centralize design tokens, variants and branded patterns. Mobile may share tokens/contracts but needs platform-appropriate UI components.
+- Next.js for web; TanStack Query for server state, caching and mutation invalidation.
+- Use Tailwind CSS with shadcn/ui and Radix primitives for accessible web components; centralize design tokens, variants and branded patterns. Mobile may share tokens/contracts but needs platform-appropriate UI components.
 - Zustand only for appropriate shared client state; local React state for local controls.
 - Start with refresh/invalidation for collaboration; add targeted real-time delivery when needed.
 - Target WCAG 2.2 AA through semantic controls, keyboard access, screen reader validation, responsive layouts, automated checks and manual testing.
@@ -157,7 +165,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 ## 9. Files, offline access and exports
 
-- Store files privately in Cloudflare R2, with metadata and access policies in PostgreSQL.
+- Separate intentionally public assets (e.g. marketing and approved public imagery) from private wedding documents, guest information and exports using distinct R2 access boundaries, preferably separate buckets or equivalently enforced isolation. Store private-file metadata and access policies in PostgreSQL.
 - Issue short-lived signed upload/download URLs only after server authorization; a previously issued URL may remain valid until expiry.
 - Validate uploaded files and apply appropriate scanning/processing before exposing them.
 - Use Trigger.dev for longer-running PDF/Excel generation and file processing; authorize again when the job runs.
@@ -169,7 +177,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - Trigger.dev owns technical execution, retries and job status (ARCH-016 B).
 - PostgreSQL stores business records needed by the product: schedules, report history, notification inbox, recipient permissions and generated artifact metadata. Do not duplicate Trigger.dev's internal execution ledger.
-- Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries.\n- Dispatch durable PostgreSQL outbox events to Trigger.dev; the outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
+- Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries.
+- Dispatch durable PostgreSQL outbox events to Trigger.dev; the outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
 - Store in-app notifications in PostgreSQL; derive email delivery from domain events without duplicating inbox entries.
 - Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration.
@@ -209,7 +218,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-040 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-045 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
