@@ -5690,6 +5690,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Professional planners see Event Attendance capacity warnings only within an individual wedding workspace, after opening that wedding (Option A — Individual wedding only). Do not display cross-wedding capacity warning indicators or detailed capacity statistics on the multi-wedding planner dashboard. Within each wedding, retain the approved guest-management capacity indicators and dashboard summary, subject to the planner's access permissions.
 
+### DEC-782 — Optional capacity summary in guest-list exports
+**Status:** Approved
+**Decision:** When exporting the wedding guest list to PDF or Excel, allow the exporting member to optionally include an Event Attendance capacity summary (Option B — Optional capacity summary). For each applicable event part, the summary shows configured combined and optional adult/child limits, confirmed and potential occupancy, remaining places, and non-blocking capacity warnings. Omit this summary when the option is not selected; preserve the ordinary guest-list export and existing export access permissions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6934,6 +6938,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-780 | 2026-10-22 | Compact Event Attendance capacity dashboard summary | Compact guest attendance card with capacity warnings and link to detailed guest management (Option B) | Approved |
 
 | DEC-781 | 2026-10-22 | Event Attendance capacity warnings within individual weddings only | Show capacity warnings only after opening a wedding; no cross-wedding indicators or statistics (Option A) | Approved |
+
+| DEC-782 | 2026-10-22 | Optional capacity summary in guest-list exports | Optional PDF/Excel capacity summary with confirmed/potential occupancy, limits, remaining places, and warnings (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
