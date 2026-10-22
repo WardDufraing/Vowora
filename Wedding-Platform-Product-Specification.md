@@ -5702,6 +5702,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Guest-list exports support the same filtering options and combinations as the guest-management interface (Option C — Match guest-list filters). Members can apply the available guest-list filters when preparing PDF or Excel exports, including combined filters, rather than a separate reduced export-filter set. Respect guest visibility and export permissions, and make the applied filter criteria clear before generating an export. This does not create saved presets (DEC-783).
 
+### DEC-785 — Use current guest-list filters by default when exporting
+**Status:** Approved
+**Decision:** When a member opens the guest-list export dialog, preselect the filters currently active in guest management (Option B — Use current filters by default). Before generating a PDF or Excel export, show the selected filters clearly and allow the member to review, modify, or clear them to export all guests. This is a per-export default, not a saved preset (DEC-783), and uses the same guest-management filters approved in DEC-784.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6952,6 +6956,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-783 | 2026-10-22 | No saved guest-list export presets | Choose format, filters, and optional capacity summary for each export; no saved presets (Option A) | Approved |
 
 | DEC-784 | 2026-10-22 | Guest-list exports match guest-management filters | Use the same available guest-list filters and combinations for PDF/Excel exports (Option C) | Approved |
+
+| DEC-785 | 2026-10-22 | Use current guest-list filters by default when exporting | Preselect active filters in export dialog; allow review, modification, or clearing before export (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
