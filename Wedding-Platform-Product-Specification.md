@@ -5638,6 +5638,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** When removing a custom Event Attendance part with assigned guests, display affected guests and groups, provide guided bulk reassignment to one or more existing event parts, preview the changes, and require explicit confirmation before removal (Option C — Guided removal with reassignment). Prevent accidental loss of attendance information.
 
+### DEC-769 — Renaming custom Event Attendance parts
+**Status:** Approved
+**Decision:** Rename a custom Event Attendance part immediately, updating its name everywhere, including existing guest assignments, without additional confirmation (Option A — Rename immediately). Preserve existing assignments and underlying event-part identity.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6856,6 +6860,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 | DEC-767 | 2026-10-22 | Permissions for custom Event Attendance parts | Couple controls whether authorized planners may create, rename, or remove custom parts (Option C) | Approved |
 | DEC-768 | 2026-10-22 | Removing assigned custom Event Attendance parts | Guided impact review, bulk reassignment, preview, and explicit confirmation (Option C) | Approved |
+
+| DEC-769 | 2026-10-22 | Renaming custom Event Attendance parts | Rename immediately everywhere without additional confirmation; preserve guest assignments (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
