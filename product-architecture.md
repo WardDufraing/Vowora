@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-050
+> Approved architecture decisions: ARCH-001–ARCH-055
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -73,6 +73,11 @@ Architecture principles:
 | Database connections | Neon serverless-compatible pooled connection strategy with bounded transactions | ARCH-048 A |
 | Audit integrity | Append-only scoped audit events with privacy-aware content and product-defined retention | ARCH-049 A |
 | Feature rollout | Server-authoritative scoped flags, safe caching and audited changes | ARCH-050 A |
+| Secret management | Provider-managed per-environment secrets, least privilege and credential rotation | ARCH-051 A |
+| Dependency security | Committed pnpm lockfile, Dependabot and automated vulnerability/secret checks | ARCH-052 A |
+| Email deliverability | SPF/DKIM/DMARC, authenticated Resend webhooks and idempotent delivery events | ARCH-053 A |
+| Database performance | Slow-query and connection metrics, EXPLAIN reviews and workload-driven indexes | ARCH-054 A |
+| Privacy architecture | Data inventory, minimization, GDPR rights workflows and auditable handling | ARCH-055 A |
 
 ## 3. Logical system architecture
 
@@ -145,7 +150,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
 - Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
-- PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.
+- PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.\n- Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); tune indexes based on observed workload and avoid logging sensitive query values.
 - Avoid cross-tenant cache leakage: cache keys and invalidation must include the necessary permission scope.
 
 ## 7. API and authentication
@@ -188,12 +193,12 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Dispatch durable PostgreSQL outbox events to Trigger.dev; the outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
 - Store in-app notifications in PostgreSQL; derive email delivery from domain events without duplicating inbox entries.
-- Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration.
+- Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration. Authenticate the sending domain with SPF, DKIM and an appropriate DMARC policy; verify Resend webhook signatures and process delivery, bounce and complaint events idempotently, with privacy-safe tracking.
 
 ## 11. Lifecycle, audit, security and observability
 
 - Centralize record lifecycle policies, while honoring module-specific retention, trash, archive, final-notice and deletion requirements in the product specification.
-- Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.
+- Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.\n- Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
 - Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
 - Use privacy-conscious structured logs, Sentry and operational alerts appropriate to the release stage.
 - Layer authorization, validation, secure headers, CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
@@ -202,8 +207,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 12. Environments, CI/CD and recovery
 
 - Use local development, isolated preview environments and production. Add permanent staging when justified.
-- Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications.
-- GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations.
+- Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
+- GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
 - Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout.
 - Document recovery objectives, backup retention and restore procedures for both PostgreSQL and R2; periodically test restoration.
 - Verify provider-specific plan limits and commercial hosting terms before launch.
@@ -218,14 +223,14 @@ Future architecture decisions should resolve, among other items:
 - Brand-specific design tokens and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
-- Mobile token integration details and offline data protections
+- Specific GDPR operational procedures, data inventory categories and rights-request verification\n- Mobile token integration details and offline data protections
 - Deployment migration sequencing, restore objectives and provider plan constraints
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-050 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-055 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
