@@ -1,8 +1,8 @@
 # Wedding Planner — Product Architecture
 
-> Status: Living architecture specification
+> Status: Architecture planning complete — approved implementation baseline
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-145
+> Approved architecture decisions: ARCH-001–ARCH-150
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -168,6 +168,11 @@ Architecture principles:
 | Time-zone-aware scheduling | Persist local recurrence intent and IANA zone, calculate UTC runs with explicit DST/reconciliation policy | ARCH-143 A |
 | Deployment smoke tests | Automated safe post-release critical-path checks with alerts and documented rollback escalation | ARCH-144 A |
 | Migration database identity | Dedicated controlled schema-migration credential separate from least-privilege runtime identities | ARCH-145 A |
+| Cross-provider recovery | Verified Neon/R2 backups, consistency checks, feasible RPO/RTO targets before launch and quarterly restore exercises | ARCH-146 A |
+| Release readiness | Mandatory CI/security/migration/critical-flow/recovery gates; document and approve non-blocking exceptions | ARCH-147 A |
+| Authorization baseline | Central policy engine and mandatory tenant-scoped repositories with comprehensive negative tests; no RLS change | ARCH-148 A |
+| Cost and scaling | Cost-conscious managed MVP stack, spend/usage alerts and evidence-based capacity expansion | ARCH-149 A |
+| Architecture governance | Approved baseline; routine details delegated, material deviations recorded as ADRs and sensitive changes require approval | ARCH-150 A |
 
 ## 3. Logical system architecture
 
@@ -353,9 +358,17 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - **Production smoke tests:** After Vercel releases, run automated privacy-safe checks using synthetic accounts for authentication, scoped REST access, critical read paths and essential background dependencies. Alert and follow the documented application rollback/incident process on failures; never automatically reverse database migrations.
 - **Migration privilege separation:** Execute controlled production Drizzle/SQL migrations using a dedicated narrowly managed schema-change identity only in approved deployment workflows. Application, jobs and read-only monitoring identities use separate least-privilege runtime credentials; test permissions and secret rotation.
 
+### Final approved baseline and launch controls (ARCH-146–150)
+
+- **Recovery (ARCH-146):** Use provider-managed Neon database and Cloudflare R2 object recovery capabilities with a recoverable database-to-object reference inventory/manifest or equivalent verification mechanism. Establish provider-feasible, documented recovery-point and recovery-time objectives **before production launch**, rather than assuming numeric targets. Verify cross-provider consistency and reconcile missing/orphaned objects during quarterly restore drills and after significant infrastructure changes. Keep recovery access restricted and protect personal data.
+- **Release readiness (ARCH-147):** Require passing CI, authorization/tenant-isolation and security regression tests, migration rehearsal and compatibility checks, critical user-journey tests, observability and recovery readiness before production releases. Block release for critical defects or failed mandatory gates. Record remaining non-blocking defects, risk/owner and explicit acceptance before release. Preserve existing controlled deployment and rollback policies.
+- **Authorization (ARCH-148):** The centralized typed permission engine, explicit validated tenant/actor context and mandatory scope-aware repositories are binding for all domain operations, including API, background jobs, search, reports, signed files and private planner records. Maintain negative cross-tenant and role/visibility tests on policy changes. **Do not add PostgreSQL RLS** without a separately approved architecture change; application-enforced isolation remains the approved design.
+- **Cost-aware scaling (ARCH-149):** Launch with the approved managed modular-monolith stack; configure provider spending alerts, usage/capacity monitoring and budget ownership. Scale Neon, Vercel, R2, Trigger.dev and related services based on measured workloads and reliability requirements, never by sacrificing approved security, backup or retention protections. Do not introduce speculative microservices or dedicated infrastructure.
+- **Governance (ARCH-150):** Treat ARCH-001–ARCH-150 as the approved architecture baseline. Resolve ordinary implementation details during development without new architecture questionnaires. Record material decisions and deviations using the ADR process in Section 14; seek explicit approval before changing product behavior, couple data ownership, security/tenant-isolation guarantees, approved core technologies or other approved architecture commitments.
+
 ## 13. Implementation decisions still open
 
-Future architecture decisions should resolve, among other items:
+The architecture planning questionnaire is **closed**. The following are **open implementation details**, not additional approved decisions or prerequisites for another question round. Resolve them when their workstream begins, documenting material choices through ADRs:
 - Risk-based reauthentication freshness thresholds/methods, permission-scope version mechanics and policy test coverage
 - Module-specific API filter allowlists, Problem Details extension field definitions, cursor signing key rotation and compatible event schema version windows
 - Outbox polling cadence, lease duration, retry limits, dead-letter replay permissions and monitoring; schedule reconciliation cadence
@@ -372,16 +385,29 @@ Future architecture decisions should resolve, among other items:
 - Deletion reconciliation thresholds, cache version invalidation details, DST ambiguity rules, smoke-test journeys and migration credential provisioning
 - Concrete progressive auth throttling/challenge thresholds, migration rehearsal fixtures, file recovery limits, performance budgets and audit event schema catalog
 
-These are **not yet approved** and should not be mistaken for settled technology choices.
+These specifics are **not yet approved** and must not be represented as fixed technologies, numerical limits or product requirements. Resolve them incrementally within the approved baseline. Before production launch, explicitly define and verify RPO/RTO, release gates, provider limits, and security/recovery controls; ordinary detail choices may be delegated to implementers.
 
-## 14. Decision log and maintenance rules
+## 14. Architecture baseline, ADRs and change control
 
-Architecture decisions ARCH-001 through ARCH-145 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+**Planning status:** Complete. Architecture decisions ARCH-001 through ARCH-150 are approved and recorded in Section 2. No further up-front architecture questionnaire is required. The product specification retains authority over product behavior, permissions, notices, retention and ownership. Section 13 lists intentionally unresolved implementation details; proposed examples and directory layouts elsewhere are not automatically binding technology selections.
 
-For each future approved architecture decision:
-1. Add the decision to the approved stack/decision log.
-2. Update affected sections, diagrams, dependencies and implementation guidance.
-3. Document any conflict or required reconsideration instead of silently changing an earlier approval.
-4. Commit only the architecture file unless the user explicitly authorizes changes elsewhere.
+### Lightweight architecture decision records
 
-This document is a living specification. Architectural descriptions marked as proposed are guidance, not additional user-approved decisions.
+When implementation reveals a material choice or a proposed deviation, record a short ADR in the repository (for example, `docs/adr/0001-short-title.md`) with:
+
+1. **Title, date, status and owner:** Proposed / Accepted / Superseded.
+2. **Context and problem:** What triggered the decision, including affected product requirements and approved ARCH references.
+3. **Options considered:** At least the realistic alternatives, with security, cost, operational and migration trade-offs.
+4. **Decision and rationale:** Selected approach, consequences, testing/migration/rollback needs and affected files.
+5. **Approval:** Who approved and when, or a clear indication that approval is pending; link to superseding ADRs when changed.
+
+### Approval boundary
+
+- **Routine implementation choices:** Developers may decide package internals, UI component composition, query optimizations, test fixtures and provider-specific configuration within approved constraints. Document in code, tests or concise technical notes as appropriate; an ADR is not mandatory for every small change.
+- **Material architecture choices:** Use an ADR for significant new dependencies, infrastructure changes, cross-module patterns, operational trade-offs or changes to previously approved technical approaches. Do not mark an ADR accepted before its required review.
+- **Explicit user approval required:** Any deviation affecting product behavior, couple ownership, privacy/security guarantees, tenant isolation, retention, authorization policy or approved core technologies. Flag contradictions rather than silently overriding the product specification or decisions ARCH-001–ARCH-150.
+- **Traceability:** Link relevant ARCH IDs, affected modules, migrations and tests; retain Git history and mark superseded ADRs instead of rewriting history. Update this architecture file only when a material approved change alters the baseline.
+- **Release governance:** Enforce ARCH-147 gates; document and explicitly accept only non-blocking release exceptions. Never treat an ADR as permission to bypass mandatory security, privacy or product requirements.
+
+**Implementation handoff:** Begin with the approved Turborepo/pnpm monorepo, Next.js web and versioned REST API, Neon/Drizzle persistence, managed authentication, Trigger.dev jobs, R2 private storage, Resend notifications and shared permission/domain contracts. Build in vertical slices with tests and cross-tenant controls; defer unresolved provider thresholds and optimization decisions until there is evidence. Establish the production recovery objectives and readiness checklist before launch.
+
