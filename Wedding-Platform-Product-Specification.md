@@ -5666,6 +5666,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** For each Event Attendance part with an optional capacity limit, display both confirmed occupancy and total potential occupancy (confirmed plus unconfirmed invited guests) against the same limit (Option C — Both, with separate indicators). Show remaining capacity for both measures and distinguish confirmed over-capacity from potential over-capacity warnings. These warnings do not block assignments, consistent with DEC-774. Apply existing group-level confirmation and adult/child headcount rules.
 
+### DEC-776 — Combined capacity with optional adult and child breakdown
+**Status:** Approved
+**Decision:** Each Event Attendance part may use one combined capacity limit, with optional separate adult and child limits when needed (Option C — Combined capacity with optional breakdown). Display non-blocking warnings whenever the combined limit or any configured adult or child limit is exceeded. Show confirmed and potential occupancy against applicable limits, consistent with DEC-774 and DEC-775. An unspecified optional limit imposes no constraint for that category.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6898,6 +6902,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-774 | 2026-10-22 | Optional Event Attendance capacity tracking | Optional per-part maximum, remaining places, and non-blocking over-capacity warning (Option B) | Approved |
 
 | DEC-775 | 2026-10-22 | Confirmed and potential capacity indicators | Show confirmed occupancy and potential occupancy including unconfirmed guests separately against the same optional capacity (Option C) | Approved |
+
+| DEC-776 | 2026-10-22 | Combined capacity with optional adult and child breakdown | Combined capacity by default, optional adult/child limits, non-blocking warnings against all configured limits (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
