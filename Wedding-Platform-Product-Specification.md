@@ -5650,6 +5650,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Authorized members may hide default or custom Event Attendance parts only when they have no guest assignments (Option B — Hide unused parts). Hidden parts are omitted from active guest-management views and may be restored later. Parts with existing assignments cannot be hidden until those assignments are removed or reassigned. Hiding does not delete the part.
 
+### DEC-772 — Restoring hidden Event Attendance parts
+**Status:** Approved
+**Decision:** Use the same configurable permissions as custom Event Attendance parts (Option C). Both partners may restore hidden default or custom Event Attendance parts. Planners may restore them only when the couple has granted the relevant Event Attendance management permission and the planner has appropriate guest-management access. Restoring makes the part available in active guest-management views without changing existing guest assignments.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6874,6 +6878,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-770 | 2026-10-22 | Reordering Event Attendance parts | Authorized members may freely drag and drop default and custom event parts; guest assignments remain unchanged (Option B) | Approved |
 
 | DEC-771 | 2026-10-22 | Hiding unused Event Attendance parts | Authorized members can hide and restore parts without assignments; assigned parts cannot be hidden (Option B) | Approved |
+
+| DEC-772 | 2026-10-22 | Restoring hidden Event Attendance parts | Both partners may restore; planners require couple-granted Event Attendance management permission and guest-management access (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
