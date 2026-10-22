@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 193.0  
+**Version:** 194.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -5378,6 +5378,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Update workspace search results as the member types.
 
+### DEC-704 — Default workspace search area filter
+**Status:** Approved
+**Decision:** Include all areas the member can access by default in the workspace search area filter.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6467,6 +6471,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-702 | 2026-10-22 | Initial state of workspace search page | Empty focused search field with a brief prompt | Approved |
 
 | DEC-703 | 2026-10-22 | Workspace search update behavior | Update results as the member types | Approved |
+
+| DEC-704 | 2026-10-22 | Default workspace search area filter | Include all accessible areas by default | Approved |
 
 ## 10. Document maintenance rules
 
