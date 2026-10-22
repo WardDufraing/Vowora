@@ -5722,6 +5722,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Professional wedding planners subscribe through recurring plan tiers based on planner organization size (Phase 1 Critical Decision 4, Option B). Tiers distinguish independent planners and larger planning teams using staff/member allowances and plan-specific professional capabilities, with defined active-wedding limits per tier. The exact tier names, staff and wedding thresholds, included features, pricing, billing cadence, upgrade/downgrade treatment, and definition of an active wedding remain open for separate approval. Do not introduce per-wedding usage charges under this decision. Couple Premium remains a one-time purchase per wedding under PHASE1-BIZ-003.
 
+### PHASE1-BIZ-005 — Planner-funded Premium with lasting client entitlement
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 5, Option C — A wedding managed by a subscribed professional planner receives the couple-facing Premium feature entitlement through that planner's eligible subscription. Once granted to that wedding, the couple retains Premium access for that wedding even if the planner subsequently leaves, loses wedding access, or stops subscribing; it does not revert to Free because of planner departure or subscription changes. This is a lasting wedding-specific entitlement, not a permanent account-wide Premium entitlement and not an exemption from the wedding workspace's separately approved data lifecycle/deletion rules. The exact eligibility point for granting the lasting entitlement, whether it applies to every planner-created or planner-managed wedding, abuse safeguards, and treatment of unclaimed weddings remain to be specified without weakening the approved promise. Couple-paid one-time Premium purchases remain available for other weddings under PHASE1-BIZ-003.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6982,6 +6986,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-003 | 2026-10-22 | Couple Premium payment model | One-time Premium purchase per wedding, lifecycle and pricing details pending (Option B) | Approved |
 
 | PHASE1-BIZ-004 | 2026-10-22 | Planner subscription structure | Recurring tiers based on organization size, staff/features, and wedding limits (Option B) | Approved |
+
+| PHASE1-BIZ-005 | 2026-10-22 | Planner-managed wedding Premium | Eligible planner subscription grants wedding-specific Premium retained by couple after planner exits or subscription ends (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
