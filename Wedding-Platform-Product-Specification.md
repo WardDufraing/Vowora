@@ -5710,6 +5710,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Adopt a freemium commercial model for couples and paid subscriptions for professional wedding planners (Phase 1 Critical Decision 1, Option C). Couples receive essential wedding-planning functionality free of charge and may upgrade for advanced functionality. Professional planners use dedicated paid subscription plans. Exact free/paid feature boundaries, subscription tiers, prices, billing cadence, trials, and entitlements remain open for separate approval. Previously approved MVP capabilities are not silently restricted by this commercial decision.
 
+### PHASE1-BIZ-002 — Free essentials and Premium advanced tools
+**Status:** Approved
+**Decision:** Use a feature-tiered freemium model for couples (Phase 1 Critical Decision 2, Option A — Free essentials, Premium advanced tools). The Free tier includes essential wedding planning: tasks, guest management, basic budget tracking, contacts, and a basic dashboard. The Premium tier unlocks advanced vendor comparisons, documents, wedding-day schedule coordination, exports, and enhanced planning features. Exact per-feature entitlements, limits, upgrade handling, and plan pricing remain subject to explicit subsequent decisions; this decision defines commercial access tiers, not removal of previously approved functionality from the product MVP. Professional planners continue to have paid subscriptions under PHASE1-BIZ-001.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6964,6 +6968,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-785 | 2026-10-22 | Use current guest-list filters by default when exporting | Preselect active filters in export dialog; allow review, modification, or clearing before export (Option B) | Approved |
 
 | PHASE1-BIZ-001 | 2026-10-22 | Business model | Freemium couples and paid planner subscriptions (Option C); tier details pending | Approved |
+
+| PHASE1-BIZ-002 | 2026-10-22 | Couple Free/Premium boundary | Free essentials; Premium advanced vendor comparisons, documents, schedule coordination, exports and enhanced tools (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
