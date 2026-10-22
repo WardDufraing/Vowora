@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-130
+> Approved architecture decisions: ARCH-001–ARCH-135
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -153,6 +153,11 @@ Architecture principles:
 | File processing recovery | Idempotent upload/scan/promotion/preview stages with retries, stuck-state reconciliation and safe cleanup | ARCH-128 A |
 | Performance validation | Critical-journey performance budgets and representative datasets with measured real-user outcomes | ARCH-129 A |
 | Audit event contracts | Typed, versioned audit event schemas with stable identity, actor/scope, correlation and privacy-safe metadata | ARCH-130 A |
+| Domain event evolution | Typed versioned outbox event envelopes with stable IDs, tenant scope and compatible consumers | ARCH-131 A |
+| Signing key rotation | Versioned signing keys with bounded overlap, tested rotation and emergency revocation | ARCH-132 A |
+| Export lifecycle | Durable PostgreSQL export states, idempotent Trigger.dev execution and private R2 artifacts | ARCH-133 A |
+| Authorization regression tests | Policy matrix and targeted negative tests for changed permissions, ownership and visibility | ARCH-134 A |
+| Deployment topology | Single Vercel Next.js web/API deployment initially, Trigger.dev background execution and separable boundaries | ARCH-135 A |
 
 ## 3. Logical system architecture
 
@@ -314,11 +319,19 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - **Performance:** Set measurable budgets for critical dashboards, large guest lists, financial tables and wedding-day schedules; exercise representative synthetic datasets and monitor real-user latency/Core Web Vitals. Select concrete numerical budgets after baseline measurement rather than assuming targets.
 - **Audit schema:** Define typed, versioned domain audit event contracts with stable event types, actor, tenant/resource identifiers, correlation IDs and minimized structured change metadata. Preserve historical interpretation across schema evolution while enforcing append-only privileges, integrity checks and product-approved retention/privacy constraints.
 
+### Approved architecture refinements (ARCH-131–135)
+
+- **Domain event envelopes:** Publish typed versioned events with stable event IDs, names, schema versions, occurrence times, tenant identifiers and correlation IDs. Keep event data minimized; outbox consumers must tolerate supported older queued event versions across deployments. Distinguish domain-event schemas from Trigger.dev job payload versions.
+- **Key rotation:** Use managed versioned signing keys and key identifiers where supported for signed cursors, URLs and tokens, with bounded overlap during routine rotation. Document/test emergency revocation that may invalidate outstanding signatures; honor provider-specific key ownership and limits.
+- **Export state:** Track product-visible requested, queued, processing, completed, failed, expired and revoked states in PostgreSQL. Trigger.dev owns technical execution; idempotent workers store approved results in private R2. Apply product-defined retries, pause/catch-up, retention, recipient permissions and revocation rather than replacing them with generic defaults.
+- **Authorization regression:** Maintain a role/resource/action policy matrix and targeted negative tests whenever tenant scope, ownership, membership, custom grants or record visibility changes. Exercise API, background jobs, search, exports and signed file access with real database fixtures.
+- **Deployment topology:** Initially deploy the Next.js web UI and versioned REST API together on Vercel, with Trigger.dev as a separate background execution service. Preserve application-service, domain and API contracts so extraction into independent deployments remains possible when justified by actual scaling or operational needs.
+
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
 - Risk-based reauthentication freshness thresholds/methods, permission-scope version mechanics and policy test coverage
-- Module-specific API filter allowlists, Problem Details extension field definitions and cursor signing/key rotation
+- Module-specific API filter allowlists, Problem Details extension field definitions, cursor signing key rotation and compatible event schema version windows
 - Outbox polling cadence, lease duration, retry limits, dead-letter replay permissions and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
 - Concrete managed Redis provider, rate-limit thresholds and sensitive-route failover behavior
@@ -335,7 +348,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-130 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-135 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
