@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-065
+> Approved architecture decisions: ARCH-001–ARCH-070
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -88,6 +88,11 @@ Architecture principles:
 | Accessibility verification | Automated axe/keyboard checks plus manual screen-reader and real-device testing | ARCH-063 A |
 | Test data | Deterministic synthetic factories for representative multi-tenant weddings and edge cases | ARCH-064 A |
 | Deployment migrations | Expand-and-contract, backward-compatible migrations and controlled single-run rollout | ARCH-065 A |
+| Offline snapshot safeguards | Minimal explicit read-only snapshots, session-aware clearing, staleness and shared-device warnings | ARCH-066 A |
+| Outbox dispatcher | Scheduled polling with atomic leases, retries and stuck-event monitoring | ARCH-067 A |
+| Recovery targets | Define and test provider-feasible RPO/RTO targets before production | ARCH-068 A |
+| Mutation idempotency | Scoped idempotency keys and payload conflict detection for retry-sensitive operations | ARCH-069 A |
+| Web forms | React Hook Form, Zod and reusable accessible fields; server remains authoritative | ARCH-070 A |
 
 ## 3. Logical system architecture
 
@@ -166,10 +171,11 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 ## 7. API and authentication
 
-- REST endpoints are versioned from the outset (initially /api/v1).
+- REST endpoints are versioned from the outset (initially /api/v1). Apply scoped idempotency keys to retry-sensitive mutations such as payment records, invitation issuance and export generation; bind keys to actor/tenant/operation and payload, store bounded results with expiration, and reject reuse with conflicting payloads.
 - Use typed domain errors mapped to standardized HTTP responses with stable machine-readable codes, correlation IDs and safe user-facing messages. Keep sensitive diagnostics in protected logs and Sentry.
-- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
-- Maintain versioned contract-first Zod/OpenAPI schemas; generate typed clients for web and future Expo apps, and validate API response conformance and backward compatibility in CI. Generated clients do not bypass server authorization.\n- Support future Expo clients without depending on browser-only Server Actions.
+- Use React Hook Form with Zod and accessible shared field components for complex web forms; server validation and authorization remain authoritative.\n- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
+- Maintain versioned contract-first Zod/OpenAPI schemas; generate typed clients for web and future Expo apps, and validate API response conformance and backward compatibility in CI. Generated clients do not bypass server authorization.
+- Support future Expo clients without depending on browser-only Server Actions.
 - Use Better Auth or an approved equivalent; confirm Neon/Drizzle integration and native client support before implementation.
 - Web uses secure HTTP-only cookie sessions with relevant CSRF protections. Implement supported device/session visibility and revocation and reauthentication for sensitive actions; optional MFA is a capability, not a newly mandated product policy. Verify Better Auth support and adapter behavior before implementation.
 - Future native apps use a supported secure token/session transport, including secure storage, refresh and revocation.
@@ -194,7 +200,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Direct incoming uploads into private quarantine. Process asynchronously through controlled Trigger.dev workflows with content validation and malware scanning; promote files for authorized access only after successful checks. On scan failure, timeout or unavailable scanner, keep the file inaccessible and retry or reject according to policy. Scanning implementation/provider remains to be chosen.
 - Use Trigger.dev for longer-running PDF/Excel generation and file processing; authorize again when the job runs.
 - Centralize exports, while implementing imports only for modules explicitly permitted by the product specification.
-- The wedding-day PWA supports explicitly saved, read-only IndexedDB snapshots of the schedule and essential contacts, with version and saved-at/staleness information.
+- The wedding-day PWA supports explicitly saved, read-only IndexedDB snapshots containing only the selected essential schedule and emergency-contact data, with version and saved-at/staleness information. Clear locally accessible snapshots on logout, warn about shared devices, and remove revoked data after reconnection; offline remote revocation cannot be guaranteed.
 - Detect revoked access and remove saved snapshots on reconnection. Offline revocation cannot be guaranteed before reconnection.
 
 ## 10. Jobs, notifications and email
@@ -202,7 +208,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Trigger.dev owns technical execution, retries and job status (ARCH-016 B).
 - PostgreSQL stores business records needed by the product: schedules, report history, notification inbox, recipient permissions and generated artifact metadata. Do not duplicate Trigger.dev's internal execution ledger.
 - Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries.
-- Dispatch durable PostgreSQL outbox events to Trigger.dev; the outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
+- Dispatch durable PostgreSQL outbox events to Trigger.dev via a scheduled lightweight polling dispatcher using atomic claims/leases, bounded retries, stuck-event monitoring and recovery; avoid an always-on worker initially. The outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
 - Store in-app notifications in PostgreSQL; derive email delivery from domain events without duplicating inbox entries.
 - Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration. Authenticate the sending domain with SPF, DKIM and an appropriate DMARC policy; verify Resend webhook signatures and process delivery, bounce and complaint events idempotently, with privacy-safe tracking.
@@ -222,9 +228,11 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - Use local development, isolated preview environments and production. Add permanent staging when justified.
 - Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
-- Use a dedicated persistent shared Neon cloud **test** database (ARCH-061 C), never production credentials/data. Run real PostgreSQL repository, transaction and multi-tenant permission tests with deterministic synthetic fixtures. Isolate concurrent test jobs with separate schemas or equivalent run namespaces and cleanup; serialize migration tests targeting the same schema. Keep fixtures reproducible and include weddings, organizations, guests, payments, permissions and edge cases.\n- GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
-- Use expand-and-contract database migrations: introduce backward-compatible additions first, deploy compatible code, and remove legacy structures only after old versions are retired. Apply production migrations once through a controlled step, with predeployment checks and a documented recovery path.\n- Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout. Use a formal risk-proportionate release checklist covering relevant automated tests, security, accessibility, migration validation, backup/recovery and critical user journeys. Require enhanced manual review for sensitive schema, authorization and high-impact changes without burdening trivial UI fixes with identical procedures.
-- Document recovery objectives, backup retention and restore procedures for both PostgreSQL and R2; periodically test restoration.
+- Use a dedicated persistent shared Neon cloud **test** database (ARCH-061 C), never production credentials/data. Run real PostgreSQL repository, transaction and multi-tenant permission tests with deterministic synthetic fixtures. Isolate concurrent test jobs with separate schemas or equivalent run namespaces and cleanup; serialize migration tests targeting the same schema. Keep fixtures reproducible and include weddings, organizations, guests, payments, permissions and edge cases.
+- GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
+- Use expand-and-contract database migrations: introduce backward-compatible additions first, deploy compatible code, and remove legacy structures only after old versions are retired. Apply production migrations once through a controlled step, with predeployment checks and a documented recovery path.
+- Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout. Use a formal risk-proportionate release checklist covering relevant automated tests, security, accessibility, migration validation, backup/recovery and critical user journeys. Require enhanced manual review for sensitive schema, authorization and high-impact changes without burdening trivial UI fixes with identical procedures.
+- Define explicit recovery point (RPO) and recovery time (RTO) targets before production launch, validate their feasibility against the chosen Neon plan, and document backup retention and coordinated PostgreSQL/R2 restore procedures. Periodically test recovery; no numeric targets are approved yet.
 - Verify provider-specific plan limits and commercial hosting terms before launch.
 - Optimize observed bottlenecks first; introduce independent services only if measured requirements justify them.
 
@@ -233,21 +241,22 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 Future architecture decisions should resolve, among other items:
 - Detailed policy storage and sensitive-action reauthentication thresholds
 - API cursor encoding, filtering syntax and error envelope fields
-- Outbox dispatcher scheduling, retention, recovery and monitoring
+- Outbox polling cadence, lease duration, retention, retry thresholds and monitoring
 - Brand-specific design tokens and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
 - Concrete upload limits, malware scanner integration, retry/rejection rules and encryption field selection
 - Alert thresholds, escalation ownership and risk-tiered release checklist criteria
-- Mobile token integration details and offline data protections
-- Shared test database schema isolation and CI concurrency controls\n- Concrete migration rollout sequencing, restore objectives and provider plan constraints
+- Mobile token integration details and additional offline data protections
+- Shared test database schema isolation and CI concurrency controls
+- Concrete migration rollout sequencing, numeric RPO/RTO targets and provider plan constraints
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-065 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-070 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
