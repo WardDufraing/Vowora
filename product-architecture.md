@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-070
+> Approved architecture decisions: ARCH-001–ARCH-075
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -93,6 +93,11 @@ Architecture principles:
 | Recovery targets | Define and test provider-feasible RPO/RTO targets before production | ARCH-068 A |
 | Mutation idempotency | Scoped idempotency keys and payload conflict detection for retry-sensitive operations | ARCH-069 A |
 | Web forms | React Hook Form, Zod and reusable accessible fields; server remains authoritative | ARCH-070 A |
+| Web routing | Next.js App Router with feature-oriented organization and route groups | ARCH-071 A |
+| Rendering | Server Components by default; interactive Client Components where justified | ARCH-072 A |
+| Complex tables | TanStack Table with accessible shared patterns and server-side large-list operations | ARCH-073 A |
+| Navigation state | Validated URL-driven shareable view state without sensitive data | ARCH-074 A |
+| Frontend performance | Core Web Vitals and interaction budgets with measured optimizations | ARCH-075 A |
 
 ## 3. Logical system architecture
 
@@ -173,7 +178,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - REST endpoints are versioned from the outset (initially /api/v1). Apply scoped idempotency keys to retry-sensitive mutations such as payment records, invitation issuance and export generation; bind keys to actor/tenant/operation and payload, store bounded results with expiration, and reject reuse with conflicting payloads.
 - Use typed domain errors mapped to standardized HTTP responses with stable machine-readable codes, correlation IDs and safe user-facing messages. Keep sensitive diagnostics in protected logs and Sentry.
-- Use React Hook Form with Zod and accessible shared field components for complex web forms; server validation and authorization remain authoritative.\n- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
+- Use React Hook Form with Zod and accessible shared field components for complex web forms; server validation and authorization remain authoritative.
+- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
 - Maintain versioned contract-first Zod/OpenAPI schemas; generate typed clients for web and future Expo apps, and validate API response conformance and backward compatibility in CI. Generated clients do not bypass server authorization.
 - Support future Expo clients without depending on browser-only Server Actions.
 - Use Better Auth or an approved equivalent; confirm Neon/Drizzle integration and native client support before implementation.
@@ -184,13 +190,13 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 ## 8. Frontend, accessibility and localization
 
-- Next.js for web; TanStack Query for server state, caching and mutation invalidation.
+- Next.js App Router for web, with route groups for public, couple and planner experiences and feature-owned UI modules; domain/application rules remain in shared packages. Use Server Components by default for suitable layouts and initial data, and Client Components for interactive tools, forms and dashboards. Coordinate server prefetch/hydration with TanStack Query to avoid duplicate fetching; use TanStack Query for server state, caching and mutation invalidation.
 - Use Tailwind CSS with shadcn/ui and Radix primitives for accessible web components; centralize design tokens, variants and branded patterns. Mobile may share tokens/contracts but needs platform-appropriate UI components.
-- Zustand only for appropriate shared client state; local React state for local controls.
+- Use TanStack Table with reusable accessible patterns for complex guest, budget, task and vendor tables, including validated sorting, filtering and selection; use server-side pagination/filtering for large collections.\n- Store suitable navigation and shareable view state (wedding selection, non-sensitive filters, sorting and pagination) in validated URL parameters. Never include guest contact details, private notes, credentials or access tokens in URLs; server authorization applies regardless of identifiers in links.\n- Zustand only for appropriate shared client state; local React state for local controls.
 - Start with refresh/invalidation for collaboration; add targeted real-time delivery when needed.
 - Target WCAG 2.2 AA through semantic controls, keyboard access, screen reader validation, responsive layouts, automated checks and manual testing. Integrate axe-based and keyboard checks into CI, with scheduled manual screen-reader and real-device checks for critical journeys and complex controls.
 - Use next-intl on web and translation-ready models; share locale conventions and resources where feasible, without coupling mobile to Next.js.
-- Preserve user-entered text rather than silently translating it.
+- Track Core Web Vitals, route bundle sizes and responsiveness of critical planning interactions. Define performance budgets and introduce code splitting, virtualization, prefetching and additional caching based on measured need, while preserving accessibility and authorization.\n- Preserve user-entered text rather than silently translating it.
 
 ## 9. Files, offline access and exports
 
@@ -242,7 +248,7 @@ Future architecture decisions should resolve, among other items:
 - Detailed policy storage and sensitive-action reauthentication thresholds
 - API cursor encoding, filtering syntax and error envelope fields
 - Outbox polling cadence, lease duration, retention, retry thresholds and monitoring
-- Brand-specific design tokens and responsive component specifications
+- Brand-specific design tokens, route layouts and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
@@ -256,7 +262,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-070 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-075 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
