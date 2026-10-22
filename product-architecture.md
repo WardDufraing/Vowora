@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-090
+> Approved architecture decisions: ARCH-001–ARCH-095
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -113,6 +113,11 @@ Architecture principles:
 | Pagination cursors | Versioned opaque signed cursors with deterministic ordering and query-scope validation | ARCH-088 A |
 | Feature flag precedence | Explicit scoped override precedence, audited changes, safe invalidation and disabled unknown flags | ARCH-089 A |
 | API error format | RFC 9457 Problem Details with stable codes, correlation IDs and safe validation extensions | ARCH-090 A |
+| Permission cache invalidation | Versioned wedding/organization/user permission scopes with explicit invalidation and sensitive-action rechecks | ARCH-091 A |
+| File lifecycle | PostgreSQL state machine for upload, quarantine, scan, readiness, rejection, failure and deletion | ARCH-092 A |
+| Private downloads | Current authorization before short-lived R2 signed URL issuance and audit of sensitive downloads | ARCH-093 A |
+| Money calculations | Shared deterministic typed financial domain calculations, integer minor units and tested rounding/allocation | ARCH-094 A |
+| Deletion orchestration | Product-policy-driven lifecycle states, idempotent cleanup and reconciliation across PostgreSQL/R2/jobs | ARCH-095 A |
 
 ## 3. Logical system architecture
 
@@ -173,13 +178,13 @@ Organize modules around product capabilities, including:
 - Notifications, email, exports, audit and retention
 - Dashboards and authorized search
 
-Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Define resource/action rules and policy evaluation in reviewed typed code; persist memberships, role assignments, customizable grants and record visibility in PostgreSQL with audited/versioned changes and permission-cache invalidation. Custom grants cannot override hard tenant boundaries. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Maintain an explicit permission matrix for roles, custom grants, organization/wedding membership and record visibility, and exercise allowed and denied access with real cross-tenant tests across API mutations/reads, search, exports, file access and background jobs. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
+Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Define resource/action rules and policy evaluation in reviewed typed code; persist memberships, role assignments, customizable grants and record visibility in PostgreSQL with audited/versioned changes and permission-cache invalidation. Custom grants cannot override hard tenant boundaries. Maintain versioned permission scopes for affected users, weddings and organizations; explicitly invalidate relevant caches on membership, ownership, role, grant or visibility changes, and recheck sensitive actions against current authoritative grants. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Maintain an explicit permission matrix for roles, custom grants, organization/wedding membership and record visibility, and exercise allowed and denied access with real cross-tenant tests across API mutations/reads, search, exports, file access and background jobs. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
 
 ## 6. Persistence and consistency
 
 - Neon PostgreSQL is the transactional system of record. Use a supported serverless-compatible pooled connection strategy for Vercel, with environment-specific connection limits and bounded transactions. Verify the selected driver supports Drizzle, Better Auth, and transactional outbox operations before implementation.
 - Drizzle schema and reviewed, version-controlled migrations define database changes.
-- Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.
+- Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point. Centralize deterministic typed money calculations for partial payments, allocations, refunds, credits and report totals in shared domain functions, with edge-case tests and authoritative server-side results; retain database integrity constraints.
 - Model wedding-day wall-clock dates and times with the wedding's IANA time zone, preserving intended local schedule times; represent actual scheduled execution instants in UTC where appropriate and test daylight-saving gaps/overlaps.
 - Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
 - Use appropriate foreign keys, constraints, indexes and transactions.
@@ -222,7 +227,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - Separate intentionally public assets (e.g. marketing and approved public imagery) from private wedding documents, guest information and exports using distinct R2 access boundaries, preferably separate buckets or equivalently enforced isolation. Store private-file metadata and access policies in PostgreSQL.
 - Define a centralized upload policy with module-specific allowed types, maximum sizes and upload counts; validate file metadata and actual content server-side rather than trusting client-provided extensions or MIME types.
-- Issue short-lived signed upload/download URLs only after server authorization; a previously issued URL may remain valid until expiry.
+- Track file transitions in PostgreSQL with an explicit state machine (pending upload, uploaded/quarantined, scanning, ready, rejected, failed and deleted), enforcing legal transitions, retry policies and abandoned-upload cleanup. Only `ready` objects may be previewed or downloaded.\n- Authorize each private download before issuing a short-lived signed R2 URL; use non-guessable private object keys and audit sensitive downloads. A previously issued URL may remain valid until expiry even after access revocation.
 - Direct incoming uploads into private quarantine. Process asynchronously through controlled Trigger.dev workflows with content validation and malware scanning; promote files for authorized access only after successful checks. On scan failure, timeout or unavailable scanner, keep the file inaccessible and retry or reject according to policy. Scanning implementation/provider remains to be chosen.
 - Offer browser previews for approved, malware-scanned safe images and PDFs using short-lived authorized access and appropriate sandbox/content-security controls; other supported file types may remain download-only. Private R2 objects never become public through previews.
 - Generate PDF and XLSX exports server-side from shared report models through Trigger.dev for heavier workloads, store artifacts privately in R2 and recheck access at both generation and download. Honor product-defined snapshot retention, formats and filters.
@@ -245,7 +250,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 11. Lifecycle, audit, security and observability
 
 - Centralize record lifecycle policies, while honoring module-specific retention, trash, archive, final-notice and deletion requirements in the product specification.
-- Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.
+- Coordinate product-policy-driven deletion of relational data, R2 files, exports, snapshots and scheduled jobs with persistent lifecycle deadlines/states, idempotent Trigger.dev cleanup, partial-failure retries, reconciliation and privacy-safe completion evidence. Honor all approved final notices, retention periods and applicable legal exceptions.
 - Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
 - Use provider-managed encryption at rest for PostgreSQL and R2 and TLS in transit. Apply selective application-level field encryption to specifically identified high-risk data when justified, with documented key management and awareness of impacts on searching/indexing. Encryption does not replace scoped authorization.
 - Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
@@ -268,14 +273,14 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
-- Sensitive-action reauthentication thresholds and permission policy test coverage
+- Sensitive-action reauthentication thresholds, permission-scope version mechanics and policy test coverage
 - API filtering syntax, Problem Details extension field definitions and cursor signing/key rotation
 - Outbox polling cadence, lease duration, retention, retry thresholds and monitoring; schedule reconciliation cadence
 - Brand-specific token values, route layouts and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, concrete scope precedence ordering and cache TTL/invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
-- Concrete upload limits, malware scanner integration, preview sandbox policy, retry/rejection rules and encryption field selection
+- Concrete upload limits, malware scanner integration, file state transition rules, preview sandbox policy, retry/rejection rules and encryption field selection
 - Alert thresholds, escalation ownership and risk-tiered release checklist criteria
 - Mobile token integration details and additional offline data protections
 - Shared test database schema selection compatibility and CI concurrency controls
@@ -285,7 +290,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-090 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-095 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
