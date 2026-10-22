@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-055
+> Approved architecture decisions: ARCH-001–ARCH-060
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -78,6 +78,11 @@ Architecture principles:
 | Email deliverability | SPF/DKIM/DMARC, authenticated Resend webhooks and idempotent delivery events | ARCH-053 A |
 | Database performance | Slow-query and connection metrics, EXPLAIN reviews and workload-driven indexes | ARCH-054 A |
 | Privacy architecture | Data inventory, minimization, GDPR rights workflows and auditable handling | ARCH-055 A |
+| Upload validation | Centralized upload policy with module-specific type, size and count limits | ARCH-056 A |
+| Malware protection | Private quarantine and asynchronous malware scanning before authorized access | ARCH-057 A |
+| Encryption | Provider-managed at-rest encryption and TLS, selective application-level encryption for justified high-risk data | ARCH-058 A |
+| Operations monitoring | Sentry and provider metrics with actionable alerts and recovery procedures | ARCH-059 A |
+| Release readiness | Risk-proportionate release checklist plus mandatory automated CI and deployment gates | ARCH-060 A |
 
 ## 3. Logical system architecture
 
@@ -150,7 +155,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
 - Persist domain changes and outbox events atomically in PostgreSQL. Dispatch pending events reliably to Trigger.dev or integrations; use at-least-once-safe, idempotent consumers and track dispatch progress. The outbox is an event handoff, **not** a duplicate Trigger.dev job execution ledger.
-- PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.\n- Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); tune indexes based on observed workload and avoid logging sensitive query values.
+- PostgreSQL search uses full-text/trigram indexes and applies authorization before returning results.
+- Monitor slow queries, connection usage and critical execution plans (EXPLAIN/EXPLAIN ANALYZE in safe environments); tune indexes based on observed workload and avoid logging sensitive query values.
 - Avoid cross-tenant cache leakage: cache keys and invalidation must include the necessary permission scope.
 
 ## 7. API and authentication
@@ -178,8 +184,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 9. Files, offline access and exports
 
 - Separate intentionally public assets (e.g. marketing and approved public imagery) from private wedding documents, guest information and exports using distinct R2 access boundaries, preferably separate buckets or equivalently enforced isolation. Store private-file metadata and access policies in PostgreSQL.
-- Issue short-lived signed upload/download URLs only after server authorization; a previously issued URL may remain valid until expiry.
-- Validate uploaded files and apply appropriate scanning/processing before exposing them.
+- Define a centralized upload policy with module-specific allowed types, maximum sizes and upload counts; validate file metadata and actual content server-side rather than trusting client-provided extensions or MIME types.\n- Issue short-lived signed upload/download URLs only after server authorization; a previously issued URL may remain valid until expiry.
+- Direct incoming uploads into private quarantine. Process asynchronously through controlled Trigger.dev workflows with content validation and malware scanning; promote files for authorized access only after successful checks. On scan failure, timeout or unavailable scanner, keep the file inaccessible and retry or reject according to policy. Scanning implementation/provider remains to be chosen.
 - Use Trigger.dev for longer-running PDF/Excel generation and file processing; authorize again when the job runs.
 - Centralize exports, while implementing imports only for modules explicitly permitted by the product specification.
 - The wedding-day PWA supports explicitly saved, read-only IndexedDB snapshots of the schedule and essential contacts, with version and saved-at/staleness information.
@@ -198,9 +204,10 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 11. Lifecycle, audit, security and observability
 
 - Centralize record lifecycle policies, while honoring module-specific retention, trash, archive, final-notice and deletion requirements in the product specification.
-- Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.\n- Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
-- Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
-- Use privacy-conscious structured logs, Sentry and operational alerts appropriate to the release stage.
+- Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.
+- Maintain a personal-data inventory covering users and non-account wedding guests. Apply data minimization, access restrictions, purpose/retention rules and appropriately verified GDPR access, rectification, portability and erasure workflows, assessing applicable legal exceptions and others' rights; audit request handling.
+- Use provider-managed encryption at rest for PostgreSQL and R2 and TLS in transit. Apply selective application-level field encryption to specifically identified high-risk data when justified, with documented key management and awareness of impacts on searching/indexing. Encryption does not replace scoped authorization.\n- Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
+- Use privacy-conscious structured logs, Sentry and provider metrics for application errors, Trigger.dev job failures, database health, email delivery and critical user journeys. Configure actionable alerts and proportionate escalation/recovery procedures; scrub personal information, secrets, financial data and document content from telemetry.
 - Layer authorization, validation, secure headers, CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
 - Use typed environment configuration and PostgreSQL-backed feature flags with safe defaults and audited changes. Evaluate flags authoritatively on the server, with scoped targeting by environment, organization, wedding or user as appropriate; use permission-aware cache keys and invalidation. Flags never grant permissions.
 
@@ -209,7 +216,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use local development, isolated preview environments and production. Add permanent staging when justified.
 - Isolate databases, secrets, R2 buckets/prefixes and email behavior to avoid preview access to production data or live communications. Use Vercel, GitHub Actions and provider-native secret stores with least-privilege, environment-specific credentials and documented rotation; never commit secrets to Git or expose them to untrusted previews.
 - GitHub Actions validates formatting/linting, types, unit/component/API/security tests, Playwright journeys and migrations. Commit the pnpm lockfile, use Dependabot for reviewed dependency update pull requests, and run automated dependency vulnerability and secret scanning. Keep untrusted pull-request workflows isolated from production secrets.
-- Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout.
+- Vercel hosts the web/API initially; require passing checks before production releases and control migration rollout. Use a formal risk-proportionate release checklist covering relevant automated tests, security, accessibility, migration validation, backup/recovery and critical user journeys. Require enhanced manual review for sensitive schema, authorization and high-impact changes without burdening trivial UI fixes with identical procedures.
 - Document recovery objectives, backup retention and restore procedures for both PostgreSQL and R2; periodically test restoration.
 - Verify provider-specific plan limits and commercial hosting terms before launch.
 - Optimize observed bottlenecks first; introduce independent services only if measured requirements justify them.
@@ -223,14 +230,15 @@ Future architecture decisions should resolve, among other items:
 - Brand-specific design tokens and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
-- Specific GDPR operational procedures, data inventory categories and rights-request verification\n- Mobile token integration details and offline data protections
+- Specific GDPR operational procedures, data inventory categories and rights-request verification
+- Concrete upload limits, malware scanner integration, retry/rejection rules and encryption field selection\n- Alert thresholds, escalation ownership and risk-tiered release checklist criteria\n- Mobile token integration details and offline data protections
 - Deployment migration sequencing, restore objectives and provider plan constraints
 
 These are **not yet approved** and should not be mistaken for settled technology choices.
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-055 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-060 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
