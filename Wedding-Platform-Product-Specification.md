@@ -5846,6 +5846,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 35, Option A — **Only the planner-organization owner** may grant or revoke billing-manager permissions for other eligible organization members. Existing billing managers may manage billing under PHASE1-BIZ-034 but may not appoint, remove, or alter the billing-manager designation of themselves or other members. General organization administrators likewise cannot delegate this role merely by holding administrative or staff-management permissions. Require the owner to explicitly select the affected member and confirm the grant or revocation; apply access changes promptly, record actor, target, action, and timestamp in the organization audit log, and notify the affected member of changes to billing access. Do not allow a billing-manager role change to grant wedding-specific access, organization ownership, or other unrelated permissions. The owner retains billing authority independently of any separate billing-manager designation. Ownership transfer and recovery if the owner is unavailable remain separate decisions.
 
+### PHASE1-BIZ-036 — Suspend inactive staff billing access while preserving designation
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 36, Option A — When a planner-organization staff member is made inactive because of a subscription downgrade or staff-seat limit under PHASE1-BIZ-020 and PHASE1-BIZ-027, **suspend their effective billing-manager access immediately while retaining their assigned billing-manager designation**. An inactive staff member cannot view protected billing information, update payment methods, change subscription tiers, or initiate other billing operations merely because the designation remains stored. If the member is later reactivated within the applicable seat limit, restore billing-manager access only if the organization owner has not revoked the designation in the meantime and the member otherwise satisfies current account and organization-access requirements. The owner can revoke a suspended designation at any time under PHASE1-BIZ-035, and revocation prevents automatic restoration. Show the distinction between 'billing manager — suspended' and an actively authorized billing manager in owner-facing staff management, and audit suspension, restoration, and revocation events. Preserve the organization's essential owner billing controls independently of the seat-limited member. Do not alter couple-owned wedding data, independent couple access, or wedding-specific Premium through billing-role suspension.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7168,6 +7172,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-034 | 2026-10-22 | Authorization to manage planner subscriptions and billing | Organization owner and designated billing managers may manage subscription/billing; other staff excluded (Option B) | Approved |
 
 | PHASE1-BIZ-035 | 2026-10-22 | Authority to appoint or remove planner billing managers | Only organization owner may grant or revoke billing-manager designation (Option A) | Approved |
+
+| PHASE1-BIZ-036 | 2026-10-22 | Billing-manager permissions for staff deactivated by downgrade | Suspend effective billing access while preserving designation for conditional restoration on reactivation (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
