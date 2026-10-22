@@ -5670,6 +5670,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Each Event Attendance part may use one combined capacity limit, with optional separate adult and child limits when needed (Option C — Combined capacity with optional breakdown). Display non-blocking warnings whenever the combined limit or any configured adult or child limit is exceeded. Show confirmed and potential occupancy against applicable limits, consistent with DEC-774 and DEC-775. An unspecified optional limit imposes no constraint for that category.
 
+### DEC-777 — Dashboard-only capacity warnings
+**Status:** Approved
+**Decision:** When an Event Attendance part exceeds a configured combined, adult, or child capacity, show contextual warnings in guest management and relevant dashboard cards only (Option A — Dashboard warnings only). Do not send separate in-app or email notifications. Distinguish confirmed from potential over-capacity, consistent with DEC-775, and keep guest assignments non-blocking per DEC-774.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6904,6 +6908,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-775 | 2026-10-22 | Confirmed and potential capacity indicators | Show confirmed occupancy and potential occupancy including unconfirmed guests separately against the same optional capacity (Option C) | Approved |
 
 | DEC-776 | 2026-10-22 | Combined capacity with optional adult and child breakdown | Combined capacity by default, optional adult/child limits, non-blocking warnings against all configured limits (Option C) | Approved |
+
+| DEC-777 | 2026-10-22 | Dashboard-only capacity warnings | Display capacity warnings in guest management and relevant dashboard cards; no in-app or email notifications (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
