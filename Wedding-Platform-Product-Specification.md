@@ -5706,6 +5706,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** When a member opens the guest-list export dialog, preselect the filters currently active in guest management (Option B — Use current filters by default). Before generating a PDF or Excel export, show the selected filters clearly and allow the member to review, modify, or clear them to export all guests. This is a per-export default, not a saved preset (DEC-783), and uses the same guest-management filters approved in DEC-784.
 
+### PHASE1-BIZ-001 — Freemium couples and paid planner subscriptions
+**Status:** Approved
+**Decision:** Adopt a freemium commercial model for couples and paid subscriptions for professional wedding planners (Phase 1 Critical Decision 1, Option C). Couples receive essential wedding-planning functionality free of charge and may upgrade for advanced functionality. Professional planners use dedicated paid subscription plans. Exact free/paid feature boundaries, subscription tiers, prices, billing cadence, trials, and entitlements remain open for separate approval. Previously approved MVP capabilities are not silently restricted by this commercial decision.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6958,6 +6962,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-784 | 2026-10-22 | Guest-list exports match guest-management filters | Use the same available guest-list filters and combinations for PDF/Excel exports (Option C) | Approved |
 
 | DEC-785 | 2026-10-22 | Use current guest-list filters by default when exporting | Preselect active filters in export dialog; allow review, modification, or clearing before export (Option B) | Approved |
+
+| PHASE1-BIZ-001 | 2026-10-22 | Business model | Freemium couples and paid planner subscriptions (Option C); tier details pending | Approved |
 
 ## 10. Document maintenance rules
 
