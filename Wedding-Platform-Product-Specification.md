@@ -5674,6 +5674,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** When an Event Attendance part exceeds a configured combined, adult, or child capacity, show contextual warnings in guest management and relevant dashboard cards only (Option A — Dashboard warnings only). Do not send separate in-app or email notifications. Distinguish confirmed from potential over-capacity, consistent with DEC-775, and keep guest assignments non-blocking per DEC-774.
 
+### DEC-778 — Event Attendance capacity editing permissions
+**Status:** Approved
+**Decision:** Any wedding member with Edit access to Guests may set, change, or remove Event Attendance capacity limits (Option B — Anyone with guest-editing permission). This applies to combined capacities and optional adult and child limits, for default and custom event parts. Capacity editing does not require separate couple-granted Event Attendance management permission; ordinary guest-editing access is sufficient. Existing non-blocking capacity warning rules remain unchanged.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6910,6 +6914,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-776 | 2026-10-22 | Combined capacity with optional adult and child breakdown | Combined capacity by default, optional adult/child limits, non-blocking warnings against all configured limits (Option C) | Approved |
 
 | DEC-777 | 2026-10-22 | Dashboard-only capacity warnings | Display capacity warnings in guest management and relevant dashboard cards; no in-app or email notifications (Option A) | Approved |
+
+| DEC-778 | 2026-10-22 | Event Attendance capacity editing permissions | Any member with Edit access to Guests may manage capacity limits (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
