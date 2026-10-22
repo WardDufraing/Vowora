@@ -5686,6 +5686,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Show a compact guest attendance summary card on the couple's main wedding dashboard with relevant Event Attendance capacity warnings and a direct link to detailed guest management (Option B — Compact dashboard summary). Keep per-part confirmed/potential occupancy, remaining places, and full capacity breakdown in guest management rather than displaying every part's detail on the main dashboard. Respect existing dashboard personalization and guest-data access permissions.
 
+### DEC-781 — Event Attendance capacity warnings within individual weddings only
+**Status:** Approved
+**Decision:** Professional planners see Event Attendance capacity warnings only within an individual wedding workspace, after opening that wedding (Option A — Individual wedding only). Do not display cross-wedding capacity warning indicators or detailed capacity statistics on the multi-wedding planner dashboard. Within each wedding, retain the approved guest-management capacity indicators and dashboard summary, subject to the planner's access permissions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6928,6 +6932,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-779 | 2026-10-22 | Detailed Event Attendance capacity change history | Log actor, time, event part, and previous/new combined or adult/child capacity values (Option C) | Approved |
 
 | DEC-780 | 2026-10-22 | Compact Event Attendance capacity dashboard summary | Compact guest attendance card with capacity warnings and link to detailed guest management (Option B) | Approved |
+
+| DEC-781 | 2026-10-22 | Event Attendance capacity warnings within individual weddings only | Show capacity warnings only after opening a wedding; no cross-wedding indicators or statistics (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
