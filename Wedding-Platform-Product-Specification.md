@@ -5734,6 +5734,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 7, Option A — Offer one fixed one-time price for couple-facing Premium per wedding workspace, independent of wedding size, guest count, or selected Premium features. Do not create multiple couple Premium packages or optional paid feature add-ons under this model. The actual price, applicable taxes/currencies, refunds, and promotional discounts remain open for separate decisions. Eligible planner-funded Premium remains governed by PHASE1-BIZ-005 and PHASE1-BIZ-006.
 
+### PHASE1-BIZ-008 — Fixed €59 couple Premium purchase price
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 8 — Set the standard one-time couple-facing Premium purchase price at **€59 per wedding workspace**, consistent with PHASE1-BIZ-003 and PHASE1-BIZ-007. This is a fixed price for the single Premium package, independent of guest count and wedding size. This approval does not yet establish whether €59 includes VAT, regional tax handling, future pricing changes for new purchases, promotional discounts, or refund terms; these require separate policy decisions. Eligible planner-funded Premium entitlements remain governed by PHASE1-BIZ-005 and PHASE1-BIZ-006, with no additional couple purchase required when granted.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7000,6 +7004,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-006 | 2026-10-22 | Planner-funded Premium grant trigger | Grant lasting wedding Premium when couple claims/accepts wedding and planner relationship (Option B) | Approved |
 
 | PHASE1-BIZ-007 | 2026-10-22 | Couple Premium pricing strategy | Single fixed one-time Premium price per wedding; amount to be set separately (Option A) | Approved |
+
+| PHASE1-BIZ-008 | 2026-10-22 | Couple Premium price | Fixed one-time price of €59 per wedding; tax and refund policies pending | Approved |
 
 ## 10. Document maintenance rules
 
