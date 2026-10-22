@@ -5642,6 +5642,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Rename a custom Event Attendance part immediately, updating its name everywhere, including existing guest assignments, without additional confirmation (Option A — Rename immediately). Preserve existing assignments and underlying event-part identity.
 
+### DEC-770 — Reordering Event Attendance parts
+**Status:** Approved
+**Decision:** Authorized members can drag and drop all Event Attendance parts, including Ceremony, Reception, Dinner, Dance Party, and custom parts, into any display order (Option B — Fully customizable order). Reordering changes presentation order only and preserves existing guest assignments and event-part identity.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6862,6 +6866,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-768 | 2026-10-22 | Removing assigned custom Event Attendance parts | Guided impact review, bulk reassignment, preview, and explicit confirmation (Option C) | Approved |
 
 | DEC-769 | 2026-10-22 | Renaming custom Event Attendance parts | Rename immediately everywhere without additional confirmation; preserve guest assignments (Option A) | Approved |
+
+| DEC-770 | 2026-10-22 | Reordering Event Attendance parts | Authorized members may freely drag and drop default and custom event parts; guest assignments remain unchanged (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
