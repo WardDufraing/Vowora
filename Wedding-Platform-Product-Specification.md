@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 130.0  
+**Version:** 131.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -33,7 +33,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 ## 4. Proposed modules — not yet approved for MVP
 
 ### 4.1 Wedding overview
-**MVP scope:** Include the approved combined couple-facing overview of tasks, budget, guests, decisions, milestones, and countdown (DEC-330). **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); show all past-due incomplete milestones first in the milestones card, followed by the next 3 upcoming milestones (DEC-628), with their dates and progress (DEC-287, DEC-627); and show Open and Deferred decisions, with links to review them (DEC-288, DEC-485). Past-due milestones appear in the timeline and dashboard without a notification when they become past due (DEC-626). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
+**MVP scope:** Include the approved combined couple-facing overview of tasks, budget, guests, decisions, milestones, and countdown (DEC-330). **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows overdue tasks and the next few upcoming tasks (DEC-282). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); show all past-due incomplete milestones first in the milestones card, followed by the next 3 incomplete upcoming milestones (DEC-628, DEC-629), with their dates and progress (DEC-287, DEC-627); and show Open and Deferred decisions, with links to review them (DEC-288, DEC-485). Past-due milestones appear in the timeline and dashboard without a notification when they become past due (DEC-626). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
 **MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
@@ -5064,6 +5064,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Show all past-due incomplete milestones, followed by the next three upcoming milestones.
 
+### DEC-629 — Completed milestones in the dashboard card
+**Status:** Approved
+**Decision:** Exclude completed milestones from the next three upcoming milestones shown on the dashboard card; show only incomplete upcoming milestones.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6020,6 +6024,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-626 | 2026-10-22 | Notification when a milestone becomes past due | No notification; show flag in timeline and dashboard | Approved |
 | DEC-627 | 2026-10-22 | Dashboard milestones ordering | Past-due incomplete milestones first, then next upcoming milestones | Approved |
 | DEC-628 | 2026-10-22 | Dashboard milestones card limit | Show all past-due incomplete milestones, then the next 3 upcoming | Approved |
+| DEC-629 | 2026-10-22 | Completed milestones in dashboard card | Exclude completed milestones; show only incomplete upcoming milestones | Approved |
 
 ## 10. Document maintenance rules
 
