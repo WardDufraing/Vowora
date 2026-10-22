@@ -5750,6 +5750,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 11, Option B — Apply balanced initial capacity limits to the three recurring professional planner tiers: **Solo: 1 staff member and 10 active weddings; Studio: 5 staff members and 30 active weddings; Agency: 20 staff members and 100 active weddings**. These are maximum simultaneous allowances per subscribed planner organization, not lifetime wedding totals. The precise definition of active wedding, counting of invited versus active staff, limit enforcement, grandfathering, and upgrade/downgrade handling remain to be specified. Planner-funded couple Premium entitlements already validly granted must remain intact if the planner reaches a limit or downgrades, consistent with PHASE1-BIZ-005 and PHASE1-BIZ-006.
 
+### PHASE1-BIZ-012 — Balanced monthly planner subscription prices
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 12, Option B — Set initial standard monthly professional planner subscription prices at **Solo €29/month, Studio €79/month, and Agency €149/month, excluding applicable VAT**. These prices correspond to the capacity limits approved in PHASE1-BIZ-011 (Solo: 1 staff/10 active weddings; Studio: 5 staff/30 active weddings; Agency: 20 staff/100 active weddings). These are approved initial pricing assumptions, subject to validation with prospective planners before launch; no annual billing discount, free trial, promotions, or future price adjustment policy is implied by this decision. Taxes must be calculated and disclosed according to applicable requirements. Planner-funded couple Premium remains governed by PHASE1-BIZ-005 and PHASE1-BIZ-006.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7024,6 +7028,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-010 | 2026-10-22 | Professional planner subscription tier lineup | Three tiers: Solo, Studio, Agency (Option B) | Approved |
 
 | PHASE1-BIZ-011 | 2026-10-22 | Planner subscription capacity limits | Solo 1 staff/10 active weddings; Studio 5/30; Agency 20/100 (Option B) | Approved |
+
+| PHASE1-BIZ-012 | 2026-10-22 | Monthly planner subscription pricing | Solo €29, Studio €79, Agency €149 per month, excluding applicable VAT (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
