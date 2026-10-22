@@ -5694,6 +5694,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** When exporting the wedding guest list to PDF or Excel, allow the exporting member to optionally include an Event Attendance capacity summary (Option B — Optional capacity summary). For each applicable event part, the summary shows configured combined and optional adult/child limits, confirmed and potential occupancy, remaining places, and non-blocking capacity warnings. Omit this summary when the option is not selected; preserve the ordinary guest-list export and existing export access permissions.
 
+### DEC-783 — No saved guest-list export presets
+**Status:** Approved
+**Decision:** Guest-list exports do not support saved export presets (Option A — No saved presets). Each time a member exports the guest list, they choose the PDF or Excel format, applicable filters, and whether to include the optional Event Attendance capacity summary approved in DEC-782. Do not create personal or wedding-shared guest-list export presets. This decision is specific to guest-list exports and does not change separately approved financial report presets.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6940,6 +6944,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-781 | 2026-10-22 | Event Attendance capacity warnings within individual weddings only | Show capacity warnings only after opening a wedding; no cross-wedding indicators or statistics (Option A) | Approved |
 
 | DEC-782 | 2026-10-22 | Optional capacity summary in guest-list exports | Optional PDF/Excel capacity summary with confirmed/potential occupancy, limits, remaining places, and warnings (Option B) | Approved |
+
+| DEC-783 | 2026-10-22 | No saved guest-list export presets | Choose format, filters, and optional capacity summary for each export; no saved presets (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
