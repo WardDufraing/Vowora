@@ -5658,6 +5658,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Display confirmed and unconfirmed adult and child headcounts separately for each Event Attendance part, alongside an overall unique-person summary that counts each guest once even when they attend multiple parts (Option C — Detailed totals with overall summary). Preserve the distinction between event-part totals (which can overlap) and the overall unique guest count, and follow the existing group-level confirmation rules.
 
+### DEC-774 — Optional Event Attendance capacity tracking
+**Status:** Approved
+**Decision:** Allow an optional maximum guest capacity for each Event Attendance part (Option B — Optional capacity tracking). Show the remaining number of places based on the part's assigned headcount and warn when the capacity is exceeded, without blocking guest assignments. Capacities are optional and independently configurable for each part; counts follow the approved group and adult/child attendance model.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6886,6 +6890,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-772 | 2026-10-22 | Restoring hidden Event Attendance parts | Both partners may restore; planners require couple-granted Event Attendance management permission and guest-management access (Option C) | Approved |
 
 | DEC-773 | 2026-10-22 | Detailed Event Attendance totals with overall summary | Per-part confirmed/unconfirmed adult/child counts plus overall unique-person summary, avoiding double counting (Option C) | Approved |
+
+| DEC-774 | 2026-10-22 | Optional Event Attendance capacity tracking | Optional per-part maximum, remaining places, and non-blocking over-capacity warning (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
