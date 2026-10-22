@@ -5678,6 +5678,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Any wedding member with Edit access to Guests may set, change, or remove Event Attendance capacity limits (Option B — Anyone with guest-editing permission). This applies to combined capacities and optional adult and child limits, for default and custom event parts. Capacity editing does not require separate couple-granted Event Attendance management permission; ordinary guest-editing access is sufficient. Existing non-blocking capacity warning rules remain unchanged.
 
+### DEC-779 — Detailed Event Attendance capacity change history
+**Status:** Approved
+**Decision:** Record each creation, update, or removal of an Event Attendance capacity limit in the wedding's activity history (Option C — Detailed change history). Each entry identifies the actor, timestamp, affected event part and capacity category (combined, adult, or child), and previous and new values, including transitions between configured and unset limits. Apply existing guest-management activity visibility rules.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6916,6 +6920,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-777 | 2026-10-22 | Dashboard-only capacity warnings | Display capacity warnings in guest management and relevant dashboard cards; no in-app or email notifications (Option A) | Approved |
 
 | DEC-778 | 2026-10-22 | Event Attendance capacity editing permissions | Any member with Edit access to Guests may manage capacity limits (Option B) | Approved |
+
+| DEC-779 | 2026-10-22 | Detailed Event Attendance capacity change history | Log actor, time, event part, and previous/new combined or adult/child capacity values (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
