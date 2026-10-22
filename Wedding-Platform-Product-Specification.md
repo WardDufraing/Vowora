@@ -5762,6 +5762,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 14, Option B — New professional planner organizations may evaluate their selected Solo, Studio, or Agency tier through a **14-day free trial**, with access to that tier's professional features and capacity limits during the trial, subject to anti-abuse safeguards. Trial duration is 14 calendar days; no charge is due solely for starting the trial. Trial eligibility, payment-method requirements, conversion, expiration behavior, and anti-abuse restrictions must be specified before launch. In particular, whether trial accounts can grant lasting wedding-specific couple Premium under PHASE1-BIZ-005 and PHASE1-BIZ-006 remains unresolved and must not be presumed approved.
 
+### PHASE1-BIZ-015 — Lasting couple Premium requires paid planner subscription
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 15, Option B — A planner organization using a 14-day free trial may demonstrate and evaluate Premium capabilities but **cannot grant a lasting wedding-specific Premium entitlement to a couple while on trial**. Such an entitlement is granted only after the organization activates an eligible paid Solo, Studio, or Agency subscription **and** the couple has claimed/accepted the wedding and explicitly accepted the planner relationship under PHASE1-BIZ-006. A trial alone, even with couple acceptance, is insufficient. Once validly granted following paid activation, the couple retains Premium for that wedding after planner departure or subscription cancellation under PHASE1-BIZ-005. Trial demonstration must not misrepresent temporary access as permanent; any trial-only access or limits must be clearly communicated. Exact trial-expiration handling remains to be defined.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7042,6 +7046,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-013 | 2026-10-22 | Professional planner annual billing | Monthly or annual; annual price equals 10 monthly payments (two months free): Solo €290, Studio €790, Agency €1,490, excluding VAT (Option B) | Approved |
 
 | PHASE1-BIZ-014 | 2026-10-22 | Professional planner trial | 14-day free trial of selected planner tier, with anti-abuse safeguards (Option B) | Approved |
+
+| PHASE1-BIZ-015 | 2026-10-22 | Trial planner entitlement to grant lasting couple Premium | Only after eligible paid subscription activation and couple acceptance; trial cannot grant lasting Premium (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
