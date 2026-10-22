@@ -5730,6 +5730,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 6, Option B — Grant the wedding-specific, lasting couple-facing Premium entitlement funded by an eligible subscribed professional planner only when the couple has claimed or accepted the wedding and explicitly accepted the planner relationship. Merely creating a wedding or assigning a planner before couple acceptance does not grant lasting Premium. No minimum active relationship waiting period is required. Once validly granted, Premium remains available to the couple for that wedding after the planner exits or their subscription ends, under PHASE1-BIZ-005 and applicable wedding data lifecycle rules. Eligibility validation and anti-abuse enforcement must not silently revoke already validly granted entitlements.
 
+### PHASE1-BIZ-007 — Single fixed one-time couple Premium price
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 7, Option A — Offer one fixed one-time price for couple-facing Premium per wedding workspace, independent of wedding size, guest count, or selected Premium features. Do not create multiple couple Premium packages or optional paid feature add-ons under this model. The actual price, applicable taxes/currencies, refunds, and promotional discounts remain open for separate decisions. Eligible planner-funded Premium remains governed by PHASE1-BIZ-005 and PHASE1-BIZ-006.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6994,6 +6998,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-005 | 2026-10-22 | Planner-managed wedding Premium | Eligible planner subscription grants wedding-specific Premium retained by couple after planner exits or subscription ends (Option C) | Approved |
 
 | PHASE1-BIZ-006 | 2026-10-22 | Planner-funded Premium grant trigger | Grant lasting wedding Premium when couple claims/accepts wedding and planner relationship (Option B) | Approved |
+
+| PHASE1-BIZ-007 | 2026-10-22 | Couple Premium pricing strategy | Single fixed one-time Premium price per wedding; amount to be set separately (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
