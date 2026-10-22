@@ -5794,6 +5794,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 22, Option A — A professional planner organization may upgrade from its current paid subscription tier to a higher tier **immediately during an active billing period**. Upon successful collection or authorization of the prorated upgrade charge, activate the higher tier's features, active-wedding capacity, and active-staff allowance without waiting for renewal. Charge the prorated difference between the higher and lower tier prices for the unused remainder of the **existing** billing period, using the applicable monthly or annual plan pricing and tax treatment. Preserve the current renewal date and billing cadence; do not restart a full billing period solely because of the upgrade. Show the amount due, applicable taxes, effective date, and new limits before confirmation, and provide a receipt. Do not activate unpaid upgrade entitlements if the payment fails; maintain existing paid-tier access and allow retry subject to subscription-status rules. Existing wedding access, couple-owned data, and valid wedding-specific Premium are not reduced by the upgrade. If a scheduled downgrade is pending, its interaction with an immediate upgrade must be resolved separately. This rule complements end-of-period downgrades under PHASE1-BIZ-021.
 
+### PHASE1-BIZ-023 — Voluntary planner cancellation at paid-period end
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 23, Option B — When a professional planner voluntarily cancels a paid subscription, **schedule cancellation for the end of the already-paid monthly or annual billing period**. Stop automatic renewal, but retain the organization's current paid tier, features, active-wedding capacity, and staff-seat allowances through the paid-through date, subject to ordinary permissions and account status. Show and confirm the effective cancellation date and that no additional renewal will be charged. Do not issue a prorated refund solely for voluntary cancellation. At paid-period end, transition to the existing planner subscription-expiry policy in PHASE1-BIZ-016, including its 14-day grace period followed by read-only planner access if no paid subscription is restored. Do not delete or revoke couple-owned wedding data, couples' independent access, or previously validly granted wedding-specific Premium. Any statutory refund/withdrawal rights and exceptional billing corrections take precedence where applicable. Treatment of pending downgrades, cancellation reversal before effective date, and billing retry edge cases remain to be decided separately.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7090,6 +7094,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-021 | 2026-10-22 | Planner subscription downgrade effective date | Apply downgrade at end of current paid billing period; preserve existing tier until then (Option B) | Approved |
 
 | PHASE1-BIZ-022 | 2026-10-22 | Planner subscription upgrade timing and billing | Activate higher tier immediately upon successful prorated payment; keep existing renewal date (Option A) | Approved |
+
+| PHASE1-BIZ-023 | 2026-10-22 | Voluntary planner subscription cancellation | Stop renewal; retain paid tier until paid-period end, then apply expiry policy without routine prorated refund (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
