@@ -5772,7 +5772,11 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 ### PHASE1-BIZ-017 — Planning and upcoming weddings count toward planner capacity
 **Status:** Approved
-**Decision:** Phase 1 Critical Decision 17, Option B — Planner tier capacity limits count **planning and upcoming weddings** as active weddings. A wedding occupies one active-wedding slot while it is being planned or awaiting its wedding date, irrespective of how recently its data was edited. Completed weddings may be archived and retained as historical records without occupying a planner subscription slot. Archiving must not delete couple-owned data, remove previously validly granted wedding-specific Premium, or grant planners access beyond the couple's permissions. Exact lifecycle states, completion and archiving transitions, and handling of archived weddings that resume active planning must be defined consistently with existing wedding lifecycle rules. This definition applies to the Solo 10, Studio 30, and Agency 100 simultaneous active-wedding limits under PHASE1-BIZ-011.
+**Decision:** Phase 1 Critical Decision 17, Option B — Planner tier capacity limits count **planning and upcoming weddings** as active weddings. A wedding occupies one active-wedding slot while it is being planned or awaiting its wedding date, irrespective of how recently its data was edited. Completed weddings may be archived and retained as historical records without occupying a planner subscription slot. Archiving must not delete couple-owned data, remove previously validly granted wedding-specific Premium, or grant planners access beyond the couple's permissions. Exact lifecycle states and completion/archiving transitions remain to be defined consistently with existing wedding lifecycle rules. Planner-initiated reactivation at full capacity is blocked under PHASE1-BIZ-018. This definition applies to the Solo 10, Studio 30, and Agency 100 simultaneous active-wedding limits under PHASE1-BIZ-011.
+
+### PHASE1-BIZ-018 — Block archived-wedding reactivation at planner capacity
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 18, Option A — When a professional planner organization is already at its subscription tier's active-wedding limit, **block reactivation of an archived wedding** into active planning. Explain that the active-wedding capacity has been reached and offer the planner a choice to archive or otherwise free an eligible active-wedding slot, or upgrade to a tier with sufficient capacity, before retrying. Do not silently reactivate the wedding, permit temporary over-capacity, or create a read-only reactivated state as a workaround. Keep the archived wedding and its historical records intact while reactivation is blocked. This capacity restriction governs planner-managed reactivation and must not remove couple-owned data, previously validly granted wedding-specific Premium, or the couple's independent access. Count the wedding toward capacity once reactivation succeeds, consistent with PHASE1-BIZ-011 and PHASE1-BIZ-017. Exact permissions and any couple-initiated reopening flows remain subject to separate lifecycle decisions.
 
 ## 7. Proposed experience principles — pending validation
 
@@ -7060,6 +7064,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-016 | 2026-10-22 | Planner subscription expiry behavior | 14-day grace period, then authorized planner access read-only until paid restoration; couples retain access and Premium (Option B) | Approved |
 
 | PHASE1-BIZ-017 | 2026-10-22 | Definition of active wedding for planner capacity | Planning and upcoming weddings count; completed archived weddings do not (Option B) | Approved |
+
+| PHASE1-BIZ-018 | 2026-10-22 | Reactivating archived weddings at planner capacity | Block reactivation until an active slot is freed or the planner upgrades; preserve archived records (Option A) | Approved |
 
 ## 10. Document maintenance rules
 
