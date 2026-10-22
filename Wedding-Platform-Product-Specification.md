@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 136.0  
+**Version:** 137.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -33,7 +33,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 ## 4. Proposed modules — not yet approved for MVP
 
 ### 4.1 Wedding overview
-**MVP scope:** Include the approved combined couple-facing overview of tasks, budget, guests, decisions, milestones, and countdown (DEC-330). **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows all overdue tasks, then the next three incomplete upcoming tasks (DEC-282, DEC-631, DEC-632). Each task shows its title, due date, status, and owner (DEC-634). If there are no overdue or upcoming incomplete tasks, show “You’re all caught up” and link to the task list (DEC-633). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); show all past-due incomplete milestones first in the milestones card, followed by the next 3 incomplete upcoming milestones (DEC-628, DEC-629), with their dates and progress (DEC-287, DEC-627); when there are no past-due or upcoming incomplete milestones, show “All milestones are complete” with a link to the timeline (DEC-630); and show Open and Deferred decisions, with links to review them (DEC-288, DEC-485). Past-due milestones appear in the timeline and dashboard without a notification when they become past due (DEC-626). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
+**MVP scope:** Include the approved combined couple-facing overview of tasks, budget, guests, decisions, milestones, and countdown (DEC-330). **Approved dashboard direction (DEC-037):** The couple-facing wedding workspace opens on a combined overview of wedding countdown, upcoming tasks, budget status, guest progress, important decisions, and planning milestones. The tasks card shows all overdue tasks, then the next three incomplete upcoming tasks (DEC-282, DEC-631, DEC-632). Order overdue tasks by oldest due date first (DEC-635). Each task shows its title, due date, status, and owner (DEC-634). If there are no overdue or upcoming incomplete tasks, show “You’re all caught up” and link to the task list (DEC-633). The budget card summarizes total budget, committed costs, amount paid, and upcoming payments (DEC-283). The guest-progress card shows confirmed headcount and confirmation progress with adult/child totals (DEC-284). Each summary should lead to its corresponding detailed area when available. Start with the same fixed dashboard layout for both partners. Each partner may independently rearrange their own view; the underlying wedding data remains shared (DEC-285). Show the wedding date and days remaining (DEC-286); show all past-due incomplete milestones first in the milestones card, followed by the next 3 incomplete upcoming milestones (DEC-628, DEC-629), with their dates and progress (DEC-287, DEC-627); when there are no past-due or upcoming incomplete milestones, show “All milestones are complete” with a link to the timeline (DEC-630); and show Open and Deferred decisions, with links to review them (DEC-288, DEC-485). Past-due milestones appear in the timeline and dashboard without a notification when they become past due (DEC-626). Provide quick actions to add a task, guest, vendor, or budget item (DEC-289). Helpers and coordinators see the same overview filtered to information their role allows them to access (DEC-290). Exact content thresholds and remaining permissions details remain open. This decision approves the dashboard composition, not the MVP inclusion of every underlying module. The separate multi-wedding professional planner dashboard follows the combined portfolio and action-center direction approved in DEC-038.
 
 ### 4.2 Budget and payments
 **MVP scope:** Include itemized cost tracking for quotes, deposits, due dates, and payments (DEC-328). Advanced reporting and other behavior outside this core tracking remain subject to their own scope decisions. Track an overall budget and category allocations alongside individual cost records, quotes, deposits, due dates, and payments. Present clear planned-versus-actual summaries without requiring accounting-ledger complexity (DEC-197).
@@ -5088,6 +5088,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Show each task’s title, due date, status, and owner in the dashboard tasks card.
 
+### DEC-635 — Ordering overdue tasks on the dashboard
+**Status:** Approved
+**Decision:** Order overdue tasks in the dashboard card by due date, with the oldest due date first.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6050,6 +6054,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-632 | 2026-10-22 | Completed tasks in dashboard upcoming list | Exclude completed tasks; show only incomplete upcoming tasks | Approved |
 | DEC-633 | 2026-10-22 | Empty state for dashboard tasks card | Show “You’re all caught up” and link to the task list | Approved |
 | DEC-634 | 2026-10-22 | Task details in dashboard card | Show title, due date, status, and owner | Approved |
+| DEC-635 | 2026-10-22 | Ordering overdue dashboard tasks | Oldest due date first | Approved |
 
 ## 10. Document maintenance rules
 
