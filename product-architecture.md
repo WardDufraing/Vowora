@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-045
+> Approved architecture decisions: ARCH-001–ARCH-050
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -68,6 +68,11 @@ Architecture principles:
 | R2 asset boundaries | Separate intentionally public assets from private documents and exports | ARCH-043 A |
 | Session security | Managed secure sessions, device/session listing and revocation, sensitive-action reauthentication; optional MFA capability | ARCH-044 A |
 | Error handling | Typed domain errors, standardized safe API responses and correlation IDs | ARCH-045 A |
+| Rate limiting | Managed distributed limits by IP, identity, route and sensitive action; provision as needed | ARCH-046 A |
+| Sensitive operations | Centralized classification, authorization, reauthentication, confirmation and audit | ARCH-047 A |
+| Database connections | Neon serverless-compatible pooled connection strategy with bounded transactions | ARCH-048 A |
+| Audit integrity | Append-only scoped audit events with privacy-aware content and product-defined retention | ARCH-049 A |
+| Feature rollout | Server-authoritative scoped flags, safe caching and audited changes | ARCH-050 A |
 
 ## 3. Logical system architecture
 
@@ -128,13 +133,14 @@ Organize modules around product capabilities, including:
 - Notifications, email, exports, audit and retention
 - Dashboards and authorized search
 
-Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Feature flags never confer permission.
+Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
 
 ## 6. Persistence and consistency
 
-- Neon PostgreSQL is the transactional system of record.
+- Neon PostgreSQL is the transactional system of record. Use a supported serverless-compatible pooled connection strategy for Vercel, with environment-specific connection limits and bounded transactions. Verify the selected driver supports Drizzle, Better Auth, and transactional outbox operations before implementation.
 - Drizzle schema and reviewed, version-controlled migrations define database changes.
-- Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.\n- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
+- Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.
+- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
 - Use appropriate foreign keys, constraints, indexes and transactions.
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
@@ -145,7 +151,8 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 7. API and authentication
 
 - REST endpoints are versioned from the outset (initially /api/v1).
-- Use typed domain errors mapped to standardized HTTP responses with stable machine-readable codes, correlation IDs and safe user-facing messages. Keep sensitive diagnostics in protected logs and Sentry.\n- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
+- Use typed domain errors mapped to standardized HTTP responses with stable machine-readable codes, correlation IDs and safe user-facing messages. Keep sensitive diagnostics in protected logs and Sentry.
+- Define Zod validation, OpenAPI descriptions and stable error conventions. Use cursor pagination for large/changing collections, validated typed filters/sorts, deterministic order with a unique tie-breaker, and consistent response envelopes; simpler bounded queries may be used where appropriate.
 - Support future Expo clients without depending on browser-only Server Actions.
 - Use Better Auth or an approved equivalent; confirm Neon/Drizzle integration and native client support before implementation.
 - Web uses secure HTTP-only cookie sessions with relevant CSRF protections. Implement supported device/session visibility and revocation and reauthentication for sensitive actions; optional MFA is a capability, not a newly mandated product policy. Verify Better Auth support and adapter behavior before implementation.
@@ -187,10 +194,10 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 
 - Centralize record lifecycle policies, while honoring module-specific retention, trash, archive, final-notice and deletion requirements in the product specification.
 - Coordinate deletion of relational data, R2 files, exports and snapshots; use auditable, retry-safe cleanup.
-- Maintain a product audit trail distinct from diagnostic logging.
+- Maintain a product audit trail distinct from diagnostic logging. Use append-only audit events with actor, action, resource/target, time and appropriately redacted change context; restrict access by scope and apply product-approved retention, deletion and anonymization. Append-only is not indefinite retention.
 - Use privacy-conscious structured logs, Sentry and operational alerts appropriate to the release stage.
-- Layer authorization, validation, secure headers, CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows.
-- Use typed environment configuration; feature flags may be stored in PostgreSQL with safe defaults and audited changes.
+- Layer authorization, validation, secure headers, CSRF protection as applicable, rate limits, upload protections and Cloudflare Turnstile on abuse-prone flows. Use managed distributed rate limiting with policies by IP, authenticated identity, route and sensitive operation; defer provisioning until required, and fail safely for abuse-sensitive endpoints.
+- Use typed environment configuration and PostgreSQL-backed feature flags with safe defaults and audited changes. Evaluate flags authoritatively on the server, with scoped targeting by environment, organization, wedding or user as appropriate; use permission-aware cache keys and invalidation. Flags never grant permissions.
 
 ## 12. Environments, CI/CD and recovery
 
@@ -205,12 +212,12 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 13. Implementation decisions still open
 
 Future architecture decisions should resolve, among other items:
-- Database naming, identifiers, timestamps and schema conventions
-- Authorization policy representation and evaluation
-- API pagination/filtering/error envelopes
-- Transactional event delivery and consistency across database and external services
-- Design system, component conventions and visual tokens
-- Exact rate-limiting and feature-flag implementation
+- Detailed policy storage and sensitive-action reauthentication thresholds
+- API cursor encoding, filtering syntax and error envelope fields
+- Outbox dispatcher scheduling, retention, recovery and monitoring
+- Brand-specific design tokens and responsive component specifications
+- Managed rate-limit provider, concrete thresholds and failover behavior
+- Feature flag storage schema, targeting precedence and cache invalidation
 - Mobile token integration details and offline data protections
 - Deployment migration sequencing, restore objectives and provider plan constraints
 
@@ -218,7 +225,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-045 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-050 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
