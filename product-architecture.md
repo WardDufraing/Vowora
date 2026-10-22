@@ -2,7 +2,7 @@
 
 > Status: Living architecture specification
 > Last updated: 2026-10-22
-> Approved architecture decisions: ARCH-001–ARCH-075
+> Approved architecture decisions: ARCH-001–ARCH-080
 > Source of truth for product behavior: [Wedding-Platform-Product-Specification.md](./Wedding-Platform-Product-Specification.md)
 > Scope: Architecture and implementation guidance, not changes to approved product requirements.
 
@@ -98,6 +98,11 @@ Architecture principles:
 | Complex tables | TanStack Table with accessible shared patterns and server-side large-list operations | ARCH-073 A |
 | Navigation state | Validated URL-driven shareable view state without sensitive data | ARCH-074 A |
 | Frontend performance | Core Web Vitals and interaction budgets with measured optimizations | ARCH-075 A |
+| Authorization verification | Permission matrix and real cross-tenant tests across APIs, search, files, exports and jobs | ARCH-076 A |
+| Theme tokens | Semantic CSS variables and shared design tokens supporting light/dark themes | ARCH-077 A |
+| Localization formatting | next-intl and Intl formatting with locale preferences separate from wedding time zones | ARCH-078 A |
+| Schedule time semantics | Wedding-local wall-clock dates/times, IANA zone and UTC execution instants | ARCH-079 A |
+| Notification policy | Centralized permission-aware recipient/channel/preference/timing resolution and deduplication | ARCH-080 A |
 
 ## 3. Logical system architecture
 
@@ -158,14 +163,14 @@ Organize modules around product capabilities, including:
 - Notifications, email, exports, audit and retention
 - Dashboards and authorized search
 
-Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
+Use explicit wedding and/or organization scope where applicable. Authorization must consider membership, assigned roles, custom permissions, private/shared visibility and current access. Implement a centralized **typed permission engine** expressing resource/action grants, wedding and organization scopes, roles, custom permissions, membership, record ownership and private/shared visibility. Centralize policies and consistently enforce them in queries, mutations, exports, background tasks, search, and file URL issuance. Domain-owned repositories and application services encapsulate scoped Drizzle queries; API handlers must not bypass these boundaries. PostgreSQL RLS is **not** an approved baseline; security tests must compensate for application-enforced isolation. Maintain an explicit permission matrix for roles, custom grants, organization/wedding membership and record visibility, and exercise allowed and denied access with real cross-tenant tests across API mutations/reads, search, exports, file access and background jobs. Feature flags never confer permission. A centralized sensitive-action policy classifies high-impact operations (e.g. ownership transfers, permission changes, exports and permanent deletion) and applies required reauthentication, authorization, explicit confirmation and audit checks without overriding product-approved workflows.
 
 ## 6. Persistence and consistency
 
 - Neon PostgreSQL is the transactional system of record. Use a supported serverless-compatible pooled connection strategy for Vercel, with environment-specific connection limits and bounded transactions. Verify the selected driver supports Drizzle, Better Auth, and transactional outbox operations before implementation.
 - Drizzle schema and reviewed, version-controlled migrations define database changes.
 - Represent financial amounts as integer minor units with explicit ISO 4217 currency codes. Apply currency-specific precision, documented rounding rules for percentages, taxes and allocations, and overflow-safe arithmetic; do not calculate money with binary floating-point.
-- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
+- Model wedding-day wall-clock dates and times with the wedding's IANA time zone, preserving intended local schedule times; represent actual scheduled execution instants in UTC where appropriate and test daylight-saving gaps/overlaps.\n- Use UUIDv7 primary keys, snake_case SQL identifiers, explicit foreign keys, constraints and indexes. Store instants with PostgreSQL timestamptz (UTC semantics); model local wedding dates/times and IANA time zones explicitly to preserve wall-clock meaning across daylight saving transitions. Confirm UUIDv7 generation support in the selected PostgreSQL/runtime configuration.
 - Use appropriate foreign keys, constraints, indexes and transactions.
 - Use optimistic concurrency (version field or equivalent) for conflicting edits; return a consistent conflict response (e.g. HTTP 409) and preserve client input.
 - For multi-step changes, use database transactions where possible; design external side effects for retries and idempotency.
@@ -191,12 +196,15 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 ## 8. Frontend, accessibility and localization
 
 - Next.js App Router for web, with route groups for public, couple and planner experiences and feature-owned UI modules; domain/application rules remain in shared packages. Use Server Components by default for suitable layouts and initial data, and Client Components for interactive tools, forms and dashboards. Coordinate server prefetch/hydration with TanStack Query to avoid duplicate fetching; use TanStack Query for server state, caching and mutation invalidation.
-- Use Tailwind CSS with shadcn/ui and Radix primitives for accessible web components; centralize design tokens, variants and branded patterns. Mobile may share tokens/contracts but needs platform-appropriate UI components.
-- Use TanStack Table with reusable accessible patterns for complex guest, budget, task and vendor tables, including validated sorting, filtering and selection; use server-side pagination/filtering for large collections.\n- Store suitable navigation and shareable view state (wedding selection, non-sensitive filters, sorting and pagination) in validated URL parameters. Never include guest contact details, private notes, credentials or access tokens in URLs; server authorization applies regardless of identifiers in links.\n- Zustand only for appropriate shared client state; local React state for local controls.
+- Use Tailwind CSS with shadcn/ui and Radix primitives for accessible web components; centralize semantic CSS-variable tokens for colors, typography, spacing, radii, states and light/dark themes, plus variants and branded patterns. Avoid hardcoded component colors. Mobile may share tokens/contracts but needs platform-appropriate UI components.
+- Use TanStack Table with reusable accessible patterns for complex guest, budget, task and vendor tables, including validated sorting, filtering and selection; use server-side pagination/filtering for large collections.
+- Store suitable navigation and shareable view state (wedding selection, non-sensitive filters, sorting and pagination) in validated URL parameters. Never include guest contact details, private notes, credentials or access tokens in URLs; server authorization applies regardless of identifiers in links.
+- Zustand only for appropriate shared client state; local React state for local controls.
 - Start with refresh/invalidation for collaboration; add targeted real-time delivery when needed.
 - Target WCAG 2.2 AA through semantic controls, keyboard access, screen reader validation, responsive layouts, automated checks and manual testing. Integrate axe-based and keyboard checks into CI, with scheduled manual screen-reader and real-device checks for critical journeys and complex controls.
-- Use next-intl on web and translation-ready models; share locale conventions and resources where feasible, without coupling mobile to Next.js.
-- Track Core Web Vitals, route bundle sizes and responsiveness of critical planning interactions. Define performance budgets and introduce code splitting, virtualization, prefetching and additional caching based on measured need, while preserving accessibility and authorization.\n- Preserve user-entered text rather than silently translating it.
+- Use next-intl and Intl APIs for locale-aware dates, numbers, currencies and pluralization, with tested translation fallbacks and translation-ready models. Keep individual locale preferences independent from the wedding's IANA time zone; share locale conventions and resources where feasible, without coupling mobile to Next.js.
+- Track Core Web Vitals, route bundle sizes and responsiveness of critical planning interactions. Define performance budgets and introduce code splitting, virtualization, prefetching and additional caching based on measured need, while preserving accessibility and authorization.
+- Preserve user-entered text rather than silently translating it.
 
 ## 9. Files, offline access and exports
 
@@ -216,7 +224,7 @@ Use explicit wedding and/or organization scope where applicable. Authorization m
 - Use stable operation identifiers and idempotent side effects to prevent duplicate actions during retries.
 - Dispatch durable PostgreSQL outbox events to Trigger.dev via a scheduled lightweight polling dispatcher using atomic claims/leases, bounded retries, stuck-event monitoring and recovery; avoid an always-on worker initially. The outbox guarantees a recoverable handoff but does not guarantee exactly-once delivery. Trigger.dev remains the execution-state owner (ARCH-016 B).
 - Recheck access and current policy when scheduled jobs execute, particularly for exports, notifications and deletions.
-- Store in-app notifications in PostgreSQL; derive email delivery from domain events without duplicating inbox entries.
+- Resolve notification recipients, permitted channels, user preferences, timing and deduplication through a centralized policy engine, honoring all product-approved module rules. Recheck authorization at execution time. Store in-app notifications in PostgreSQL as the authoritative inbox; derive email delivery from domain events without duplicating inbox entries.
 - Use Resend and React Email for transactional templates; use Trigger.dev for deferred delivery and retry orchestration. Authenticate the sending domain with SPF, DKIM and an appropriate DMARC policy; verify Resend webhook signatures and process delivery, bounce and complaint events idempotently, with privacy-safe tracking.
 
 ## 11. Lifecycle, audit, security and observability
@@ -248,7 +256,7 @@ Future architecture decisions should resolve, among other items:
 - Detailed policy storage and sensitive-action reauthentication thresholds
 - API cursor encoding, filtering syntax and error envelope fields
 - Outbox polling cadence, lease duration, retention, retry thresholds and monitoring
-- Brand-specific design tokens, route layouts and responsive component specifications
+- Brand-specific token values, route layouts and responsive component specifications
 - Managed rate-limit provider, concrete thresholds and failover behavior
 - Feature flag storage schema, targeting precedence and cache invalidation
 - Specific GDPR operational procedures, data inventory categories and rights-request verification
@@ -262,7 +270,7 @@ These are **not yet approved** and should not be mistaken for settled technology
 
 ## 14. Decision log and maintenance rules
 
-Architecture decisions ARCH-001 through ARCH-075 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
+Architecture decisions ARCH-001 through ARCH-080 are approved in the planning conversation; the table in Section 2 records each selected option. The product specification has its own decision numbering and remains authoritative for product behavior.
 
 For each future approved architecture decision:
 1. Add the decision to the approved stack/decision log.
