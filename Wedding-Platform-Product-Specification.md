@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 212.0  
+**Version:** 213.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -51,7 +51,7 @@ The product should offer a welcoming, simple experience for couples and a more e
 **MVP scope:** Include manually entered contact records with Shared/Private visibility and links to wedding records (DEC-317); the additional contact behavior below remains subject to detailed MVP boundary review. Maintain a central wedding-workspace directory for vendors, venues, planners, guests, helpers, emergency contacts, and other key stakeholders. Contacts are entered manually; device contact import and automatic synchronization are not supported (DEC-260). Contact records include name, role/company, phone, email, address, and notes. A contact may have multiple labeled phone numbers and email addresses, with one phone number or email marked as preferred (DEC-256, DEC-259). Suggest contact types such as Vendor, Venue, Planner, Guest, Helper, and Emergency Contact; allow multiple types per contact and couple-created custom types (DEC-251, DEC-255, DEC-257). Search names, companies, and contact details, and filter by type and linked records (DEC-258). Each contact can be Shared or Private as a whole record, and can link to multiple records within the wedding workspace (DEC-252, DEC-253, DEC-262). Contact records remain separate between wedding workspaces; authorized users may explicitly copy a contact into another workspace, creating an independent record (DEC-261). Archive deleted contacts and preserve their links; require review before permanent deletion (DEC-263). Flag likely duplicate contacts for authorized users to review, link, or merge; never block or merge automatically (DEC-250–254).
 
 ### 4.7 Guest list and attendance tracking
-**MVP scope:** Include all guest tracking behavior defined in this section and DEC-203–209 (DEC-319). Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Show guest groups in one list ordered alphabetically by display name, with event-scope badges (DEC-718). Provide filters for event scope, confirmation status, and dietary labels (DEC-719). Include search across guest and group names (DEC-721). Combine different filter types with AND; when multiple values are selected within one filter type, match any of those values (DEC-720). Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
+**MVP scope:** Include all guest tracking behavior defined in this section and DEC-203–209 (DEC-319). Couples maintain a guest list in the app; the app does not send wedding invitations or guest RSVP links. Each guest entry has a display name or group label, adult and child counts, an event scope, optional dietary labels, and a group-level checkbox to mark confirmation. When the group is confirmed, the couple can adjust its adult and child counts to the number actually attending; these values replace the previous counts, and the app does not keep a separate original headcount. At the top of the list, show the total confirmed headcount, with an adult/child breakdown. Use a single event-scope badge: “Full event” for all events, and a clear combined label such as “Reception + Dinner” for a partial combination, ordered by event sequence. Dietary labels are optional, selected from a default list or created by the couple. Show guest groups in one list ordered alphabetically by display name, with event-scope badges (DEC-718). Provide filters for event scope, confirmation status, and dietary labels (DEC-719). Include search across guest and group names (DEC-721). Move removed guest groups to a 30-day trash with restore available (DEC-722). Combine different filter types with AND; when multiple values are selected within one filter type, match any of those values (DEC-720). Keep guest list access within the wedding workspace and apply its existing permissions (DEC-203–207).
 
 ### 4.8 Documents and notes
 **MVP scope:** Include all defined document and notes behavior (DEC-327). Provide a searchable document library with default categories for contracts, quotes/invoices, receipts, and other documents. Couples may add custom categories, and each document may belong to multiple categories (DEC-230–231, DEC-233). Search covers document titles, categories, linked records, and document notes/descriptions (DEC-232). Documents can link to relevant vendors, budget/finance records, tasks, and other workspace records rather than duplicating them (DEC-226). Choose Shared or Private visibility for each document (DEC-227). Replacing a document replaces the prior file; the library does not retain old file versions (DEC-228). Documents may optionally have an expiry or renewal date and reminder (DEC-234). When a document is replaced, carry its expiry/renewal date and reminder forward, then ask the user to review and confirm them (DEC-235). Deleted documents go to a recoverable 30-day trash (DEC-236). Notes are shared with the wedding workspace (DEC-229), shown in a searchable list with optional categories or tags, and can link to vendors, tasks, documents, and other records (DEC-237–238). Show the latest editor and edit time for a note, without retaining earlier note versions (DEC-239). Support basic note formatting with headings, bullets, and checklists (DEC-240).
@@ -5450,6 +5450,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Allow members to search the guest list by guest and group names.
 
+### DEC-722 — Removing guest groups
+**Status:** Approved
+**Decision:** Move a guest group that is no longer needed to a 30-day trash, with restore available.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6575,6 +6579,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-720 | 2026-10-22 | Combining guest-list filters | AND across filter types; OR among values within one type | Approved |
 
 | DEC-721 | 2026-10-22 | Guest-list search | Search guest and group names | Approved |
+
+| DEC-722 | 2026-10-22 | Removing guest groups | Move to a 30-day trash with restore available | Approved |
 
 ## 10. Document maintenance rules
 
