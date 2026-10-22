@@ -5698,6 +5698,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Guest-list exports do not support saved export presets (Option A — No saved presets). Each time a member exports the guest list, they choose the PDF or Excel format, applicable filters, and whether to include the optional Event Attendance capacity summary approved in DEC-782. Do not create personal or wedding-shared guest-list export presets. This decision is specific to guest-list exports and does not change separately approved financial report presets.
 
+### DEC-784 — Guest-list exports match guest-management filters
+**Status:** Approved
+**Decision:** Guest-list exports support the same filtering options and combinations as the guest-management interface (Option C — Match guest-list filters). Members can apply the available guest-list filters when preparing PDF or Excel exports, including combined filters, rather than a separate reduced export-filter set. Respect guest visibility and export permissions, and make the applied filter criteria clear before generating an export. This does not create saved presets (DEC-783).
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6946,6 +6950,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-782 | 2026-10-22 | Optional capacity summary in guest-list exports | Optional PDF/Excel capacity summary with confirmed/potential occupancy, limits, remaining places, and warnings (Option B) | Approved |
 
 | DEC-783 | 2026-10-22 | No saved guest-list export presets | Choose format, filters, and optional capacity summary for each export; no saved presets (Option A) | Approved |
+
+| DEC-784 | 2026-10-22 | Guest-list exports match guest-management filters | Use the same available guest-list filters and combinations for PDF/Excel exports (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
