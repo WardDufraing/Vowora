@@ -5630,6 +5630,14 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Allow couples to add custom Event Attendance parts alongside the default parts.
 
+### DEC-767 — Permissions for custom Event Attendance parts
+**Status:** Approved
+**Decision:** Both partners may manage custom Event Attendance parts. The couple controls whether planners with appropriate guest-management permissions may create, rename, or remove custom parts (Option C — Configurable permissions).
+
+### DEC-768 — Removing assigned custom Event Attendance parts
+**Status:** Approved
+**Decision:** When removing a custom Event Attendance part with assigned guests, display affected guests and groups, provide guided bulk reassignment to one or more existing event parts, preview the changes, and require explicit confirmation before removal (Option C — Guided removal with reassignment). Prevent accidental loss of attendance information.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6845,6 +6853,9 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | DEC-765 | 2026-10-22 | Default Event Attendance parts | Ceremony, Reception, Dinner, and Dance Party, in that order | Approved |
 
 | DEC-766 | 2026-10-22 | Custom Event Attendance parts | Allow custom parts alongside the defaults | Approved |
+
+| DEC-767 | 2026-10-22 | Permissions for custom Event Attendance parts | Couple controls whether authorized planners may create, rename, or remove custom parts (Option C) | Approved |
+| DEC-768 | 2026-10-22 | Removing assigned custom Event Attendance parts | Guided impact review, bulk reassignment, preview, and explicit confirmation (Option C) | Approved |
 
 ## 10. Document maintenance rules
 
