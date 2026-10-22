@@ -5758,6 +5758,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 13, Option B — Professional planner subscriptions support **monthly billing or annual billing at the equivalent of ten monthly payments (two months free)**. The approved prices, excluding applicable VAT, are: **Solo €29/month or €290/year; Studio €79/month or €790/year; Agency €149/month or €1,490/year**. Annual subscriptions are billed upfront for the year; the standard monthly prices and tier capacity limits remain unchanged. Renewal, cancellation, proration, tier-switching, refunds, and failed-payment handling are not settled by this decision and require separately defined policies. Planner-funded couple Premium entitlements already granted remain lasting under PHASE1-BIZ-005 and PHASE1-BIZ-006.
 
+### PHASE1-BIZ-014 — Fourteen-day professional planner trial
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 14, Option B — New professional planner organizations may evaluate their selected Solo, Studio, or Agency tier through a **14-day free trial**, with access to that tier's professional features and capacity limits during the trial, subject to anti-abuse safeguards. Trial duration is 14 calendar days; no charge is due solely for starting the trial. Trial eligibility, payment-method requirements, conversion, expiration behavior, and anti-abuse restrictions must be specified before launch. In particular, whether trial accounts can grant lasting wedding-specific couple Premium under PHASE1-BIZ-005 and PHASE1-BIZ-006 remains unresolved and must not be presumed approved.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7036,6 +7040,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-012 | 2026-10-22 | Monthly planner subscription pricing | Solo €29, Studio €79, Agency €149 per month, excluding applicable VAT (Option B) | Approved |
 
 | PHASE1-BIZ-013 | 2026-10-22 | Professional planner annual billing | Monthly or annual; annual price equals 10 monthly payments (two months free): Solo €290, Studio €790, Agency €1,490, excluding VAT (Option B) | Approved |
+
+| PHASE1-BIZ-014 | 2026-10-22 | Professional planner trial | 14-day free trial of selected planner tier, with anti-abuse safeguards (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
