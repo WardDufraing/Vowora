@@ -5714,6 +5714,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Use a feature-tiered freemium model for couples (Phase 1 Critical Decision 2, Option A — Free essentials, Premium advanced tools). The Free tier includes essential wedding planning: tasks, guest management, basic budget tracking, contacts, and a basic dashboard. The Premium tier unlocks advanced vendor comparisons, documents, wedding-day schedule coordination, exports, and enhanced planning features. Exact per-feature entitlements, limits, upgrade handling, and plan pricing remain subject to explicit subsequent decisions; this decision defines commercial access tiers, not removal of previously approved functionality from the product MVP. Professional planners continue to have paid subscriptions under PHASE1-BIZ-001.
 
+### PHASE1-BIZ-003 — One-time Premium purchase per wedding
+**Status:** Approved
+**Decision:** Couple Premium is unlocked through a one-time payment per wedding workspace (Phase 1 Critical Decision 3, Option B), not a recurring couple subscription. Premium entitlement is wedding-specific rather than account-wide; a separate wedding requires its own entitlement. Access for the purchased wedding continues according to its wedding lifecycle policy, which must be defined separately. Pricing, refunds, entitlement transfer, access following cancellation or archival, and exact Premium feature limits remain open. Professional planner subscriptions remain recurring under PHASE1-BIZ-001.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -6970,6 +6974,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-001 | 2026-10-22 | Business model | Freemium couples and paid planner subscriptions (Option C); tier details pending | Approved |
 
 | PHASE1-BIZ-002 | 2026-10-22 | Couple Free/Premium boundary | Free essentials; Premium advanced vendor comparisons, documents, schedule coordination, exports and enhanced tools (Option A) | Approved |
+
+| PHASE1-BIZ-003 | 2026-10-22 | Couple Premium payment model | One-time Premium purchase per wedding, lifecycle and pricing details pending (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
