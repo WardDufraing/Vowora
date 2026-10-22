@@ -5770,6 +5770,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 16, Option B — When a professional planner subscription expires or a renewal payment fails, provide a **14-day grace period** to resolve the subscription issue, during which existing professional editing access continues subject to the organization's existing permissions and tier limits. If the subscription is not restored by the end of the grace period, professional access becomes **read-only**: authorized planner staff may view existing weddings and information they were already permitted to see, but cannot edit or create professional wedding data until a qualifying subscription is restored. This billing state must never override a couple's ability to revoke planner access or restrict private information. Couples retain their independent wedding access and any previously validly granted lasting Premium entitlement under PHASE1-BIZ-005 and PHASE1-BIZ-006. No wedding data is automatically deleted merely due to subscription expiry. Grace-period eligibility for voluntary cancellation, notification timing, failed-payment retries, and treatment of plan-limit changes require implementation policy before launch.
 
+### PHASE1-BIZ-017 — Planning and upcoming weddings count toward planner capacity
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 17, Option B — Planner tier capacity limits count **planning and upcoming weddings** as active weddings. A wedding occupies one active-wedding slot while it is being planned or awaiting its wedding date, irrespective of how recently its data was edited. Completed weddings may be archived and retained as historical records without occupying a planner subscription slot. Archiving must not delete couple-owned data, remove previously validly granted wedding-specific Premium, or grant planners access beyond the couple's permissions. Exact lifecycle states, completion and archiving transitions, and handling of archived weddings that resume active planning must be defined consistently with existing wedding lifecycle rules. This definition applies to the Solo 10, Studio 30, and Agency 100 simultaneous active-wedding limits under PHASE1-BIZ-011.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7054,6 +7058,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-015 | 2026-10-22 | Trial planner entitlement to grant lasting couple Premium | Only after eligible paid subscription activation and couple acceptance; trial cannot grant lasting Premium (Option B) | Approved |
 
 | PHASE1-BIZ-016 | 2026-10-22 | Planner subscription expiry behavior | 14-day grace period, then authorized planner access read-only until paid restoration; couples retain access and Premium (Option B) | Approved |
+
+| PHASE1-BIZ-017 | 2026-10-22 | Definition of active wedding for planner capacity | Planning and upcoming weddings count; completed archived weddings do not (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
