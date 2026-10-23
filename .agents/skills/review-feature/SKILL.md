@@ -1,6 +1,6 @@
 ---
 name: review-feature
-description: Independently review a Wedding Planner implementation step against frozen requirements, architecture, UI, security and tests.
+description: Independently review a Vowora implementation step against frozen requirements, architecture, UI, security and tests.
 ---
 
 # Review one Codex step
