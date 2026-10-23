@@ -1,6 +1,6 @@
 # Vowora — Codex Development Plan
 
-**Status:** Implementation roadmap; 66 independently assignable tasks grouped into 22 milestones. All tasks are initially Not started.  
+**Status:** Implementation roadmap; 66 independently assignable tasks grouped into 22 milestones. Original roadmap tasks were initially Not started.
 **Frozen sources:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md`.  
 **Rules:** `AGENTS.md`. **Milestone overview:** `docs/steps/NN.md`. **Agent work order:** `docs/steps/NN-a.md` etc.
 
@@ -25,7 +25,7 @@
 | Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
 | 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
-| 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In progress | [Brief](steps/00-b.md) |
+| 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In review | [Brief](steps/00-b.md) |
 | 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
@@ -98,3 +98,5 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
 
 - 2026-10-23 — 00-a implementation on `feat/00-a-marketing-site`; [handoff and executed checks](implementation/00-a-marketing.md). Fresh foundation and final independent code reviews passed; [draft PR #5](https://github.com/WardDufraing/Vowora/pull/5) is open. GitHub hosted checks cannot start because of owner billing/spending limits; the automatic existing Vercel preview failed with cause unverified. Owner merge, existing Vercel/domain verification and owner-controlled launch remain pending; 00-a is not Done and 01-a remains blocked.
+
+- 2026-10-23 — 00-b owner-requested marketing footer/theme and EN/NL/FR/DE localization on `feat/00-b-marketing-localization`, based on merged PR #5. Local lint/types/build, 26 Chromium tests and six configured metadata checks passed; [handoff](implementation/00-b-marketing-localization.md). Fresh independent review and PR checks pending; no agent merge/deployment.
