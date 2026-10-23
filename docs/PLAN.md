@@ -1,4 +1,4 @@
-# Wedding Planner — Codex Development Plan
+# Vowora — Codex Development Plan
 
 **Status:** Execution roadmap; approved product/architecture/UI baselines are frozen for ordinary implementation.  
 **Authority:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md` (UI/VIS/FINAL approvals).  
