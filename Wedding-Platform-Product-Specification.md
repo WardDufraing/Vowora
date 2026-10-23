@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.6  
+**Version:** 259.7  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7301,6 +7301,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) An archived linked record is listed under Archived, not mixed with active links; (2) authorized users can navigate to it only when the source module permits; (3) restoration returns it to the active section; (4) archive alone preserves the link and does not change financial obligations; (5) restricted and permanently deleted source content cannot be exposed through the vendor view.
 
 **Relationship:** Resolves the archived-linked-record presentation aspect of DEC-189. Source-record retention, deletion and restoration continue to follow their own approved module policies.
+
+### VND-006 — One wedding vendor across multiple service categories
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — A single wedding vendor record may be assigned to multiple service categories, with separate service-specific details when needed. Do not require duplicate vendor records for a supplier providing several services.
+
+**Product behavior:** Maintain one vendor identity, its linked contacts and core profile information while permitting multiple wedding service-category associations (for example, DJ and event lighting). Each category may hold relevant service scope, category-specific fields, notes, and primary-vendor designation under DEC-187; the same vendor may be primary in more than one category. A vendor appears in each applicable category's comparison and filtering views without being duplicated as a separate supplier. Preserve DEC-186's approved vendor-level decision/booking lifecycle and VND-001–002 confirmation rules; independent per-service booking statuses or commitments are **not** implied by this decision and remain a distinct possible follow-up. Documents, invoices, payments, and tasks remain in their own modules under DEC-189, with explicit associations where supported. Category changes must respect existing custom-field lifecycle rules (DEC-371 onward) and avoid silently deleting financial or contractual records.
+
+**Acceptance criteria:** (1) A vendor can be associated with two or more categories in one wedding; (2) one identity and shared contact details are maintained; (3) category-specific scope and fields can differ; (4) category views display the vendor appropriately without duplicate wedding vendor records; (5) the vendor may be primary for multiple categories independently; (6) adding or removing a service category does not silently cancel bookings, erase financial commitments, or bypass permissions.
+
+**Relationship:** Resolves DEC-187's open question of whether one vendor can serve multiple categories, without replacing the standard vendor status flow or introducing separate per-service booking records.
 
 ## 10. Document maintenance rules
 
