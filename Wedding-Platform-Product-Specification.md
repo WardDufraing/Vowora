@@ -7315,3 +7315,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-014 — Launch support channels
 
 **Decision:** Option B (approved 2026-10-23). At public launch, provide a **searchable help center** with practical help articles and FAQs for couples and professional planners, alongside a dedicated **email support channel** for questions, account issues, and problems not resolved by self-service documentation. Make both channels discoverable from the application. Ensure launch documentation covers critical onboarding, wedding management, collaboration, billing, and troubleshooting journeys in the supported launch languages. Live chat is not required at launch. Support address, service hours, and response targets can be finalized before release; do not invent commitments or contact details.
+
+
+### MVP-015 — Support response target
+
+**Decision:** Option B (approved 2026-10-23). Publish a target to provide an initial response to ordinary email support requests **within two business days**, with critical incidents prioritized for faster triage and handling. This is a response target, not a guaranteed resolution time. Clearly communicate business-day coverage and any exceptions in the help center; do not imply 24/7 staffed support. Track support response performance after launch and review missed targets. The help center and email support channels approved in MVP-014 remain in scope.
