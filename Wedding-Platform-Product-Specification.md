@@ -7245,3 +7245,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 - Preserve unresolved questions until explicitly answered.
 - Record important tradeoffs and consequences when decisions are made.
 - Defer technology and architecture choices until product workflows are sufficiently clear.
+
+
+### MVP-001 — Full approved MVP at initial launch
+
+**Decision:** Option A (approved 2026-10-23). The first public release must include all functionality already explicitly approved as MVP in this specification, for both couples and professional planners. Do not silently remove, postpone, or reclassify approved MVP capabilities. Development may be sequenced internally, but launch requires the complete approved MVP to be operational. Later-release enhancements explicitly deferred elsewhere remain deferred. Any proposed scope reduction requires a new explicit product decision. Launch-readiness criteria and end-to-end acceptance journeys will be defined in subsequent decisions.
