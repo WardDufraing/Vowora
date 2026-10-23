@@ -7285,3 +7285,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-008 — Launch markets
 
 **Decision:** Option C (approved 2026-10-23). Allow eligible users worldwide to register and use the platform from the initial public launch, rather than restricting sign-ups to selected countries. The launch interface languages remain Dutch, English, French, and German (MVP-007). Worldwide availability does not imply support for every local language, currency, payment method, tax regime, or jurisdiction-specific wedding workflow. Before public launch, verify the countries supported by the chosen payment and billing providers and applicable legal, tax, sanctions, and data-protection requirements; where service cannot legally or operationally be offered, clearly disclose and enforce necessary restrictions rather than promising unsupported coverage.
+
+
+### MVP-009 — Launch platforms
+
+**Decision:** Option B (approved 2026-10-23). Launch as a **fully responsive web application** with the complete approved MVP functional on desktop, tablet, and mobile browsers. Essential workflows must remain usable on touch devices and smaller screens, with responsive layouts, accessible controls, and cross-device/browser testing included in MVP-003 launch readiness. Dedicated native iOS and Android apps are not required for the initial launch and may be considered later. This decision does not reduce any previously approved offline/PDF capabilities.
