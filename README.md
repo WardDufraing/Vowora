@@ -22,3 +22,7 @@ pnpm --filter @vowora/marketing dev
 Run `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `pnpm test` (install Playwright Chromium first). See the [00-a handoff](docs/implementation/00-a-marketing.md) for test prerequisites, cloud cache paths, metadata configuration and the owner-controlled release gate. No application backend is included yet.
 
 Marketing languages: English `/`, Nederlands `/nl`, Français `/fr`, Deutsch `/de`. Language and theme preferences are in the footer; see the [00-b handoff](docs/implementation/00-b-marketing-localization.md).
+
+## Application workspace
+
+`apps/web` is a separate, noindex application foundation, not a working product. `pnpm dev:web` runs it on port 3001; `pnpm dev:marketing` runs marketing on port 3000. `pnpm build:web` and `pnpm build:marketing` build only the requested app and its package dependencies. See [workspace boundaries and owner-controlled Vercel setup](docs/implementation/01-a-workspace.md). Run `pnpm build` before `pnpm test`.

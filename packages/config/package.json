@@ -1,0 +1,15 @@
+{
+  "name": "@vowora/config",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.mjs",
+    "./next.json": "./next.json",
+    "./library.json": "./library.json"
+  },
+  "dependencies": {
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.3"
+  }
+}
