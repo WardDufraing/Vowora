@@ -7355,3 +7355,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-005 — Complete professional planner organization setup
 
 **Decision:** Option A (approved 2026-10-23). For users onboarding as professional wedding planners, require a **complete organization setup** before they enter the professional planner dashboard: collect necessary business/organization details, configure the initial team (including an explicit opportunity to add or invite team members, with solo planners supported), select the applicable subscription or trial, and establish core organization preferences. Make the steps clear and resumable where feasible. This planner-specific requirement intentionally takes precedence over ONB-002's general minimal-setup approach; couple onboarding remains progressive. Apply existing verification, organization roles, subscription, trial, and billing rules; do not invent additional mandatory paid seats or require a planner to invite colleagues when working alone.
+
+
+### ONB-006 — Guided first wedding for professional planners
+
+**Decision:** Option B (approved 2026-10-23). After completing required professional organization onboarding (ONB-005), offer a **short, optional guided flow** to create the planner's first wedding, choose an appropriate reusable planning template, and invite the couple. Each step may be skipped, and the planner can enter the dashboard without creating a wedding. If a wedding is created, apply existing planner-created wedding, couple invitation, access-control, and template rules. The guidance should be easy to revisit later and must not override the requirement to finish organization setup first.
