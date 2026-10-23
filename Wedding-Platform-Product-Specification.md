@@ -7390,3 +7390,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-012 — Global workspace switcher
 
 **Decision:** Option B (approved 2026-10-23). Provide an **always-accessible global workspace switcher** that clearly identifies the current workspace and lets users quickly move between weddings and professional planner organizations they are authorized to access. Support users who belong to both couple and planner contexts through the same account. Show only accessible destinations and honor each workspace's roles, permissions, and privacy boundaries; update the active context and navigation after switching. Keep the switcher discoverable and usable across responsive layouts, with exact placement and visual treatment to be defined in the separate navigation/design phase. Align with ONB-011's return-to-last-active-workspace behavior.
+
+
+### ONB-013 — Hybrid saving and confirmation
+
+**Decision:** Option B (approved 2026-10-23). Use a **hybrid saving model** throughout the planning experience. Automatically save simple, low-risk edits such as notes and ordinary text fields, with clear saving/saved/error feedback and appropriate protection against losing unsaved changes. Require explicit confirmation for consequential actions, including deleting data or changing access permissions, following any more specific existing module rules. Do not silently apply destructive or security-sensitive changes. Keep save behavior consistent, accessible, and understandable across desktop and mobile, including when connectivity is interrupted.
