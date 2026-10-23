@@ -7325,3 +7325,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-016 — End-to-end first-release journeys
 
 **Decision:** Option B (approved 2026-10-23). Before public launch, validate **complete end-to-end user journeys** for both audiences, not only isolated feature checks. The couple journey must cover registration, creating or claiming a wedding, inviting/collaborating with a partner and authorized participants, using the approved wedding-planning MVP modules, and completing a one-time Premium purchase with correct entitlements. The professional-planner journey must cover registration and organization setup, creating/managing multiple weddings, inviting couples and team members, exercising role-based permissions, and subscribing/managing plan access and billing. Include failure/retry and access-control cases at key transitions. These journeys are required evidence for the MVP-003 launch-readiness review; module-level tests remain necessary but are not sufficient on their own. Extensive automated real-world simulations beyond these journeys are not an additional MVP requirement.
+
+
+### MVP-017 — Final public-launch approval
+
+**Decision:** Option A (approved 2026-10-23). The **product owner** is the final authority to approve opening public registration. Before approval, the product owner reviews the documented MVP-003 launch-readiness checklist and MVP-016 end-to-end journey results, confirms all required gates are met, and explicitly authorizes the public launch. Passing automated checks or completing a beta period does not itself trigger launch. Record the approval decision and any explicitly accepted non-blocking issues. Critical or high-severity unresolved defects remain launch blockers under MVP-003.
