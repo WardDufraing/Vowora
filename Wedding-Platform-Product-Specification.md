@@ -7370,3 +7370,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-008 — Contextual tips and optional feature tours
 
 **Decision:** Option B (approved 2026-10-23). Help users learn features after onboarding with **brief contextual tips** when they first encounter relevant functionality, plus **optional guided feature tours** for more complex modules. Tips and tours must be skippable or dismissible, avoid blocking normal work, and be available to revisit from relevant help entry points. Tailor guidance to the user's role and permissions; do not reveal restricted functionality or private information. Retain the searchable help center and email support approved for MVP; do not require mandatory walkthroughs before using modules.
+
+
+### ONB-009 — Helpful module empty states
+
+**Decision:** Option B (approved 2026-10-23). When a module has no data (for example, an empty guest list or budget), show a **helpful empty state** with a concise explanation of the module's purpose, a prominent action to add the first relevant item, and contextual suggestions or examples where genuinely useful. Keep example content clearly distinguishable from real wedding data; do not automatically create fictitious guests, expenses, or other records. Tailor actions and copy to the user's role and permissions, including read-only users who cannot create items. Empty states should remain understandable and accessible on mobile and desktop and complement ONB-008 contextual guidance.
