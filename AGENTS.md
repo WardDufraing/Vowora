@@ -1,30 +1,24 @@
-# Wedding Planner — Agent Instructions
+# Wedding Planner — Codex Agent Instructions
 
-These instructions apply to all work in this repository, including Codex Web, CLI, IDE, and delegated agents.
+These rules apply to Codex Web, CLI, IDE and delegated agents.
 
-## Source of truth
-1. `Wedding-Platform-Product-Specification.md` is the canonical, living product specification. Read relevant sections before proposing or implementing product behavior. Preserve its decision IDs and terminology.
-2. Locate and read the existing architecture document before selecting technologies or changing system structure. If it cannot be located, stop and ask; do not invent an architecture.
-3. A design system has **not yet been approved**. Do not create one or present visual design preferences as established requirements.
-4. `docs/PLANS.md` is a development planning aid, not an authority that overrides the product specification or architecture.
-5. When instructions conflict, explain the conflict and ask for a decision before implementation.
+## Frozen sources of truth — READ ONLY
+1. `docs/product/Wedding-Platform-Product-Specification.md` — approved product behavior, roles, permissions, lifecycle and MVP scope (v259.10).
+2. `docs/product/product-architecture.md` — approved technical baseline (ARCH-001–150).
+3. `docs/product/UI-DESIGN-SYSTEM.md` — approved visual direction and design decisions, including its explicitly pending validation work.
 
-## Working agreement
-- Work on one bounded task at a time. Start by stating scope, affected files, dependencies, risks, and acceptance criteria.
-- For nontrivial changes, propose a plan and wait for approval before editing implementation files.
-- Do not invent or silently resolve missing product requirements, permission rules, data-retention rules, or architecture decisions.
-- Do not change the product specification or architecture without explicit approval. Record approved decisions in the appropriate canonical file, not in parallel copies.
-- Prefer the smallest coherent change; avoid unrelated refactors and speculative abstractions.
-- Never expose secrets, credentials, personal information, or production data in code, logs, examples, or commits.
-- Treat authentication, tenant/workspace isolation, authorization, and privacy as critical: enforce access server-side and test cross-wedding and cross-organization boundaries.
-- Include loading, empty, error, validation, accessibility, and responsive states where relevant; defer visual styling decisions until the design system is agreed.
-- Add or update relevant automated tests. Run available checks; clearly distinguish checks actually run from checks not run.
-- Do not commit, push, merge, deploy, delete data, or run destructive migrations without explicit approval for that action.
-- Do not report a feature complete unless its acceptance criteria have been verified. Document unresolved gaps and risks.
+**Never edit, move, regenerate or replace these three files during ordinary development.** They are frozen working baselines. If a genuine contradiction or necessary change arises, stop that part of work, record it as a blocker and obtain explicit owner approval for a separate controlled source change. Do not quietly change requirements or interpret unapproved proposals as approved.
 
-## Collaboration and review
-- Separate implementation and review when practical. Reviewers should challenge assumptions and identify correctness, authorization, privacy, accessibility, and regression issues.
-- Delegated agents must follow this file and the same source-of-truth rules.
-- Do not let multiple agents edit the same files concurrently without a clear integration owner.
-- Use `.agents/skills/implement-feature/SKILL.md` for feature delivery and `.agents/skills/review-feature/SKILL.md` for independent review.
-- At handoff, summarize changed files, decisions required, tests executed, outstanding issues, and the next suggested task.
+## Execution
+- `docs/PLAN.md` is the authoritative execution tracker; `docs/steps/NN.md` is the agent's focused work order. Neither overrides the three frozen baselines.
+- Start with one unblocked step. Read this file, the plan, the selected step, and **only relevant cited portions** of the frozen sources, plus dependent handoffs and affected code. Do not ingest the entire 1 MB specification by default.
+- Before nontrivial edits, present scope, dependencies, affected files, risks, acceptance criteria and tests, and request approval. One agent owns one bounded step; coordinate file ownership for parallel work.
+- Follow approved modular monolith, Neon/Drizzle, Next.js, typed API, centralized permission engine, design tokens, jobs and storage patterns. Do not add PostgreSQL RLS or change approved core technologies without explicit approval.
+- Enforce server-side permissions, wedding/organization scope, private/shared record visibility, validation, accessibility, localization, financial correctness, idempotency and audit where applicable.
+- Add meaningful tests including negative tenant-isolation tests; run available checks and report exact results. Request independent review. Never claim Done without verified acceptance criteria.
+- Do not commit, push, merge, deploy, delete data or run destructive migrations without explicit approval for that action.
+- At handoff, update the step's implementation log and `docs/PLAN.md` status, link actual PR/commit/test/review evidence, and list blockers. Never mark a source baseline modified as a routine step.
+- Use `.agents/skills/implement-feature/SKILL.md` and `.agents/skills/review-feature/SKILL.md` where applicable.
+
+## Instruction precedence
+Approved product behavior > approved architecture and design within their domains > agent plan and step summaries > implementation preferences. Flag material conflicts; do not invent resolutions.
