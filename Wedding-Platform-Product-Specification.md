@@ -7385,3 +7385,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-011 — Return to last active workspace
 
 **Decision:** Option B (approved 2026-10-23). When a returning user signs in, open their **last active wedding or professional planner organization workspace** by default, with an easy and visible way to switch to other authorized workspaces. Only restore a workspace if the user still has permission to access it; if it has been deleted, archived, or access was revoked, fall back to an appropriate accessible dashboard or workspace selection rather than exposing restricted data. Preserve any mandatory unfinished onboarding or verification requirements before workspace access. Users with both couple and professional planner roles can switch between the corresponding experiences without separate accounts.
+
+
+### ONB-012 — Global workspace switcher
+
+**Decision:** Option B (approved 2026-10-23). Provide an **always-accessible global workspace switcher** that clearly identifies the current workspace and lets users quickly move between weddings and professional planner organizations they are authorized to access. Support users who belong to both couple and planner contexts through the same account. Show only accessible destinations and honor each workspace's roles, permissions, and privacy boundaries; update the active context and navigation after switching. Keep the switcher discoverable and usable across responsive layouts, with exact placement and visual treatment to be defined in the separate navigation/design phase. Align with ONB-011's return-to-last-active-workspace behavior.
