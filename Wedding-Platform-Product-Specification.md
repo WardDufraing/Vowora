@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.5  
+**Version:** 259.6  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7290,6 +7290,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) An authorized editor can remove an ordinary task or nonfinancial document association without a mandatory confirmation dialog; (2) unlinking a contract, invoice, payment, or other financial commitment requires explicit confirmation; (3) cancelling the dialog preserves the association; (4) confirmation removes only the association and preserves the source record and obligations; (5) unauthorized changes are rejected; (6) audit entries follow existing privacy and retention rules.
 
 **Relationship:** Resolves part of DEC-189's outstanding vendor-to-record unlink behavior while retaining each linked module as its source of truth. Handling archived or deleted linked records remains separately open unless governed by an existing decision.
+
+### VND-005 — Archived linked records in vendor detail
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — When a document, task, or other record linked to a wedding vendor is archived in its source module, retain its association and show it in a separate **Archived** section of the vendor's linked-record view for users authorized to see it.
+
+**Product behavior:** Active links remain in the normal linked-record list; archived links appear separately with a clear archived indicator and, when permitted by the source module, a navigation path to the archived source record. Archiving does not automatically unlink, delete, restore, or alter the source record. Respect the source module's visibility, export, retention, restoration and permanent-deletion rules; the vendor view must not expose restricted details or bypass archived-record access checks. On restoration, move the association back into the active list automatically. When a source record is permanently deleted, do not display a broken link or preserve deleted content in the vendor view; follow the source module's existing audit/retention requirements. This rule applies to wedding vendor-to-record links, not organization-directory vendor profile archiving under DEC-342–358.
+
+**Acceptance criteria:** (1) An archived linked record is listed under Archived, not mixed with active links; (2) authorized users can navigate to it only when the source module permits; (3) restoration returns it to the active section; (4) archive alone preserves the link and does not change financial obligations; (5) restricted and permanently deleted source content cannot be exposed through the vendor view.
+
+**Relationship:** Resolves the archived-linked-record presentation aspect of DEC-189. Source-record retention, deletion and restoration continue to follow their own approved module policies.
 
 ## 10. Document maintenance rules
 
