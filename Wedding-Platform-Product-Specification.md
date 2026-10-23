@@ -7330,3 +7330,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-017 — Final public-launch approval
 
 **Decision:** Option A (approved 2026-10-23). The **product owner** is the final authority to approve opening public registration. Before approval, the product owner reviews the documented MVP-003 launch-readiness checklist and MVP-016 end-to-end journey results, confirms all required gates are met, and explicitly authorizes the public launch. Passing automated checks or completing a beta period does not itself trigger launch. Record the approval decision and any explicitly accepted non-blocking issues. Critical or high-severity unresolved defects remain launch blockers under MVP-003.
+
+
+### ONB-001 — Unified registration and purpose selection
+
+**Decision:** Option B (approved 2026-10-23). Provide **one unified account-registration flow** for all users. After account creation, ask whether they want to **plan their own wedding**, **manage weddings professionally**, or **both**, and guide them into the appropriate first steps without creating separate account identities. A user may participate as a couple member and a professional planner through the same account, subject to existing wedding/organization roles and permissions. Purpose selection guides onboarding and does not grant privileged access by itself. Existing invitation acceptance and email-verification requirements remain in effect. Users must be able to access the relevant experience later if their purpose changes.
