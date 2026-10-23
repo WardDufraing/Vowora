@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const prettier = require.resolve("prettier/bin/prettier.cjs");
+const root = new URL("../", import.meta.url);
+
+test("format gate rejects unformatted maintained source and accepts formatted source", () => {
+  const run = (input) =>
+    spawnSync(
+      process.execPath,
+      [prettier, "--check", "--stdin-filepath", "apps/web/app/probe.ts"],
+      { cwd: root, input, encoding: "utf8" },
+    );
+  assert.equal(run("const value={ok:true};\n").status, 1);
+  assert.equal(run("const value = { ok: true };\n").status, 0);
+});
+
+test("lint gate rejects real errors without weakening package boundary checks", async () => {
+  const { ESLint } = createRequire(
+    new URL("../packages/config/package.json", import.meta.url),
+  )("eslint");
+  const { workspaceConfig } = await import("@vowora/config/eslint");
+  const lint = new ESLint({
+    cwd: new URL("apps/web/", root).pathname,
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("web"),
+  });
+  const [invalid] = await lint.lintText(
+    'const value: any = "bad";\nexport default value;',
+    { filePath: "app/probe.ts" },
+  );
+  assert(
+    invalid.messages.some(
+      (message) => message.ruleId === "@typescript-eslint/no-explicit-any",
+    ),
+  );
+  const [valid] = await lint.lintText('export const value: string = "valid";', {
+    filePath: "app/probe.ts",
+  });
+  assert.equal(valid.errorCount, 0);
+});

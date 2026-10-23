@@ -61,3 +61,25 @@ export function workspaceConfig(layer) {
     },
   ]);
 }
+
+// Node test runners and shared tooling need lint coverage too, independent of
+// framework rules. App/package source remains checked from each workspace.
+export function toolingConfig() {
+  return defineConfig([
+    ...nextTs,
+    globalIgnores([
+      "apps/**",
+      "packages/**",
+      "docs/**",
+      ".agents/**",
+      ".codex/**",
+      "node_modules/**",
+    ]),
+    {
+      files: ["**/*.{mjs,ts}"],
+      languageOptions: {
+        globals: { process: "readonly", console: "readonly", URL: "readonly" },
+      },
+    },
+  ]);
+}

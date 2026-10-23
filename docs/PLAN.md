@@ -26,8 +26,8 @@
 | --- | --- | --- | --- | --- |
 | 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
 | 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In review | [Brief](steps/00-b.md) |
-| 01-a | Monorepo and package boundaries | 00-a (merged and live) | In review | [Brief](steps/01-a.md) |
-| 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
+| 01-a | Monorepo and package boundaries | 00-a (merged and live) | Done | [Brief](steps/01-a.md) |
+| 01-b | Code quality and test harness | 01-a (merged PR #7) | In review | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
 | 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Not started | [Brief](steps/02-b.md) |
@@ -104,3 +104,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-23 — 01-a started by fresh implementer `/root/implement_01_a` from integrated main `64f5d93`. PRs #5/#6 are owner-merged; coordinator verified HTTPS responses for marketing `/`, `/nl`, `/fr`, `/de` all 200 with corresponding language/title. Earlier pending/blocked notes above are historical, superseded for 01-a eligibility. No open competing PR was found. [Workspace scope/handoff](implementation/01-a-workspace.md).
 
 - 2026-10-23 — 01-a [PR #7](https://github.com/WardDufraing/Vowora/pull/7), reviewed code `e695111`: both app builds, shared config/boundaries, six boundary tests, one app HTTP smoke and26 marketing browser regressions pass. Initial review's two medium findings fixed; a new fresh reviewer passed the full diff and independently reran frozen install/uncached checks/all tests. Owner merge pending;01-b/c not started. Hosted results tracked in PR. Both existing Vercel projects currently target marketing; app root/domain setup is owner-controlled.
+
+- 2026-10-23 — 01-b fresh implementer `/root/implement_01_b`, based on verified owner merge of [PR #7](https://github.com/WardDufraing/Vowora/pull/7) at `39b27b0`; no competing open PR. 01-a code/tests/re-review and hosted checks passed before owner merge; external app Vercel root/domain setup remains owner-controlled. [01-b harness scope and commands](implementation/01-b-test-harness.md); review/check evidence follows on task branch/PR. 01-c not started.
