@@ -7380,3 +7380,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-010 — Onboarding completion after essential setup
 
 **Decision:** Option B (approved 2026-10-23). Mark onboarding **complete once all essential, required setup is finished**, not when every optional checklist item has been completed and not merely on first dashboard visit. For couples, follow the minimal required setup approved in ONB-002; for professional planners, require the full organization setup approved in ONB-005. Optional checklist items, contextual tips, and feature tours remain accessible after onboarding completion without blocking normal use. Preserve progress for any unfinished optional steps and do not repeatedly present the initial onboarding flow to users who have completed it.
+
+
+### ONB-011 — Return to last active workspace
+
+**Decision:** Option B (approved 2026-10-23). When a returning user signs in, open their **last active wedding or professional planner organization workspace** by default, with an easy and visible way to switch to other authorized workspaces. Only restore a workspace if the user still has permission to access it; if it has been deleted, archived, or access was revoked, fall back to an appropriate accessible dashboard or workspace selection rather than exposing restricted data. Preserve any mandatory unfinished onboarding or verification requirements before workspace access. Users with both couple and professional planner roles can switch between the corresponding experiences without separate accounts.
