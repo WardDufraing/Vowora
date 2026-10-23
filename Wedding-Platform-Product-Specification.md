@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 258.0  
+**Version:** 259.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -5886,6 +5886,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 45, Option B — The **planner-organization owner and currently active, authorized billing managers** may add, change, and remove invoice and billing-notification recipients through the billing dashboard established in PHASE1-BIZ-044. Billing-manager authorization follows PHASE1-BIZ-034 through PHASE1-BIZ-036: suspended or deactivated billing managers cannot make changes until their access is restored. Other organization administrators and staff cannot manage billing recipients merely by virtue of their general roles. Verify new recipient addresses before sending sensitive billing content, require explicit confirmation of recipient-list changes, maintain an audit history identifying the actor, action, target, and time, and notify the organization owner and other appropriate authorized billing users of material recipient-list changes. Adding a recipient does not grant sign-in, billing-management, or wedding access. Preserve mandatory owner and legally required notices regardless of recipient-list changes.
 
+### PHASE1-BIZ-046 — Default billing invoice and notification recipients
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 46, Option B — By default, send planner-organization billing invoices and relevant billing notifications to the **organization owner and all currently active, authorized billing managers**. When the owner designates an eligible active staff member as a billing manager under PHASE1-BIZ-035, automatically include that member among the default billing recipients without requiring separate manual enrollment. When a billing-manager designation is revoked, or effective billing access is suspended under PHASE1-BIZ-036, stop that person's automatic billing-recipient delivery; restore it if their designated billing-manager access is subsequently reactivated. The owner remains an essential recipient of critical billing and access notices. Additional verified finance-only recipients may be configured under PHASE1-BIZ-044 and PHASE1-BIZ-045 without gaining account access. Make recipient membership and delivery status visible in the billing dashboard, audit automatic changes, and ensure role-based delivery changes do not remove independently configured verified recipients without an explicit authorized action. Exact categories of billing messages and opt-out rules remain subject to later decisions.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7228,6 +7232,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-044 | 2026-10-23 | Planner billing dashboard and billing communications | Self-service billing dashboard plus configurable verified invoice/billing-notice recipients without granting account access (Option C) | Approved |
 
 | PHASE1-BIZ-045 | 2026-10-23 | Authority to manage planner billing recipients | Owner and active billing managers may manage verified recipients; changes confirmed, audited, and notified without granting recipient access (Option B) | Approved |
+
+| PHASE1-BIZ-046 | 2026-10-23 | Default billing invoice and notification recipients | Owner and active billing managers receive invoices and billing notices automatically, with role-based updates and separate verified finance recipients (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
