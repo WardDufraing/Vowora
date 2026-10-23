@@ -7360,3 +7360,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-006 — Guided first wedding for professional planners
 
 **Decision:** Option B (approved 2026-10-23). After completing required professional organization onboarding (ONB-005), offer a **short, optional guided flow** to create the planner's first wedding, choose an appropriate reusable planning template, and invite the couple. Each step may be skipped, and the planner can enter the dashboard without creating a wedding. If a wedding is created, apply existing planner-created wedding, couple invitation, access-control, and template rules. The guidance should be easy to revisit later and must not override the requirement to finish organization setup first.
+
+
+### ONB-007 — Dismissible onboarding progress checklist
+
+**Decision:** Option B (approved 2026-10-23). Provide a **small, dismissible setup checklist** on the relevant couple or planner dashboard, showing useful next onboarding steps and their completion state. Users may complete optional items in any order and at their own pace, or hide the checklist without losing completed progress. Checklist items should link directly to the corresponding setup action, reflect the user's context and permissions, and avoid presenting optional suggestions as requirements. For professional planners, the mandatory organization setup from ONB-005 must still be completed before dashboard access; the post-setup checklist covers only remaining optional guidance. Provide a non-intrusive way to return to onboarding guidance later.
