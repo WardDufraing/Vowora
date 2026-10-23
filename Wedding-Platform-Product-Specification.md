@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.3  
+**Version:** 259.4  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7268,6 +7268,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) Moving from Booked to any other status prompts for confirmation; (2) the reason is optional; (3) cancellation of the dialog makes no change; (4) confirmation preserves all linked records and obligations; (5) authorized activity history identifies the transition and editor without exposing restricted record details; (6) unauthorized users cannot perform the change.
 
 **Relationship:** Complements DEC-186 and VND-001; does not alter manual Booked confirmation or create external vendor communications.
+
+### VND-003 — Primary and wedding-day vendor contacts
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — For each wedding vendor record, allow designation of **one primary contact** and **optionally one wedding-day contact** from its linked contact-directory records. Both designations may refer to the same person.
+
+**Product behavior:** Retain DEC-188's support for multiple linked contacts and existing contact roles. The primary contact identifies the default point of contact for routine coordination; the optional wedding-day contact identifies whom authorized coordinators should use during the event. Designations are references to contact records, not duplicate names, phone numbers or emails. Show each designation clearly in the vendor detail view and, where relevant and authorized, in the wedding-day schedule and offline/PDF operational contacts. Apply existing contact and vendor visibility permissions, including organization-private boundaries; do not expose a restricted contact through a designation, export or offline copy. If a designated contact is unlinked, removed or no longer accessible, do not silently substitute another person: show the designation as needing review to authorized editors, subject to existing retention rules.
+
+**Acceptance criteria:** (1) Each vendor has at most one primary designation and one optional wedding-day designation; (2) the same linked contact can fill both; (3) additional linked contacts remain available; (4) changes to contact details use the source contact record; (5) restricted contact details do not leak to unauthorized users or exports; (6) invalid designations require review rather than silent reassignment.
+
+**Relationship:** Refines DEC-188 without changing vendor booking states (DEC-186, VND-001–002) or the contact-directory data model.
 
 ## 10. Document maintenance rules
 
