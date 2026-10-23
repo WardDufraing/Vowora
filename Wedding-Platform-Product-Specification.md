@@ -7255,3 +7255,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-002 — Private beta before public launch
 
 **Decision:** Option B (approved 2026-10-23). Release the complete approved MVP first to a small, invitation-only beta group including both couples and professional wedding planners. Collect real-world feedback, validate critical end-to-end journeys, and resolve important defects before opening public registration. The beta is a launch validation phase, not authorization to remove previously approved MVP functionality. Public launch follows an explicit readiness review; specific beta size, duration, and exit criteria remain to be decided.
+
+
+### MVP-003 — Public launch readiness criteria
+
+**Decision:** Option B (approved 2026-10-23). Public launch requires a documented, completed launch-readiness checklist covering: (1) successful end-to-end testing of critical couple and professional-planner journeys across the complete approved MVP; (2) no unresolved critical or high-severity defects; (3) security, access-control, privacy, and data-protection checks; (4) functioning payment, subscription, checkout, and billing flows; and (5) satisfactory feedback from the invitation-only beta. Non-blocking defects must be documented and explicitly accepted before launch. Public registration remains closed until the readiness review passes. Detailed checklist ownership and acceptance thresholds may be defined during release planning.
