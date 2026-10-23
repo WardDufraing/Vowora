@@ -7395,3 +7395,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-013 — Hybrid saving and confirmation
 
 **Decision:** Option B (approved 2026-10-23). Use a **hybrid saving model** throughout the planning experience. Automatically save simple, low-risk edits such as notes and ordinary text fields, with clear saving/saved/error feedback and appropriate protection against losing unsaved changes. Require explicit confirmation for consequential actions, including deleting data or changing access permissions, following any more specific existing module rules. Do not silently apply destructive or security-sensitive changes. Keep save behavior consistent, accessible, and understandable across desktop and mobile, including when connectivity is interrupted.
+
+
+### ONB-014 — Contextual undo for reversible actions
+
+**Decision:** Option B (approved 2026-10-23). Provide **contextual Undo** for actions that can safely and reliably be reversed, such as moving items or removing them from a list when restoration is supported. Make the undo affordance clear, accessible, and available at the point of action; communicate when reversal succeeds or is no longer possible. Retain explicit confirmation for consequential or irreversible operations, including sensitive permission changes and permanent deletion. Do not promise universal undo/redo or full version history across all modules; preserve any module-specific audit trails, restoration, or version-history requirements already approved. Respect permissions and concurrent changes when determining whether an action can be undone.
