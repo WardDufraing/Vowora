@@ -7305,3 +7305,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-012 — Production monitoring
 
 **Decision:** Option B (approved 2026-10-23). Implement proactive production monitoring from launch: automated application error tracking, uptime/availability checks, key performance signals, and payment/checkout/subscription failure detection. Route actionable alerts for serious incidents to responsible operators, with enough context to investigate and resolve issues promptly. Apply privacy-conscious logging, least-privilege access, and avoid collecting sensitive wedding, guest, or payment details unnecessarily. Verify monitoring and alert delivery during launch-readiness testing (MVP-003). Specific vendors, alert thresholds, and escalation schedules are implementation decisions unless they affect product commitments.
+
+
+### MVP-013 — Backups and disaster recovery
+
+**Decision:** Option B (approved 2026-10-23). Protect production wedding data with **daily automated backups**, **point-in-time recovery where supported**, secure backup storage with appropriately restricted access, and **periodic restoration tests**. Include the database and other essential persisted wedding assets in a documented recovery plan; verify that backups are recoverable rather than relying solely on backup-job success. Test recovery before public launch as part of MVP-003 readiness, and continue periodic tests in production. Exact retention periods, recovery objectives, provider choices, and test cadence are to be set during operational planning, consistent with approved privacy and data-retention requirements.
