@@ -12,7 +12,7 @@ The app Playwright configuration starts its own production server on port 3102, 
 
 ## Commands
 
-Node 24, pnpm 11.25.0, repository root:
+Node 24.15+ (tested 24.19.0), or Node 22.22.2+, and pnpm 11.25.0, repository root:
 
 ```sh
 pnpm install --frozen-lockfile
@@ -37,3 +37,7 @@ Before merge, close the task PR to roll back; after owner merge, revert this tas
 ## Implementer validation
 
 Final frozen-lockfile installation, format gate, all tooling/workspace lint, dedicated test and production typechecks, and both production builds passed. Root test executed **22 Vitest unit/component tests**, **two tooling gate probes**, **six workspace boundary tests**, **one app production HTTP smoke**, **two app Chromium tests**, and **26 marketing Chromium tests**: **59 passed, zero failed or skipped**. Independent review pending; this evidence does not mark the task Done or authorize merge/deployment.
+
+## Initial independent review
+
+Fresh reviewer `/root/implement_01_b/review_01_b` found that the initial advertised Node engine minima were below jsdom 30.1.3 and its locked DOM dependencies. Root engines now require `^22.22.2 || ^24.15.0`, matching the actual supported toolchain while excluding unsupported major versions. Current validation uses Node 24.19.0. Engine-strict and integrity/TLS checks remain enabled; no dependency requirements are bypassed. A new independent reviewer checks the corrected full diff.
