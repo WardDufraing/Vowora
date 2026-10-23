@@ -7270,3 +7270,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-005 — Beta feedback channels
 
 **Decision:** Option B (approved 2026-10-23). During the private beta, provide a simple in-app feedback control for participants to submit bug reports and product suggestions, with a dedicated support email address as an alternative and fallback. Feedback must be accessible from the application without disrupting wedding-planning work. Route submissions into a reviewable process so issues can be triaged and considered during the MVP-003 launch-readiness review. Exact feedback form fields, internal tracking tools, and support address can be finalized during implementation; do not invent a public email address in the specification.
+
+
+### MVP-006 — Beta duration
+
+**Decision:** Option C (approved 2026-10-23). The invitation-only private beta has **no fixed duration**. Continue beta testing and issue resolution until the approved MVP-003 public launch-readiness checklist is fully satisfied and the launch review authorizes opening registration. Calendar time alone does not end the beta. The initially approved small participant cohort (MVP-004) and in-app/email feedback channels (MVP-005) remain in effect; additional testing may be requested as needed.
