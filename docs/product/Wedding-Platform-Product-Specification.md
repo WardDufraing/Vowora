@@ -1,9 +1,9 @@
-# Wedding Planning Platform — Living Product Specification
+# Vowora — Living Product Specification
 
 **Version:** 259.10  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
-**Working name:** Wedding Planning Platform (brand name undecided)
+**Product name:** Vowora (approved; formerly the Wedding Planning Platform working name)
 
 ## 1. Purpose and vision
 
