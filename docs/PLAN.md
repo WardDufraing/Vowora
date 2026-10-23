@@ -24,7 +24,7 @@
 
 | Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
-| 00-a | Public marketing website at vowora.app on existing Vercel | None | Not started | [Brief](steps/00-a.md) |
+| 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
 | 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
@@ -95,3 +95,5 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-23 — 00-a implementation on `feat/00-a-marketing-site`; [handoff and executed checks](implementation/00-a-marketing.md). Independent foundation review passed; final independent review and PR publication pending. Owner merge, existing Vercel/domain verification and owner-controlled launch remain pending; 00-a is not Done and 01-a remains blocked.
