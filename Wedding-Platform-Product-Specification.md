@@ -7295,3 +7295,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-010 — Browser support
 
 **Decision:** Option B (approved 2026-10-23). Officially support current stable versions of **Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge** at launch, including their supported mobile browser variants. Test the approved MVP's critical couple and planner journeys across these browsers and relevant desktop, tablet, and mobile form factors as part of MVP-003 launch readiness. Older or unsupported browser versions are not guaranteed full compatibility; provide a clear update-browser message when essential functionality cannot work safely.
+
+
+### MVP-011 — Accessibility standard
+
+**Decision:** Option B (approved 2026-10-23). Target **WCAG 2.2 Level AA** across the complete approved MVP at public launch, covering couple and professional-planner workflows on desktop, tablet, and mobile. Include keyboard navigation, visible focus, accessible form labels and errors, sufficient contrast, screen-reader semantics, touch targets, and responsive/reflow behavior. Validate with automated accessibility checks plus manual keyboard and representative assistive-technology testing as part of MVP-003 launch readiness. Record and remediate accessibility defects before release according to their impact; do not claim certified conformance without appropriate assessment.
