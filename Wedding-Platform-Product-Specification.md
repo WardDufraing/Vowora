@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.9  
+**Version:** 259.10  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7332,6 +7332,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Product behavior:** Financial records remain authoritative in the budget/finance module under DEC-189 and existing finance decisions. A record may be associated with multiple vendor services, with optional non-overlapping monetary allocations (for example, one €2,000 invoice with €1,200 attributed to DJ and €800 to lighting). Display allocated amounts and any explicitly unallocated remainder; do not require invented splits. Validate that service allocations for a given record do not exceed its applicable total, accounting for currency, refunds, credits, tax and record-specific rules already defined by the finance module. A record's overall amount, payment state, payer, contractual due dates, source document and obligations remain singular; allocation does not create additional invoices, payments, commitments, or cash flows. Financial dashboards and reports count the source record once overall and attribute service amounts only for breakdowns, avoiding double counting. Apply finance permissions and private/shared scope to both allocation edits and displays; vendor access alone cannot reveal restricted finance data. Editing allocations must not silently modify signed contractual terms or reverse payments. The exact treatment of multi-service deposits, discounts, partial payments and refund attribution is subject to existing finance rules and further acceptance criteria where not yet specified.
 
 **Acceptance criteria:** (1) One €2,000 vendor invoice can be optionally allocated €1,200 to DJ and €800 to lighting; (2) it remains one invoice and contributes €2,000, not €4,000, to overall totals; (3) leaving the allocation blank is valid and shows no fabricated service split; (4) allocations exceeding the relevant record amount are rejected; (5) allocation edits do not change payment status or source obligations; (6) unauthorized users cannot view or edit restricted allocations.
+
+**Partial-allocation clarification (approved Option B, 2026-10-23):** Partial allocation is valid and saveable. Show any remaining amount as **Unallocated**, separately from allocated service amounts; authorized users may assign or adjust that remainder later. Never automatically distribute it, treat it as a new cost or liability, or require a complete split. For example, a €2,000 invoice with €1,200 allocated to DJ services shows €800 Unallocated while the total invoice remains €2,000. Validate allocations against the applicable total and keep all original financial obligations unchanged. This clarifies VND-008's already-approved unallocated-remainder behavior rather than creating a second overlapping decision.
+
+**Additional acceptance criteria:** (7) A partial allocation can be saved without error; (8) the remaining amount is clearly labeled Unallocated; (9) subsequent authorized allocation edits can reduce or reassign the remainder; (10) the overall record and financial totals remain unchanged and are counted once.
 
 **Relationship:** Refines DEC-189 and VND-006–007 while preserving the existing finance module as source of truth and its approved reporting, payment and privacy safeguards.
 
