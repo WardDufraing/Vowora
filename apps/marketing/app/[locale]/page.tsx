@@ -9,8 +9,11 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { ThemeSelect } from "../components/theme-select";
-
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { hasLocale } from "next-intl";
+import { ThemeSelect } from "../../components/theme-select";
+import { routing, localePath, languageNames } from "../../i18n/routing";
 function Botanical() {
   return (
     <svg
@@ -31,35 +34,23 @@ function Botanical() {
   );
 }
 
-const features = [
-  {
-    icon: ListChecks,
-    title: "A shared sense of direction",
-    text: "Tasks and timelines are planned to help you keep track of what comes next, together.",
-    label: "Tasks & timelines",
-  },
-  {
-    icon: Wallet,
-    title: "Room for the practical details",
-    text: "A place for budgets and vendor information is part of the vision, so the details can stay connected.",
-    label: "Budgets & vendors",
-  },
-  {
-    icon: Users,
-    title: "The people at the heart of it",
-    text: "Guest planning and collaboration are being designed around your wedding and the people helping you.",
-    label: "Guests & collaboration",
-  },
-];
-
-export default function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  if (!hasLocale(routing.locales, locale)) notFound();
+  setRequestLocale(locale);
+  const t = await getTranslations();
+  const features = [ListChecks, Wallet, Users];
   return (
     <>
       <a className="skip-link" href="#main">
-        Skip to content
+        {t("skip")}
       </a>
       <header className="site-header container">
-        <a className="brand" href="#main" aria-label="Vowora home">
+        <a className="brand" href="#main" aria-label={t("home")}>
           <Image
             src="/brand/vowora-app-icon-forest.svg"
             width={40}
@@ -69,96 +60,93 @@ export default function Home() {
           />
           vowora
         </a>
-        <nav aria-label="Main navigation">
-          <a href="#vision">The vision</a>
-          <a href="#for-planners">For planners</a>
+        <nav aria-label={t("nav")}>
+          <a href="#vision">{t("visionNav")}</a>
+          <a href="#for-planners">{t("plannersNav")}</a>
         </nav>
-        <ThemeSelect />
       </header>
       <main id="main" tabIndex={-1}>
         <section className="hero container" aria-labelledby="hero-title">
           <Botanical />
           <div className="hero-copy">
             <p className="eyebrow hero-eyebrow">
-              <Leaf size={16} aria-hidden="true" /> A new chapter in wedding
-              planning
+              <Leaf size={16} aria-hidden="true" />
+              {t("eyebrow")}
             </p>
             <h1 id="hero-title">
-              One wedding.
+              {t("heroFirst")}
               <br />
-              One shared <em>plan.</em>
+              {t("heroSecond")}
+              <em>{t("heroEmphasis")}</em>
             </h1>
-            <p className="hero-description">
-              For the big picture, the little details, and everyone who matters.
-              A calmer shared planning space for couples and professional
-              wedding planners.
-            </p>
+            <p className="hero-description">{t("description")}</p>
             <p className="availability">
-              <span aria-hidden="true" /> In development · Not yet available
+              <span aria-hidden="true" />
+              {t("availability")}
             </p>
             <a className="button" href="#vision">
-              Explore the vision <ArrowDown size={18} aria-hidden="true" />
+              {t("explore")}
+              <ArrowDown size={18} aria-hidden="true" />
             </a>
           </div>
           <div className="preview-wrap">
-            <p className="preview-caption">
-              An illustrative concept, not a live app
-            </p>
+            <p className="preview-caption">{t("concept")}</p>
             <div
               className="dashboard-preview"
               role="img"
-              aria-label="Illustrative planning concept: a shared wedding overview with tasks, guest planning and a wedding-day schedule. These are planned features, not an available application."
+              aria-label={t("conceptAlt")}
             >
               <div className="preview-header">
                 <span className="preview-wordmark">vowora</span>
-                <span className="preview-tag">Your wedding, together</span>
+                <span className="preview-tag">{t("together")}</span>
               </div>
               <div className="preview-intro">
-                <p className="eyebrow">The big picture</p>
+                <p className="eyebrow">{t("bigPicture")}</p>
                 <h2>
-                  A little more space
+                  {t("previewFirst")}
                   <br />
-                  for what matters.
+                  {t("previewSecond")}
                 </h2>
-                <span>One place for your shared plan.</span>
+                <span>{t("previewSpace")}</span>
               </div>
               <div className="preview-grid">
                 <div className="preview-card">
                   <ListChecks size={20} aria-hidden="true" />
-                  <h3>The next little steps</h3>
+                  <h3>{t("steps")}</h3>
                   <p>
-                    <Check size={14} aria-hidden="true" /> Gather your ideas
+                    <Check size={14} aria-hidden="true" />
+                    {t("ideas")}
                   </p>
                   <p>
-                    <span className="empty-check" /> Explore your venue options
+                    <span className="empty-check" />
+                    {t("venues")}
                   </p>
                   <p>
-                    <span className="empty-check" /> Shape your wedding day
+                    <span className="empty-check" />
+                    {t("day")}
                   </p>
                 </div>
                 <div className="preview-card">
                   <Users size={20} aria-hidden="true" />
-                  <h3>Your favourite people</h3>
+                  <h3>{t("people")}</h3>
                   <div className="guest-symbols" aria-hidden="true">
                     <span>A</span>
                     <span>J</span>
                     <span>M</span>
                     <span>+</span>
                   </div>
-                  <p>A place for your guest plans.</p>
+                  <p>{t("guests")}</p>
                 </div>
                 <div className="preview-card preview-schedule">
                   <CalendarDays size={20} aria-hidden="true" />
                   <div>
-                    <h3>A day that feels like you</h3>
-                    <p>Your wedding-day schedule, connected.</p>
+                    <h3>{t("schedule")}</h3>
+                    <p>{t("scheduleText")}</p>
                   </div>
                 </div>
               </div>
             </div>
-            <p className="preview-note">
-              A glimpse of what we’re working towards.
-            </p>
+            <p className="preview-note">{t("previewNote")}</p>
           </div>
         </section>
         <section
@@ -167,27 +155,23 @@ export default function Home() {
           aria-labelledby="vision-title"
         >
           <div className="section-heading">
-            <p className="eyebrow">Thoughtfully planned. Together.</p>
+            <p className="eyebrow">{t("visionEyebrow")}</p>
             <h2 id="vision-title">
-              Less scattered.
+              {t("visionFirst")}
               <br />
-              <em>More connected.</em>
+              <em>{t("visionSecond")}</em>
             </h2>
-            <p>
-              Vowora is being created to bring your wedding plans into one
-              shared space. These capabilities are planned; the product is still
-              in development.
-            </p>
+            <p>{t("visionText")}</p>
           </div>
           <div className="feature-grid">
-            {features.map(({ icon: Icon, title, text, label }) => (
-              <article className="feature" key={title}>
+            {features.map((Icon, index) => (
+              <article className="feature" key={index}>
                 <div className="feature-icon">
                   <Icon size={24} aria-hidden="true" />
                 </div>
-                <p className="eyebrow">{label}</p>
-                <h3>{title}</h3>
-                <p>{text}</p>
+                <p className="eyebrow">{t(`feature${index + 1}Label`)}</p>
+                <h3>{t(`feature${index + 1}Title`)}</h3>
+                <p>{t(`feature${index + 1}Text`)}</p>
               </article>
             ))}
           </div>
@@ -198,53 +182,71 @@ export default function Home() {
           aria-labelledby="planners-title"
         >
           <div>
-            <p className="eyebrow">For the people behind the day</p>
+            <p className="eyebrow">{t("plannerEyebrow")}</p>
             <h2 id="planners-title">
-              Made for couples.
+              {t("plannerFirst")}
               <br />
-              <em>Mindful of planners.</em>
+              <em>{t("plannerSecond")}</em>
             </h2>
           </div>
           <div className="planner-copy">
-            <p>
-              Every wedding has its own story. Vowora’s vision includes a shared
-              plan for each couple and a multi-wedding overview for professional
-              planners.
-            </p>
-            <p>
-              Thoughtful collaboration, with the right information available to
-              the right people.
-            </p>
+            <p>{t("plannerText")}</p>
+            <p>{t("plannerDetail")}</p>
             <a className="text-link" href="#vision">
-              Discover the planned approach{" "}
-              <ArrowUpRight size={18} aria-hidden="true" />
+              {t("discover")} <ArrowUpRight size={18} aria-hidden="true" />
             </a>
           </div>
         </section>
         <section className="closing container" aria-labelledby="closing-title">
           <Leaf size={28} aria-hidden="true" />
-          <p className="eyebrow">Good things take care</p>
+          <p className="eyebrow">{t("closingEyebrow")}</p>
           <h2 id="closing-title">
-            A calmer way to plan
+            {t("closingFirst")}
             <br />
-            is taking shape.
+            {t("closingSecond")}
           </h2>
           <p>
-            We’re at the beginning of the journey.
+            {t("closingText")}
             <br />
-            Vowora is not open for signups yet.
+            {t("closingUnavailable")}
           </p>
           <a className="text-link" href="#main">
-            Back to the beginning <ArrowUpRight size={18} aria-hidden="true" />
+            {t("back")}
+            <ArrowUpRight size={18} aria-hidden="true" />
           </a>
         </section>
       </main>
       <footer className="site-footer container">
-        <a className="brand" href="#main" aria-label="Vowora home">
-          vowora
-        </a>
-        <p>One wedding, one shared plan.</p>
-        <span>In development</span>
+        <div className="footer-brand">
+          <a className="brand" href="#main" aria-label={t("home")}>
+            vowora
+          </a>
+          <p>{t("footerTag")}</p>
+          <span>{t("development")}</span>
+        </div>
+        <div className="footer-preferences">
+          <nav className="language-links" aria-label={t("languages")}>
+            {routing.locales.map((language) => (
+              <a
+                key={language}
+                href={localePath(language)}
+                hrefLang={language}
+                lang={language}
+                aria-current={language === locale ? "page" : undefined}
+              >
+                {languageNames[language]}
+              </a>
+            ))}
+          </nav>
+          <ThemeSelect
+            labels={{
+              theme: t("theme"),
+              system: t("system"),
+              light: t("light"),
+              dark: t("dark"),
+            }}
+          />
+        </div>
       </footer>
     </>
   );

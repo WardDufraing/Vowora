@@ -2,6 +2,8 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - "@next/env@16.4.3"

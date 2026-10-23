@@ -1,6 +1,6 @@
 # Vowora — Codex Development Plan
 
-**Status:** Implementation roadmap; 65 independently assignable tasks grouped into 22 milestones. All tasks are initially Not started.  
+**Status:** Implementation roadmap; 66 independently assignable tasks grouped into 22 milestones. All tasks are initially Not started.  
 **Frozen sources:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md`.  
 **Rules:** `AGENTS.md`. **Milestone overview:** `docs/steps/NN.md`. **Agent work order:** `docs/steps/NN-a.md` etc.
 
@@ -25,6 +25,7 @@
 | Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
 | 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
+| 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In progress | [Brief](steps/00-b.md) |
 | 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |

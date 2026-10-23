@@ -30,8 +30,12 @@ test("truthful public page, working destinations and no fabricated application",
     .getByRole("link")
     .evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
   for (const href of hrefs) {
-    expect(href).toMatch(/^#[a-z-]+$/);
-    await expect(page.locator(href)).toHaveCount(1);
+    if (href.startsWith("#")) {
+      expect(href).toMatch(/^#[a-z-]+$/);
+      await expect(page.locator(href)).toHaveCount(1);
+    } else {
+      expect(["/", "/nl", "/fr", "/de"]).toContain(href);
+    }
   }
   await page.getByRole("link", { name: "Explore the vision" }).click();
   await expect(page).toHaveURL(/#vision$/);
