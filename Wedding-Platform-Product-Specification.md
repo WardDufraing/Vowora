@@ -7350,3 +7350,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-004 — Optional partner invitation after creation
 
 **Decision:** Option B (approved 2026-10-23). Immediately after a couple creates a wedding, present a clear **optional invitation prompt** to invite their partner. The creator may skip this step and continue planning without interruption, and can invite their partner later from the wedding's collaboration/member controls. Do not require the partner's email during initial wedding creation. Any invitation sent must follow the existing approved invitation, email verification, expiration, and equal partner-control rules. Avoid repeated intrusive prompts after the user skips.
+
+
+### ONB-005 — Complete professional planner organization setup
+
+**Decision:** Option A (approved 2026-10-23). For users onboarding as professional wedding planners, require a **complete organization setup** before they enter the professional planner dashboard: collect necessary business/organization details, configure the initial team (including an explicit opportunity to add or invite team members, with solo planners supported), select the applicable subscription or trial, and establish core organization preferences. Make the steps clear and resumable where feasible. This planner-specific requirement intentionally takes precedence over ONB-002's general minimal-setup approach; couple onboarding remains progressive. Apply existing verification, organization roles, subscription, trial, and billing rules; do not invent additional mandatory paid seats or require a planner to invite colleagues when working alone.
