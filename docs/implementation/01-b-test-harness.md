@@ -41,3 +41,5 @@ Final frozen-lockfile installation, format gate, all tooling/workspace lint, ded
 ## Initial independent review
 
 Fresh reviewer `/root/implement_01_b/review_01_b` found that the initial advertised Node engine minima were below jsdom 30.1.3 and its locked DOM dependencies. Root engines now require `^22.22.2 || ^24.15.0`, matching the actual supported toolchain while excluding unsupported major versions. Current validation uses Node 24.19.0. Engine-strict and integrity/TLS checks remain enabled; no dependency requirements are bypassed. A new independent reviewer checks the corrected full diff.
+
+The initial reviewer also identified a low scaffold mismatch: Vitest discovers package unit tests but the dedicated TypeScript test program only listed app tests. The test program now includes `packages/**/*.unit.test.ts` as well, so future package tests get the same explicit typechecking.

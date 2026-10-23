@@ -9,7 +9,10 @@
     "apps/**/*.unit.test.ts",
     "apps/**/*.component.test.tsx",
     "apps/**/tests/**/*.spec.ts",
-    "apps/**/playwright.config.ts"
+    "apps/**/playwright.config.ts",
+    "packages/**/*.unit.test.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
