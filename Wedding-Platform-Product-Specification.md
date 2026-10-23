@@ -7275,3 +7275,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-006 — Beta duration
 
 **Decision:** Option C (approved 2026-10-23). The invitation-only private beta has **no fixed duration**. Continue beta testing and issue resolution until the approved MVP-003 public launch-readiness checklist is fully satisfied and the launch review authorizes opening registration. Calendar time alone does not end the beta. The initially approved small participant cohort (MVP-004) and in-app/email feedback channels (MVP-005) remain in effect; additional testing may be requested as needed.
+
+
+### MVP-007 — Launch languages
+
+**Decision:** Option C (approved 2026-10-23). The first public release must support **Dutch, English, French, and German** throughout the user-facing platform, including core couple and professional-planner journeys, onboarding, navigation, validation, notifications, and billing interfaces where applicable. Translation completeness and language-specific functional checks are part of launch readiness (MVP-003). User-entered wedding content must not be automatically translated unless separately approved. Additional languages can follow after launch.
