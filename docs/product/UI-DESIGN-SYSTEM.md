@@ -1,4 +1,4 @@
-# Wedding Planner — UI Design System
+# Vowora — UI Design System
 
 > Status: Visual direction approved — UI-001 through UI-035 and VIS-001 through VIS-004 approved; dashboard reconciliation approved (FINAL-001 B); Balanced Botanical color treatment approved (FINAL-002 B); core semantic palette approved (FINAL-003 B); FINAL-004 B foundation-first handoff approved; remaining state tokens and accessibility verification pending
 > Scope: Visual language, interaction presentation, reusable UI patterns, and design quality requirements.
