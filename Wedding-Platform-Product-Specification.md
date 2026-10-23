@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.2  
+**Version:** 259.3  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7257,6 +7257,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) An authorized vendor editor can set **Booked** directly, including by skipping earlier stages; (2) the action does not require an attachment, date, or payment; (3) the vendor's booking status is visibly distinct from contractual and payment evidence; (4) unauthorized members cannot change it; (5) the operation does not automatically generate a signed contract or payment entry.
 
 **Decision relationship:** Resolves DEC-186's outstanding booking-confirmation behavior; does not replace its approved status taxonomy. User's earlier preference for a structured lifecycle is satisfied by DEC-186 rather than introducing a conflicting second status list.
+
+### VND-002 — Confirm consequential changes to Booked vendors
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — When an authorized member changes a wedding vendor from **Booked** to any other approved DEC-186 status, display an explicit confirmation explaining that related contracts, payment and budget records, and tasks remain intact. Allow, but do not require, an optional reason for the change.
+
+**Product behavior:** Show the vendor name and proposed new status, explain that the action changes the wedding vendor's planning status only, and make the preservation of linked records clear before the member confirms. Cancel leaves the existing Booked status unchanged. Confirm applies the new status subject to existing vendor edit permissions; record the transition, actor, timestamp, and optional reason in the wedding workspace's existing activity history, honoring privacy and retention rules. Do not automatically cancel external bookings, notify suppliers, void contracts, reverse payments, delete tasks, or mark linked obligations settled. If follow-up action is required, it remains separately actionable and permission-controlled. Keep the existing DEC-186 status taxonomy, including **Not proceeding**; do not add a new **Cancelled** status implicitly.
+
+**Acceptance criteria:** (1) Moving from Booked to any other status prompts for confirmation; (2) the reason is optional; (3) cancellation of the dialog makes no change; (4) confirmation preserves all linked records and obligations; (5) authorized activity history identifies the transition and editor without exposing restricted record details; (6) unauthorized users cannot perform the change.
+
+**Relationship:** Complements DEC-186 and VND-001; does not alter manual Booked confirmation or create external vendor communications.
 
 ## 10. Document maintenance rules
 
