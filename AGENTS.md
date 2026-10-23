@@ -9,6 +9,12 @@ These rules apply to Codex Web, CLI, IDE and delegated agents.
 
 **Never edit, move, regenerate or replace these three files during ordinary development.** They are frozen working baselines. If a genuine contradiction or necessary change arises, stop that part of work, record it as a blocker and obtain explicit owner approval for a separate controlled source change. Do not quietly change requirements or interpret unapproved proposals as approved.
 
+## Approved deployment and domain boundaries
+- `https://vowora.app`: public marketing site, existing Vercel project, `apps/marketing`; preserve its root homepage during app development.
+- `https://app.vowora.app`: authenticated wedding platform plus its versioned REST API, separate Vercel project, `apps/web`, same Turborepo repository.
+- Each Vercel project has independent root directory, environment variables and deployment pipeline. Do not create/modify Vercel projects, DNS or production releases without the required approval. Keep authentication cookies host-only on the app origin by default; do not assume shared subdomain cookies.
+- Frozen architecture's single Vercel web/API deployment applies to the app plus API; it does not require combining marketing and app deployments. Escalate any genuine baseline conflict.
+
 ## Execution
 - `docs/PLAN.md` is the authoritative execution tracker; `docs/steps/NN.md` is the agent's focused work order. Neither overrides the three frozen baselines.
 - Start with one unblocked step. Read this file, the plan, the selected step, and **only relevant cited portions** of the frozen sources, plus dependent handoffs and affected code. Do not ingest the entire 1 MB specification by default.
