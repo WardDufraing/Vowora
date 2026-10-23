@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.8  
+**Version:** 259.9  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7323,6 +7323,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) One vendor can have DJ Booked and lighting Selected at the same time; (2) editing one service status leaves other service statuses unchanged; (3) the combined vendor summary accurately indicates partial or mixed booking; (4) marking a service Booked requires no mandatory document/date/payment; (5) moving a Booked service to another stage prompts under VND-002; (6) linked commitments remain intact; (7) service-level status changes respect permissions and activity history.
 
 **Relationship:** Extends DEC-186 and VND-006 by assigning the already-approved lifecycle to each wedding vendor service, rather than maintaining one misleading global booking status. Shared vendor identity and contacts remain singular; this does not require separate vendor records.
+
+### VND-008 — Optional allocation of shared vendor costs by service
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — Keep one source financial record for a multi-service vendor contract, quote, invoice, payment or other supported cost, and optionally allow authorized users to allocate its amount across that vendor's wedding service categories. Allocation is not mandatory.
+
+**Product behavior:** Financial records remain authoritative in the budget/finance module under DEC-189 and existing finance decisions. A record may be associated with multiple vendor services, with optional non-overlapping monetary allocations (for example, one €2,000 invoice with €1,200 attributed to DJ and €800 to lighting). Display allocated amounts and any explicitly unallocated remainder; do not require invented splits. Validate that service allocations for a given record do not exceed its applicable total, accounting for currency, refunds, credits, tax and record-specific rules already defined by the finance module. A record's overall amount, payment state, payer, contractual due dates, source document and obligations remain singular; allocation does not create additional invoices, payments, commitments, or cash flows. Financial dashboards and reports count the source record once overall and attribute service amounts only for breakdowns, avoiding double counting. Apply finance permissions and private/shared scope to both allocation edits and displays; vendor access alone cannot reveal restricted finance data. Editing allocations must not silently modify signed contractual terms or reverse payments. The exact treatment of multi-service deposits, discounts, partial payments and refund attribution is subject to existing finance rules and further acceptance criteria where not yet specified.
+
+**Acceptance criteria:** (1) One €2,000 vendor invoice can be optionally allocated €1,200 to DJ and €800 to lighting; (2) it remains one invoice and contributes €2,000, not €4,000, to overall totals; (3) leaving the allocation blank is valid and shows no fabricated service split; (4) allocations exceeding the relevant record amount are rejected; (5) allocation edits do not change payment status or source obligations; (6) unauthorized users cannot view or edit restricted allocations.
+
+**Relationship:** Refines DEC-189 and VND-006–007 while preserving the existing finance module as source of truth and its approved reporting, payment and privacy safeguards.
 
 ## 10. Document maintenance rules
 
