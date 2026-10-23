@@ -1,18 +1,12 @@
 ---
 name: review-feature
-description: Independently review a Wedding Planner change against approved requirements, architecture, security, and tests.
+description: Independently review a Wedding Planner implementation step against frozen requirements, architecture, UI, security and tests.
 ---
 
-# Review a feature
+# Review one Codex step
 
-Read `AGENTS.md`, the relevant approved product decisions, the existing architecture document, and the proposed change.
+Read `AGENTS.md`, `docs/PLAN.md`, the assigned `docs/steps/NN.md`, the relevant cited passages of frozen `docs/product/` baselines, and the changed code/tests.
 
-Review independently for:
-- Requirement fidelity: no invented behavior, omitted acceptance criteria, or silent scope expansion.
-- Correctness: validation, state transitions, error handling, and edge cases.
-- Security/privacy: authentication, server-side authorization, wedding and organization isolation, data exposure, and sensitive operations.
-- Reliability: migrations, concurrency, retries, idempotency, and recovery where applicable.
-- Quality: meaningful tests, maintainability, accessibility, and responsive behavior where relevant.
-- Documentation: accurate updates without duplicating or contradicting canonical specifications.
+Review for product fidelity; authorization, wedding/organization isolation and privacy; correctness, data integrity, financial precision, concurrency and idempotency; accessibility and responsive behavior; tests and migration/recovery safety.
 
-Report findings in priority order with exact file/line references when possible. Separate confirmed defects from questions and suggestions. State checks run and checks not run. Do not edit files unless explicitly asked to fix findings. Do not approve release when blocking issues remain.
+Report prioritized findings with file/line references and distinguish confirmed defects, questions and suggestions. State checks run versus not run. Do not edit frozen sources or approve a step with blocking findings. Only the implementation owner should update step status after evidence and review.
