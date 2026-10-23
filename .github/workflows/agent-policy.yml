@@ -1,0 +1,36 @@
+name: Agent policy
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+      - name: Verify agent branch, task ID, and frozen sources
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            [[ "$BASE_REF" == "main" ]] || { echo "PR must target main"; exit 1; }
+            if [[ ! "$HEAD_REF" =~ ^(feat|fix|chore)/([0-9]{2}-[a-z]|agent-workflow)-[a-z0-9-]+$ ]]; then
+              echo "Expected feat|fix|chore/<task-id>-<description> or chore/agent-workflow-<description>"
+              exit 1
+            fi
+            git fetch --no-tags origin main --depth=1
+            if git diff --name-only origin/main...HEAD | grep -E '^docs/product/(Wedding-Platform-Product-Specification|product-architecture|UI-DESIGN-SYSTEM)\.md$'; then
+              echo "Frozen product sources changed; separate controlled approval required"
+              exit 1
+            fi
+          fi
+          echo "Agent policy checks passed"
