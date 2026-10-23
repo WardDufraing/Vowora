@@ -7320,3 +7320,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-015 — Support response target
 
 **Decision:** Option B (approved 2026-10-23). Publish a target to provide an initial response to ordinary email support requests **within two business days**, with critical incidents prioritized for faster triage and handling. This is a response target, not a guaranteed resolution time. Clearly communicate business-day coverage and any exceptions in the help center; do not imply 24/7 staffed support. Track support response performance after launch and review missed targets. The help center and email support channels approved in MVP-014 remain in scope.
+
+
+### MVP-016 — End-to-end first-release journeys
+
+**Decision:** Option B (approved 2026-10-23). Before public launch, validate **complete end-to-end user journeys** for both audiences, not only isolated feature checks. The couple journey must cover registration, creating or claiming a wedding, inviting/collaborating with a partner and authorized participants, using the approved wedding-planning MVP modules, and completing a one-time Premium purchase with correct entitlements. The professional-planner journey must cover registration and organization setup, creating/managing multiple weddings, inviting couples and team members, exercising role-based permissions, and subscribing/managing plan access and billing. Include failure/retry and access-control cases at key transitions. These journeys are required evidence for the MVP-003 launch-readiness review; module-level tests remain necessary but are not sufficient on their own. Extensive automated real-world simulations beyond these journeys are not an additional MVP requirement.
