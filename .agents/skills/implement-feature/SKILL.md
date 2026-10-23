@@ -1,6 +1,6 @@
 ---
 name: implement-feature
-description: Implement one approved Wedding Planner step with traceable requirements, tests and a review handoff.
+description: Implement one approved Vowora step with traceable requirements, tests and a review handoff.
 ---
 
 # Implement one Codex step
