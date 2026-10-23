@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.7  
+**Version:** 259.8  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7307,11 +7307,22 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved (2026-10-23)  
 **Decision:** Option B — A single wedding vendor record may be assigned to multiple service categories, with separate service-specific details when needed. Do not require duplicate vendor records for a supplier providing several services.
 
-**Product behavior:** Maintain one vendor identity, its linked contacts and core profile information while permitting multiple wedding service-category associations (for example, DJ and event lighting). Each category may hold relevant service scope, category-specific fields, notes, and primary-vendor designation under DEC-187; the same vendor may be primary in more than one category. A vendor appears in each applicable category's comparison and filtering views without being duplicated as a separate supplier. Preserve DEC-186's approved vendor-level decision/booking lifecycle and VND-001–002 confirmation rules; independent per-service booking statuses or commitments are **not** implied by this decision and remain a distinct possible follow-up. Documents, invoices, payments, and tasks remain in their own modules under DEC-189, with explicit associations where supported. Category changes must respect existing custom-field lifecycle rules (DEC-371 onward) and avoid silently deleting financial or contractual records.
+**Product behavior:** Maintain one vendor identity, its linked contacts and core profile information while permitting multiple wedding service-category associations (for example, DJ and event lighting). Each category may hold relevant service scope, category-specific fields, notes, and primary-vendor designation under DEC-187; the same vendor may be primary in more than one category. A vendor appears in each applicable category's comparison and filtering views without being duplicated as a separate supplier. Preserve DEC-186's approved decision/booking stages and VND-001–002 confirmation rules. VND-007 subsequently assigns these stages independently to each vendor service-category association; independent financial commitments are not implied. Documents, invoices, payments, and tasks remain in their own modules under DEC-189, with explicit associations where supported. Category changes must respect existing custom-field lifecycle rules (DEC-371 onward) and avoid silently deleting financial or contractual records.
 
 **Acceptance criteria:** (1) A vendor can be associated with two or more categories in one wedding; (2) one identity and shared contact details are maintained; (3) category-specific scope and fields can differ; (4) category views display the vendor appropriately without duplicate wedding vendor records; (5) the vendor may be primary for multiple categories independently; (6) adding or removing a service category does not silently cancel bookings, erase financial commitments, or bypass permissions.
 
-**Relationship:** Resolves DEC-187's open question of whether one vendor can serve multiple categories, without replacing the standard vendor status flow or introducing separate per-service booking records.
+**Relationship:** Resolves DEC-187's open question of whether one vendor can serve multiple categories, without replacing the standard vendor status flow or introducing duplicate vendor records. VND-007 subsequently defines independent statuses per vendor service association.
+
+### VND-007 — Independent lifecycle status per vendor service
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — When one wedding vendor serves multiple service categories, each vendor-to-category service association has its own independent decision and booking status using the existing DEC-186 stages (Considering, Contacted, Quote received, Shortlisted, Selected, Booked, Not proceeding). Show a combined, clearly labeled vendor-level summary without conflating the different service states.
+
+**Product behavior:** Keep one shared wedding vendor identity and contact profile under VND-006. Track the lifecycle on each service-category association: for example, DJ may be Booked while lighting is still Selected. Users can skip stages independently per service, consistent with DEC-186. Apply VND-001's manual Booked confirmation and VND-002's consequential-change confirmation to the affected service rather than silently changing every service. Category-specific primary designation remains governed by DEC-187. The combined vendor summary must show all relevant service statuses or a clear mixed-status indicator; never imply the entire vendor engagement is Booked when only one service is. Linked contracts, quotes, tasks and financial records stay in their original modules (DEC-189); any cross-service allocation of shared contracts/payments remains a separate design question. Preserve auditability and permissions on status changes. If a service association is removed, do not silently cancel a contract, booking, payment or other obligation.
+
+**Acceptance criteria:** (1) One vendor can have DJ Booked and lighting Selected at the same time; (2) editing one service status leaves other service statuses unchanged; (3) the combined vendor summary accurately indicates partial or mixed booking; (4) marking a service Booked requires no mandatory document/date/payment; (5) moving a Booked service to another stage prompts under VND-002; (6) linked commitments remain intact; (7) service-level status changes respect permissions and activity history.
+
+**Relationship:** Extends DEC-186 and VND-006 by assigning the already-approved lifecycle to each wedding vendor service, rather than maintaining one misleading global booking status. Shared vendor identity and contacts remain singular; this does not require separate vendor records.
 
 ## 10. Document maintenance rules
 
