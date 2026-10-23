@@ -7300,3 +7300,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-011 — Accessibility standard
 
 **Decision:** Option B (approved 2026-10-23). Target **WCAG 2.2 Level AA** across the complete approved MVP at public launch, covering couple and professional-planner workflows on desktop, tablet, and mobile. Include keyboard navigation, visible focus, accessible form labels and errors, sufficient contrast, screen-reader semantics, touch targets, and responsive/reflow behavior. Validate with automated accessibility checks plus manual keyboard and representative assistive-technology testing as part of MVP-003 launch readiness. Record and remediate accessibility defects before release according to their impact; do not claim certified conformance without appropriate assessment.
+
+
+### MVP-012 — Production monitoring
+
+**Decision:** Option B (approved 2026-10-23). Implement proactive production monitoring from launch: automated application error tracking, uptime/availability checks, key performance signals, and payment/checkout/subscription failure detection. Route actionable alerts for serious incidents to responsible operators, with enough context to investigate and resolve issues promptly. Apply privacy-conscious logging, least-privilege access, and avoid collecting sensitive wedding, guest, or payment details unnecessarily. Verify monitoring and alert delivery during launch-readiness testing (MVP-003). Specific vendors, alert thresholds, and escalation schedules are implementation decisions unless they affect product commitments.
