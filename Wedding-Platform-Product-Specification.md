@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.1  
+**Version:** 259.2  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -2717,7 +2717,7 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 
 **Acceptance criteria:** (1) The standard stages are available in the stated order; (2) users can skip stages and move to a relevant stage directly; (3) Selected does not automatically mean Booked; (4) Not proceeding remains distinguishable from deletion or archive.
 
-**Consequences and required follow-up design:** Define confirmation behavior for marking a vendor Booked, status-change permissions and history, and how statuses appear in comparison views, dashboards, and reports.
+**Consequences and required follow-up design:** Booking confirmation behavior is resolved by VND-001 (manual confirmation without required evidence). Status-change permissions and history, and how statuses appear in comparison views, dashboards, and reports, remain to be checked against later decisions before being reopened.
 
 ### DEC-187 — One primary vendor with additional selections allowed
 
@@ -7246,6 +7246,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 - **Guest-group model:** Preserve household/plus-one adult and child quantities, group-wide attendance and confirmation, and overlapping per-category dietary counts as clarified in Section 4.7.
 - **Outstanding work:** Prioritize genuine gaps in vendor selection/booking lifecycle and cross-module acceptance criteria, then unresolved operational schedule edge cases, privacy/permissions and release-readiness journeys. Do not repeat previously settled vendor comparisons, run-sheet basics, notification choices, or guest-group fundamentals.
 - **Auditability:** Keep original decisions intact; record explicit amendments with provenance instead of silently renumbering or reinterpreting them.
+
+### VND-001 — Manual vendor booking confirmation
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option A — An authorized user may manually mark a wedding vendor **Booked**, without being required to supply a booking date, signed contract, uploaded evidence, or external confirmation reference.
+
+**Product behavior:** Keep the approved DEC-186 vendor stages unchanged (Considering, Contacted, Quote received, Shortlisted, Selected, Booked, Not proceeding). Marking **Booked** is an explicit user assertion that the vendor engagement is confirmed; the platform must not imply that a signed contract, deposit, or vendor-side acknowledgement exists solely from that status. Optional contracts, correspondence, booking dates, and linked financial records may be recorded separately under existing document/budget functionality. **Selected** and primary-vendor designation remain distinct from **Booked**. Existing workspace permissions govern who may edit vendor records; finer-grained status-change permissions and history remain unresolved unless already governed by another approved rule.
+
+**Acceptance criteria:** (1) An authorized vendor editor can set **Booked** directly, including by skipping earlier stages; (2) the action does not require an attachment, date, or payment; (3) the vendor's booking status is visibly distinct from contractual and payment evidence; (4) unauthorized members cannot change it; (5) the operation does not automatically generate a signed contract or payment entry.
+
+**Decision relationship:** Resolves DEC-186's outstanding booking-confirmation behavior; does not replace its approved status taxonomy. User's earlier preference for a structured lifecycle is satisfied by DEC-186 rather than introducing a conflicting second status list.
 
 ## 10. Document maintenance rules
 
