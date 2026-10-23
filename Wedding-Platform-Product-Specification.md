@@ -7345,3 +7345,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-003 — Starter planning template on wedding creation
 
 **Decision:** Option B (approved 2026-10-23). When a couple creates a wedding, automatically provide a **basic starter planning timeline with suggested tasks** so their initial dashboard is useful rather than empty. Couples can freely customize, complete, add to, or remove these starter tasks and timeline entries. Do not require choosing a detailed wedding type or template before entering the dashboard. The starter content should respect any known wedding date and avoid presenting suggestions as mandatory requirements. Existing reusable task/timeline template capabilities remain in scope; more detailed template choices may be offered optionally later. Preserve ONB-002 minimal setup and progressive onboarding.
+
+
+### ONB-004 — Optional partner invitation after creation
+
+**Decision:** Option B (approved 2026-10-23). Immediately after a couple creates a wedding, present a clear **optional invitation prompt** to invite their partner. The creator may skip this step and continue planning without interruption, and can invite their partner later from the wedding's collaboration/member controls. Do not require the partner's email during initial wedding creation. Any invitation sent must follow the existing approved invitation, email verification, expiration, and equal partner-control rules. Avoid repeated intrusive prompts after the user skips.
