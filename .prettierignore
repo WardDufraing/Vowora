@@ -1,0 +1,18 @@
+# All maintained source/config is formatted. Preserve approved frozen baselines,
+# historical task handoffs and original brand assets byte-for-byte.
+docs/
+AGENTS.md
+README.md
+.agents/
+.codex/
+.git/
+node_modules/
+.next/
+.turbo/
+dist/
+playwright-report/
+test-results/
+coverage/
+pnpm-lock.yaml
+next-env.d.ts
+*.tsbuildinfo

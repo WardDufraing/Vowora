@@ -26,3 +26,7 @@ Marketing languages: English `/`, Nederlands `/nl`, Français `/fr`, Deutsch `/d
 ## Application workspace
 
 `apps/web` is a separate, noindex application foundation, not a working product. `pnpm dev:web` runs it on port 3001; `pnpm dev:marketing` runs marketing on port 3000. `pnpm build:web` and `pnpm build:marketing` build only the requested app and its package dependencies. See [workspace boundaries and owner-controlled Vercel setup](docs/implementation/01-a-workspace.md). Run `pnpm build` before `pnpm test`.
+
+## Code quality and tests
+
+From the repository root run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `pnpm test`. Vitest/React Testing Library run with `pnpm test:unit`; `pnpm test:e2e` runs both Playwright applications after production builds. See the [01-b test harness handoff](docs/implementation/01-b-test-harness.md) for setup, ports, formatting scope and individual commands.
