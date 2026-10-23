@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 259.4  
+**Version:** 259.5  
 **Last updated:** 23 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -7279,6 +7279,17 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Acceptance criteria:** (1) Each vendor has at most one primary designation and one optional wedding-day designation; (2) the same linked contact can fill both; (3) additional linked contacts remain available; (4) changes to contact details use the source contact record; (5) restricted contact details do not leak to unauthorized users or exports; (6) invalid designations require review rather than silent reassignment.
 
 **Relationship:** Refines DEC-188 without changing vendor booking states (DEC-186, VND-001–002) or the contact-directory data model.
+
+### VND-004 — Confirm unlinking financially consequential vendor records
+
+**Status:** Approved (2026-10-23)  
+**Decision:** Option B — Authorized users may unlink routine related records from a wedding vendor directly, but must explicitly confirm before unlinking contracts, invoices, payments, or other financial commitments.
+
+**Product behavior:** Unlinking removes only the association between the wedding vendor and an existing record; it never deletes, cancels, voids, settles, or modifies the underlying contract, document, financial obligation, payment, or task. For consequential links, display the vendor, linked record, and a clear warning that the source record and its obligations remain in their respective modules. The user can cancel without making changes. Apply existing edit permissions and cross-module restrictions; access to the vendor alone does not confer permission to modify a restricted linked record. Record permitted link changes in activity history without disclosing restricted financial or private details. Do not confuse this wedding-record unlinking behavior with organization-directory vendor profile unlinking governed by DEC-342, DEC-361–363.
+
+**Acceptance criteria:** (1) An authorized editor can remove an ordinary task or nonfinancial document association without a mandatory confirmation dialog; (2) unlinking a contract, invoice, payment, or other financial commitment requires explicit confirmation; (3) cancelling the dialog preserves the association; (4) confirmation removes only the association and preserves the source record and obligations; (5) unauthorized changes are rejected; (6) audit entries follow existing privacy and retention rules.
+
+**Relationship:** Resolves part of DEC-189's outstanding vendor-to-record unlink behavior while retaining each linked module as its source of truth. Handling archived or deleted linked records remains separately open unless governed by an existing decision.
 
 ## 10. Document maintenance rules
 
