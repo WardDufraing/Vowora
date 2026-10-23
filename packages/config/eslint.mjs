@@ -1,0 +1,59 @@
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+// Keep transport/domain packages independent of application/framework internals.
+export function workspaceConfig(layer) {
+  const restricted = [
+    "**/marketing",
+    "**/marketing/**",
+    "**/web",
+    "**/web/**",
+    "@vowora/marketing",
+    "@vowora/marketing/**",
+    "@vowora/web",
+    "@vowora/web/**",
+  ];
+  if (layer === "domain" || layer === "contracts") {
+    restricted.push(
+      "next",
+      "next/**",
+      "react",
+      "react/**",
+      "react-dom",
+      "react-dom/**",
+      "node:*",
+      "@vowora/*",
+      "**/domain/**",
+      "**/contracts/**",
+    );
+  }
+  return defineConfig([
+    ...(layer === "domain" || layer === "contracts" ? [] : nextVitals),
+    ...nextTs,
+    globalIgnores([
+      ".next/**",
+      "dist/**",
+      "next-env.d.ts",
+      "playwright-report/**",
+      "test-results/**",
+    ]),
+    {
+      files: ["**/*.{ts,tsx}"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: restricted,
+                message:
+                  "Import a public package entrypoint in the permitted layer; never application or framework internals.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+  ]);
+}

@@ -10,9 +10,15 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "pnpm --filter @vowora/marketing test"
+    "test": "pnpm test:boundaries && pnpm --filter @vowora/web test && pnpm --filter @vowora/marketing test",
+    "dev:marketing": "turbo run dev --filter=@vowora/marketing",
+    "dev:web": "turbo run dev --filter=@vowora/web",
+    "build:marketing": "turbo run build --filter=@vowora/marketing",
+    "build:web": "turbo run build --filter=@vowora/web",
+    "test:boundaries": "node --test scripts/workspace.test.mjs"
   },
   "devDependencies": {
-    "turbo": "2.11.10"
+    "turbo": "2.11.10",
+    "@vowora/config": "workspace:*"
   }
 }

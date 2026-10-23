@@ -26,7 +26,7 @@
 | --- | --- | --- | --- | --- |
 | 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
 | 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In review | [Brief](steps/00-b.md) |
-| 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
+| 01-a | Monorepo and package boundaries | 00-a (merged and live) | In review | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
 | 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
@@ -100,3 +100,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-23 — 00-a implementation on `feat/00-a-marketing-site`; [handoff and executed checks](implementation/00-a-marketing.md). Fresh foundation and final independent code reviews passed; [draft PR #5](https://github.com/WardDufraing/Vowora/pull/5) is open. GitHub hosted checks cannot start because of owner billing/spending limits; the automatic existing Vercel preview failed with cause unverified. Owner merge, existing Vercel/domain verification and owner-controlled launch remain pending; 00-a is not Done and 01-a remains blocked.
 
 - 2026-10-23 — 00-b owner-requested marketing footer/theme and EN/NL/FR/DE localization on `feat/00-b-marketing-localization`, based on merged PR #5. Local lint/types/build, 26 Chromium tests and six configured metadata checks passed; [handoff](implementation/00-b-marketing-localization.md). Fresh independent reviewer `/root/implement_00_b/review_00_b` passed full diff with no findings and independently reran lint/types/fresh build and 26 tests. [PR #6](https://github.com/WardDufraing/Vowora/pull/6) awaits owner review/merge; hosted outcomes tracked there. No agent merge/deployment command.
+
+- 2026-10-23 — 01-a started by fresh implementer `/root/implement_01_a` from integrated main `64f5d93`. PRs #5/#6 are owner-merged; coordinator verified HTTPS responses for marketing `/`, `/nl`, `/fr`, `/de` all 200 with corresponding language/title. Earlier pending/blocked notes above are historical, superseded for 01-a eligibility. No open competing PR was found. [Workspace scope/handoff](implementation/01-a-workspace.md).
