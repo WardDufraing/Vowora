@@ -1,6 +1,6 @@
 # Vowora — Codex Development Plan
 
-**Status:** Implementation roadmap; 64 independently assignable tasks grouped into 21 milestones. All tasks are initially Not started.  
+**Status:** Implementation roadmap; 65 independently assignable tasks grouped into 22 milestones. All tasks are initially Not started.  
 **Frozen sources:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md`.  
 **Rules:** `AGENTS.md`. **Milestone overview:** `docs/steps/NN.md`. **Agent work order:** `docs/steps/NN-a.md` etc.
 
@@ -16,11 +16,16 @@
 **Statuses:** Not started · In progress · In review · Blocked · Done.  
 **Important:** "Read-only" is an agent instruction, not GitHub ACL enforcement. Protect frozen paths with repository rules if needed.
 
+## Launch-first routing policy
+
+**Task 00-a is the first implementation task and first production release.** Reuse the existing Vercel project and owner's verified custom domain to publish a lightweight marketing website at `/` immediately, before building authentication or the app. Keep `/` as the marketing homepage throughout development; future app route/subdomain selection requires an explicit decision. Do not create another Vercel project or invent a domain, signup flow, pricing or waitlist. Once 00-a is live, app development continues under milestone 01 without disrupting the marketing site.
+
 ## Milestones and task index
 
 | Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
-| 01-a | Monorepo and package boundaries | None | Not started | [Brief](steps/01-a.md) |
+| 00-a | Public marketing website on existing Vercel and domain | None | Not started | [Brief](steps/00-a.md) |
+| 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
 | 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
