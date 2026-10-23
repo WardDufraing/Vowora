@@ -1,4 +1,4 @@
-# Wedding Planner — Product Architecture
+# Vowora — Product Architecture
 
 > Status: Architecture planning complete — approved implementation baseline
 > Last updated: 2026-10-22
@@ -8,7 +8,7 @@
 
 ## 1. Purpose and principles
 
-Wedding Planner serves couples, professional wedding planners and planner organizations. It supports wedding planning, tasks and timelines, budgets, guests, suppliers, documents, contacts, schedules, notifications, dashboards, reports and permissions.
+Vowora serves couples, professional wedding planners and planner organizations. It supports wedding planning, tasks and timelines, budgets, guests, suppliers, documents, contacts, schedules, notifications, dashboards, reports and permissions.
 
 Architecture principles:
 - Start with a cost-conscious, API-ready modular monolith rather than microservices.
