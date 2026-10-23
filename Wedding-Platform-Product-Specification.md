@@ -7365,3 +7365,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-007 — Dismissible onboarding progress checklist
 
 **Decision:** Option B (approved 2026-10-23). Provide a **small, dismissible setup checklist** on the relevant couple or planner dashboard, showing useful next onboarding steps and their completion state. Users may complete optional items in any order and at their own pace, or hide the checklist without losing completed progress. Checklist items should link directly to the corresponding setup action, reflect the user's context and permissions, and avoid presenting optional suggestions as requirements. For professional planners, the mandatory organization setup from ONB-005 must still be completed before dashboard access; the post-setup checklist covers only remaining optional guidance. Provide a non-intrusive way to return to onboarding guidance later.
+
+
+### ONB-008 — Contextual tips and optional feature tours
+
+**Decision:** Option B (approved 2026-10-23). Help users learn features after onboarding with **brief contextual tips** when they first encounter relevant functionality, plus **optional guided feature tours** for more complex modules. Tips and tours must be skippable or dismissible, avoid blocking normal work, and be available to revisit from relevant help entry points. Tailor guidance to the user's role and permissions; do not reveal restricted functionality or private information. Retain the searchable help center and email support approved for MVP; do not require mandatory walkthroughs before using modules.
