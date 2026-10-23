@@ -7340,3 +7340,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-002 — Minimal setup and progressive onboarding
 
 **Decision:** Option B (approved 2026-10-23). Use **minimal first-time setup with progressive onboarding** for both couples and professional planners. Ask only for the essential information needed to create or access the relevant wedding or planner workspace; allow users to start using the dashboard and approved MVP features promptly. Offer an optional guided setup and contextual, dismissible prompts to collect additional wedding details, preferences, budget estimates, guest information, and organization configuration as needed. Do not make optional details a prerequisite for starting; enforce information only when it is genuinely required by the action being performed. Preserve existing registration, verification, invitation, and permissions rules. Detailed visual design and navigation remain for the separate design discussion.
+
+
+### ONB-003 — Starter planning template on wedding creation
+
+**Decision:** Option B (approved 2026-10-23). When a couple creates a wedding, automatically provide a **basic starter planning timeline with suggested tasks** so their initial dashboard is useful rather than empty. Couples can freely customize, complete, add to, or remove these starter tasks and timeline entries. Do not require choosing a detailed wedding type or template before entering the dashboard. The starter content should respect any known wedding date and avoid presenting suggestions as mandatory requirements. Existing reusable task/timeline template capabilities remain in scope; more detailed template choices may be offered optionally later. Preserve ONB-002 minimal setup and progressive onboarding.
