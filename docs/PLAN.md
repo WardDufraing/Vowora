@@ -1,57 +1,92 @@
 # Vowora — Codex Development Plan
 
-**Status:** Execution roadmap; approved product/architecture/UI baselines are frozen for ordinary implementation.  
-**Authority:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md` (UI/VIS/FINAL approvals).  
-**Agent instructions:** `AGENTS.md`. **Task briefs:** `docs/steps/`.
+**Status:** Implementation roadmap; 64 independently assignable tasks grouped into 21 milestones. All tasks are initially Not started.  
+**Frozen sources:** `docs/product/Wedding-Platform-Product-Specification.md` (v259.10), `docs/product/product-architecture.md` (ARCH-001–150), `docs/product/UI-DESIGN-SYSTEM.md`.  
+**Rules:** `AGENTS.md`. **Milestone overview:** `docs/steps/NN.md`. **Agent work order:** `docs/steps/NN-a.md` etc.
 
-## How Codex should work
+## Operating rules
+1. Assign **one child task** (e.g. `02-b`), not an entire milestone, to one Codex agent. Dependencies must be complete; independent tasks may run concurrently only with disjoint file ownership and an integration owner.
+2. Agent reads `AGENTS.md`, this roadmap, its own task brief, dependent handoffs and relevant existing code. Consult **only referenced passages** of frozen baselines for exact rules, not all ~1 MB by default. Task briefs are scoped instructions, not copies or replacements for canonical decisions.
+3. Before substantial implementation, propose affected files, API/schema/UI scope, acceptance criteria, tests and risks; obtain approval as required by `AGENTS.md`.
+4. Implement and verify the slice with server authorization, tenant isolation, validation, accessible responsive states, tests and review. Record exact checks run; never invent results.
+5. Update this plan and the selected child brief's handoff log after acceptance and review. Never edit frozen `docs/product/*` in routine implementation.
+6. Mark a parent milestone Done only when every child task and relevant integration test is Done. On a discovered oversized task, split it further before coding and update dependencies/links.
+7. Escalate actual contradictions or missing approved product rules; don't turn the development process into a new broad questionnaire.
 
-1. Pick the **first unblocked, not-yet-complete** step below. One implementation agent owns one step at a time. Parallel steps are allowed only if dependencies are satisfied and file ownership does not overlap.
-2. Read `AGENTS.md`, **this plan**, and **only the selected step brief**. Read the specifically referenced sections/decision IDs of the frozen source documents as needed, not their entire contents by default. A brief is a navigation and execution contract, not a substitute for binding source requirements.
-3. Inspect the existing code and tests, write a short implementation proposal with changed files and acceptance criteria, and obtain approval as required by `AGENTS.md`. Do not silently choose unapproved product behavior.
-4. Implement a complete, testable vertical slice with migration/API/UI/authorization/tests where applicable. Prefer integration through existing domain services; avoid unrelated refactoring.
-5. Run lint, types, relevant unit/integration/security tests and end-to-end checks where applicable. Request independent review; record actual evidence and blockers.
-6. Update **only** this plan's status and the chosen step's implementation log, plus normal source/test files. Never modify `docs/product/*` in routine development. Explicit owner approval and a separate controlled change are required to change a frozen baseline.
-7. Mark Done only after acceptance criteria pass and review is resolved. Record PR/commit, test evidence, and next unblocked step. Never assume a checkbox is done because code was written.
+**Statuses:** Not started · In progress · In review · Blocked · Done.  
+**Important:** "Read-only" is an agent instruction, not GitHub ACL enforcement. Protect frozen paths with repository rules if needed.
 
-**Status legend:** Not started → In progress → In review → Done; Blocked when a required dependency or product decision is missing.  
-**Scope rule:** One step is intended for one Codex agent/session; if it proves too large, split it into numbered substeps with explicit ownership and dependency links **before** implementation, without changing approved requirements.  
-**GitHub read-only note:** Frozen means agent policy, not file-system ACL. Enforce technically with repository rules/CODEOWNERS if desired; agents cannot bypass this policy.
+## Milestones and task index
 
-## Ordered implementation steps
-
-| Step | Agent-sized deliverable | Depends on | Status | Brief |
+| Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
-| 01 | Repository and CI foundation | None | Not started | [01](steps/01.md) |
-| 02 | Database and domain foundations | 01 | Not started | [02](steps/02.md) |
-| 03 | Authentication and sessions | 01, 02 | Not started | [03](steps/03.md) |
-| 04 | Authorization and membership engine | 02, 03 | Not started | [04](steps/04.md) |
-| 05 | Design tokens and application shell | 01, 03, 04 | Not started | [05](steps/05.md) |
-| 06 | Wedding creation and partner onboarding | 03, 04, 05 | Not started | [06](steps/06.md) |
-| 07 | Planner organizations and team access | 04, 06 | Not started | [07](steps/07.md) |
-| 08 | Tasks and planning timeline | 05, 06 | Not started | [08](steps/08.md) |
-| 09 | Contacts and emergency contacts | 05, 06 | Not started | [09](steps/09.md) |
-| 10 | Guest management and attendance | 05, 06 | Not started | [10](steps/10.md) |
-| 11 | Wedding decisions and inspiration | 05, 06 | Not started | [11](steps/11.md) |
-| 12 | Vendors and service lifecycle | 06, 09 | Not started | [12](steps/12.md) |
-| 13 | Budget and financial records | 06, 12 | Not started | [13](steps/13.md) |
-| 14 | Documents, notes and secure files | 06, 09 | Not started | [14](steps/14.md) |
-| 15 | Wedding-day schedule and offline snapshot | 08, 09, 14 | Not started | [15](steps/15.md) |
-| 16 | Notifications, email and jobs | 02, 04, 06 | Not started | [16](steps/16.md) |
-| 17 | Couple dashboard and global search | 08, 10, 11, 12, 13, 15 | Not started | [17](steps/17.md) |
-| 18 | Planner dashboard, directory and templates | 07, 08, 12 | Not started | [18](steps/18.md) |
-| 19 | Reports and exports | 13, 14, 16, 17 | Not started | [19](steps/19.md) |
-| 20 | Privacy, retention and operational hardening | All prior applicable steps | Not started | [20](steps/20.md) |
-| 21 | Release readiness and production launch | 01–20 | Not started | [21](steps/21.md) |
+| 01-a | Monorepo and package boundaries | None | Not started | [Brief](steps/01-a.md) |
+| 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
+| 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
+| 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
+| 02-b | Tenant-scoped repository and transaction primitives | 02-a | Not started | [Brief](steps/02-b.md) |
+| 02-c | Audit events and transactional outbox | 02-b | Not started | [Brief](steps/02-c.md) |
+| 03-a | Authentication integration | 02-c | Not started | [Brief](steps/03-a.md) |
+| 03-b | Session management and account recovery | 03-a | Not started | [Brief](steps/03-b.md) |
+| 03-c | Authentication abuse protections and tests | 03-b | Not started | [Brief](steps/03-c.md) |
+| 04-a | Permission vocabulary and role model | 03-c | Not started | [Brief](steps/04-a.md) |
+| 04-b | Server authorization enforcement | 04-a | Not started | [Brief](steps/04-b.md) |
+| 04-c | Permission changes, audit and regression suite | 04-b | Not started | [Brief](steps/04-c.md) |
+| 05-a | Semantic tokens and themes | 04-c | Not started | [Brief](steps/05-a.md) |
+| 05-b | Responsive app shell and navigation | 05-a | Not started | [Brief](steps/05-b.md) |
+| 05-c | Shared forms, tables and localization | 05-b | Not started | [Brief](steps/05-c.md) |
+| 06-a | Wedding creation and workspace settings | 05-c | Not started | [Brief](steps/06-a.md) |
+| 06-b | Partner invitations and claim lifecycle | 06-a | Not started | [Brief](steps/06-b.md) |
+| 06-c | Workspace switching and deep links | 06-b | Not started | [Brief](steps/06-c.md) |
+| 07-a | Organization and staff memberships | 06-c | Not started | [Brief](steps/07-a.md) |
+| 07-b | Wedding planner assignment and fallback | 07-a | Not started | [Brief](steps/07-b.md) |
+| 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |
+| 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
+| 08-b | Task interactions and dependencies | 08-a | Not started | [Brief](steps/08-b.md) |
+| 08-c | Timeline views and reusable templates | 08-b | Not started | [Brief](steps/08-c.md) |
+| 09-a | Contact records and visibility | 08-c | Not started | [Brief](steps/09-a.md) |
+| 09-b | Emergency and linked contacts | 09-a | Not started | [Brief](steps/09-b.md) |
+| 09-c | Contact screens and permission tests | 09-b | Not started | [Brief](steps/09-c.md) |
+| 10-a | Guest groups and confirmation | 09-c | Not started | [Brief](steps/10-a.md) |
+| 10-b | Event-part attendance and labels | 10-a | Not started | [Brief](steps/10-b.md) |
+| 10-c | Guest list UX and filters | 10-b | Not started | [Brief](steps/10-c.md) |
+| 11-a | Decision records and lifecycle | 10-c | Not started | [Brief](steps/11-a.md) |
+| 11-b | Decision board and dashboard selectors | 11-a | Not started | [Brief](steps/11-b.md) |
+| 11-c | MVP inspiration board | 11-b | Not started | [Brief](steps/11-c.md) |
+| 12-a | Wedding vendor profiles and service categories | 11-c | Not started | [Brief](steps/12-a.md) |
+| 12-b | Service booking states and comparison | 12-a | Not started | [Brief](steps/12-b.md) |
+| 12-c | Vendor archive and relationship lifecycle | 12-b | Not started | [Brief](steps/12-c.md) |
+| 13-a | Budget structure and calculations | 12-c | Not started | [Brief](steps/13-a.md) |
+| 13-b | Quotes, invoices and installments | 13-a | Not started | [Brief](steps/13-b.md) |
+| 13-c | Payments, refunds and credits | 13-b | Not started | [Brief](steps/13-c.md) |
+| 13-d | Vendor-service cost allocation and financial UI | 13-c | Not started | [Brief](steps/13-d.md) |
+| 14-a | Private file upload and metadata | 13-d | Not started | [Brief](steps/14-a.md) |
+| 14-b | Malware scanning and secure access | 14-a | Not started | [Brief](steps/14-b.md) |
+| 14-c | Documents, notes and linked records | 14-b | Not started | [Brief](steps/14-c.md) |
+| 15-a | Schedule events and wedding-local time | 14-c | Not started | [Brief](steps/15-a.md) |
+| 15-b | Run sheet and PDF output | 15-a | Not started | [Brief](steps/15-b.md) |
+| 15-c | Offline PWA snapshot and revocation | 15-b | Not started | [Brief](steps/15-c.md) |
+| 16-a | Outbox dispatcher and Trigger.dev execution | 15-c | Not started | [Brief](steps/16-a.md) |
+| 16-b | In-app notification inbox and policy | 16-a | Not started | [Brief](steps/16-b.md) |
+| 16-c | Resend email and delivery tracking | 16-b | Not started | [Brief](steps/16-c.md) |
+| 17-a | Dashboard summaries and empty states | 16-c | Not started | [Brief](steps/17-a.md) |
+| 17-b | Personal dashboard ordering and quick actions | 17-a | Not started | [Brief](steps/17-b.md) |
+| 17-c | Global workspace search | 17-b | Not started | [Brief](steps/17-c.md) |
+| 18-a | Multi-wedding planner dashboard | 17-c | Not started | [Brief](steps/18-a.md) |
+| 18-b | Organization vendor directory | 18-a | Not started | [Brief](steps/18-b.md) |
+| 18-c | Planner templates and team workflows | 18-b | Not started | [Brief](steps/18-c.md) |
+| 19-a | Report models and on-demand PDF/XLSX | 18-c | Not started | [Brief](steps/19-a.md) |
+| 19-b | Scheduled reports and delivery state | 19-a | Not started | [Brief](steps/19-b.md) |
+| 19-c | Snapshots, revocation and retention | 19-b | Not started | [Brief](steps/19-c.md) |
+| 20-a | Retention and deletion orchestration | 19-c | Not started | [Brief](steps/20-a.md) |
+| 20-b | GDPR data subject workflows | 20-a | Not started | [Brief](steps/20-b.md) |
+| 20-c | Observability, rate limits and security hardening | 20-b | Not started | [Brief](steps/20-c.md) |
+| 21-a | Critical journey and accessibility verification | 20-c | Not started | [Brief](steps/21-a.md) |
+| 21-b | Production migration, backup and recovery rehearsal | 21-a | Not started | [Brief](steps/21-b.md) |
+| 21-c | Release gates, smoke tests and launch approval | 21-b | Not started | [Brief](steps/21-c.md) |
 
-## Cross-cutting completion gate
+## Integration and release gates
+At every task boundary verify authorization, cross-tenant isolation, applicable record privacy, correct money/date semantics, accessibility, localization and test coverage. Complex integrations (reports, financial allocation, scheduled notifications, offline access and lifecycle deletion) require cross-module regression tests. Launch additionally requires ARCH-146–150 gates and approved recovery objectives.
 
-Every step must preserve tenant isolation, authorization, approved private/shared scopes, accessibility, localization, data integrity, and auditability wherever relevant. Never claim release readiness merely because individual steps are checked. All nontrivial product conflicts are **Blocked — approval required**, not guessed.
-
-## Implementation progress log
-
-Add dated entries here for completed steps with PR/commit links, checks actually run, reviewer outcome and outstanding risks. Avoid copying the frozen product specifications into this file.
-
-## Step-file contract
-
-Each `docs/steps/NN.md` is a compact, self-contained work order with objective, approved behavior summary, dependencies, source pointers, in/out scope, deliverables, acceptance criteria, tests and a handoff log. It deliberately does **not** reproduce hundreds of detailed approved requirements. The agent must open only the relevant canonical source passages for exact rules. When a step touches multiple independently deliverable product areas, create child files `NN-a.md`, `NN-b.md` and link them here before assigning agents.
+## Progress log
+Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
