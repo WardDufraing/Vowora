@@ -20,3 +20,5 @@ pnpm --filter @vowora/marketing dev
 ```
 
 Run `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `pnpm test` (install Playwright Chromium first). See the [00-a handoff](docs/implementation/00-a-marketing.md) for test prerequisites, cloud cache paths, metadata configuration and the owner-controlled release gate. No application backend is included yet.
+
+Marketing languages: English `/`, Nederlands `/nl`, Français `/fr`, Deutsch `/de`. Language and theme preferences are in the footer; see the [00-b handoff](docs/implementation/00-b-marketing-localization.md).

@@ -275,6 +275,8 @@ h3 {
   gap: 0.5rem;
   align-items: center;
   font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
 }
 select {
   appearance: auto;
@@ -732,5 +734,77 @@ h2 em {
   }
   .site-footer p {
     width: 100%;
+  }
+}
+
+/* Quiet footer preferences: restrained chrome with full-size accessible targets. */
+.footer-brand {
+  display: grid;
+  gap: 0.25rem;
+}
+.footer-brand p {
+  margin: 0;
+}
+.footer-brand > span {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.footer-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+}
+.language-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.75rem;
+}
+.language-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-weight: 400;
+}
+.language-links a[aria-current="page"] {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+.language-links a:hover {
+  text-decoration: underline;
+}
+.theme-control select {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0.25rem;
+  padding: 0.375rem 0.25rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.theme-control select:hover {
+  border-color: var(--control-border);
+}
+.theme-control select option {
+  color: var(--foreground);
+  background: var(--card);
+}
+@media (max-width: 40rem) {
+  .footer-brand {
+    justify-items: center;
+    width: 100%;
+  }
+  .footer-preferences {
+    justify-content: center;
+  }
+  .language-links {
+    justify-content: center;
+  }
+}
+@media (forced-colors: active) {
+  .theme-control select {
+    border-color: ButtonText;
   }
 }
