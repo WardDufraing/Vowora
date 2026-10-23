@@ -7310,3 +7310,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-013 — Backups and disaster recovery
 
 **Decision:** Option B (approved 2026-10-23). Protect production wedding data with **daily automated backups**, **point-in-time recovery where supported**, secure backup storage with appropriately restricted access, and **periodic restoration tests**. Include the database and other essential persisted wedding assets in a documented recovery plan; verify that backups are recoverable rather than relying solely on backup-job success. Test recovery before public launch as part of MVP-003 readiness, and continue periodic tests in production. Exact retention periods, recovery objectives, provider choices, and test cadence are to be set during operational planning, consistent with approved privacy and data-retention requirements.
+
+
+### MVP-014 — Launch support channels
+
+**Decision:** Option B (approved 2026-10-23). At public launch, provide a **searchable help center** with practical help articles and FAQs for couples and professional planners, alongside a dedicated **email support channel** for questions, account issues, and problems not resolved by self-service documentation. Make both channels discoverable from the application. Ensure launch documentation covers critical onboarding, wedding management, collaboration, billing, and troubleshooting journeys in the supported launch languages. Live chat is not required at launch. Support address, service hours, and response targets can be finalized before release; do not invent commitments or contact details.
