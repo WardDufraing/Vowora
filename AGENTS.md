@@ -1,4 +1,4 @@
-# Wedding Planner — Codex Agent Instructions
+# Vowora — Codex Agent Instructions
 
 These rules apply to Codex Web, CLI, IDE and delegated agents.
 
