@@ -7265,3 +7265,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-004 — Private beta participant group
 
 **Decision:** Option A (approved 2026-10-23). Run the invitation-only private beta with a small, controlled initial cohort of approximately **5 couples and 2 professional wedding planners**. Include both couple and planner journeys in testing, and collect actionable feedback from this cohort before the public launch-readiness review. These numbers are approximate targets, not hard account limits; any expansion should be deliberate. The complete approved MVP scope and MVP-003 exit criteria remain unchanged.
+
+
+### MVP-005 — Beta feedback channels
+
+**Decision:** Option B (approved 2026-10-23). During the private beta, provide a simple in-app feedback control for participants to submit bug reports and product suggestions, with a dedicated support email address as an alternative and fallback. Feedback must be accessible from the application without disrupting wedding-planning work. Route submissions into a reviewable process so issues can be triaged and considered during the MVP-003 launch-readiness review. Exact feedback form fields, internal tracking tools, and support address can be finalized during implementation; do not invent a public email address in the specification.
