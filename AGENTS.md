@@ -74,6 +74,6 @@ Read these as the approved authority for their respective domains:
 
 Approved product behavior > approved architecture and UI design in their domains > `docs/PLAN.md` and task briefs > implementation choices. Report any material contradiction instead of choosing silently.
 
-Use `.agents/skills/implement-feature/SKILL.md` for implementation and `.agents/skills/review-feature/SKILL.md` for fresh independent review. The legacy `.agents/skills/plan-task/SKILL.md` may need updating before use because it references the superseded `docs/PLANS.md`.
+Use `.agents/skills/implement-feature/SKILL.md` for implementation and `.agents/skills/review-feature/SKILL.md` for fresh independent review. Use `.agents/skills/plan-task/SKILL.md` for task planning and `.agents/skills/orchestrate-development/SKILL.md` with `.codex/agents/orchestrator.toml` for coordination. See `docs/AGENT-OPERATIONS.md` for startup and GitHub setup.
 
-**Non-negotiable:** one new implementer per child step; independent fresh reviewer per step; implementer-owned tests; descriptive task branch; PR to `main`; no autonomous merge or production deployment; honest evidence.
+GitHub enforcement caveat: private-repository rulesets may require an upgraded plan; when unavailable, report this explicitly and never treat CI instructions as enforced branch protection.\n\n**Non-negotiable:** one new implementer per child step; independent fresh reviewer per step; implementer-owned tests; descriptive task branch; PR to `main`; no autonomous merge or production deployment; honest evidence.
