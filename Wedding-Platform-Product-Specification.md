@@ -1,6 +1,6 @@
 # Wedding Planning Platform — Living Product Specification
 
-**Version:** 257.0  
+**Version:** 258.0  
 **Last updated:** 22 October 2026  
 **Status:** Discovery and product design  
 **Working name:** Wedding Planning Platform (brand name undecided)
@@ -5882,6 +5882,10 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 **Status:** Approved
 **Decision:** Phase 1 Critical Decision 44, Option C — Provide a **self-service billing dashboard** for the planner-organization owner and currently authorized billing managers under PHASE1-BIZ-034 through PHASE1-BIZ-036. The dashboard shows the current plan and billing cadence, renewal or cancellation status, payment-method management, invoice and payment history, downloadable invoices, and relevant billing actions consistent with previously approved subscription rules. Allow authorized billing users to **configure invoice and billing-notice email recipients** for the organization, including appropriate finance contacts who do not need full organization or wedding-workspace access. Distinguish recipient-only delivery from permission to sign in and manage billing: adding an email recipient must not grant billing-manager, staff, owner, or wedding access. Verify new external recipient addresses before sending sensitive financial documents or details, require explicit confirmation of additions/removals, and record changes in the billing audit trail. Show current recipients and delivery status where available; permit prompt removal and stop future delivery after removal. Send transactional billing communications to configured recipients as appropriate while preserving essential owner notifications and legally required notices; do not allow recipient preferences to suppress critical payment, renewal, or access warnings to responsible account holders. Protect invoice contents and payment details using appropriate access controls and privacy safeguards. Exact default recipient choices, notification categories, and invoice retention requirements remain subject to subsequent decisions.
 
+### PHASE1-BIZ-045 — Billing-recipient management authority
+**Status:** Approved
+**Decision:** Phase 1 Critical Decision 45, Option B — The **planner-organization owner and currently active, authorized billing managers** may add, change, and remove invoice and billing-notification recipients through the billing dashboard established in PHASE1-BIZ-044. Billing-manager authorization follows PHASE1-BIZ-034 through PHASE1-BIZ-036: suspended or deactivated billing managers cannot make changes until their access is restored. Other organization administrators and staff cannot manage billing recipients merely by virtue of their general roles. Verify new recipient addresses before sending sensitive billing content, require explicit confirmation of recipient-list changes, maintain an audit history identifying the actor, action, target, and time, and notify the organization owner and other appropriate authorized billing users of material recipient-list changes. Adding a recipient does not grant sign-in, billing-management, or wedding access. Preserve mandatory owner and legally required notices regardless of recipient-list changes.
+
 ## 7. Proposed experience principles — pending validation
 
 1. Elegant and approachable for couples, efficient for professionals.
@@ -7222,6 +7226,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 | PHASE1-BIZ-043 | 2026-10-23 | Initial review target for exceptional ownership recovery | Aim to review required documentation within five business days; no guarantee of ownership transfer within that period (Option B) | Approved |
 
 | PHASE1-BIZ-044 | 2026-10-23 | Planner billing dashboard and billing communications | Self-service billing dashboard plus configurable verified invoice/billing-notice recipients without granting account access (Option C) | Approved |
+
+| PHASE1-BIZ-045 | 2026-10-23 | Authority to manage planner billing recipients | Owner and active billing managers may manage verified recipients; changes confirmed, audited, and notified without granting recipient access (Option B) | Approved |
 
 ## 10. Document maintenance rules
 
