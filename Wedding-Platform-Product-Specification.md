@@ -7290,3 +7290,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-009 — Launch platforms
 
 **Decision:** Option B (approved 2026-10-23). Launch as a **fully responsive web application** with the complete approved MVP functional on desktop, tablet, and mobile browsers. Essential workflows must remain usable on touch devices and smaller screens, with responsive layouts, accessible controls, and cross-device/browser testing included in MVP-003 launch readiness. Dedicated native iOS and Android apps are not required for the initial launch and may be considered later. This decision does not reduce any previously approved offline/PDF capabilities.
+
+
+### MVP-010 — Browser support
+
+**Decision:** Option B (approved 2026-10-23). Officially support current stable versions of **Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge** at launch, including their supported mobile browser variants. Test the approved MVP's critical couple and planner journeys across these browsers and relevant desktop, tablet, and mobile form factors as part of MVP-003 launch readiness. Older or unsupported browser versions are not guaranteed full compatibility; provide a clear update-browser message when essential functionality cannot work safely.
