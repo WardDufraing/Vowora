@@ -1,3 +1,4 @@
+import { builtinModules } from "node:module";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -5,6 +6,8 @@ import nextTs from "eslint-config-next/typescript";
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
   const restricted = [
+    "**/domain/**",
+    "**/contracts/**",
     "**/marketing",
     "**/marketing/**",
     "**/web",
@@ -23,6 +26,7 @@ export function workspaceConfig(layer) {
       "react-dom",
       "react-dom/**",
       "node:*",
+      ...builtinModules,
       "@vowora/*",
       "**/domain/**",
       "**/contracts/**",
@@ -46,7 +50,7 @@ export function workspaceConfig(layer) {
           {
             patterns: [
               {
-                group: restricted,
+                group: [...new Set(restricted)],
                 message:
                   "Import a public package entrypoint in the permitted layer; never application or framework internals.",
               },

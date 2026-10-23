@@ -19,6 +19,9 @@ for (const layer of ["domain", "contracts"]) {
       "next/headers",
       "react",
       "node:fs",
+      "fs",
+      "fs/promises",
+      "path",
       "@vowora/web",
       "@vowora/domain/internal",
       "../../../apps/web/app/page",
@@ -48,11 +51,27 @@ for (const layer of ["web", "marketing"]) {
       overrideConfig: workspaceConfig(layer),
     });
     const other = layer === "web" ? "marketing" : "web";
-    const [result] = await lint.lintText(
-      `import '${"../../" + other + "/app/page"}';`,
-      { filePath: `app/probe.ts` },
-    );
-    assert(result.messages.some((m) => m.ruleId === "no-restricted-imports"));
+    for (const name of [
+      `../../${other}/app/page`,
+      "../../../packages/domain/src/index",
+      "../../../packages/contracts/src/index",
+      "@vowora/domain/internal",
+      "@vowora/contracts/internal",
+    ]) {
+      const [result] = await lint.lintText(`import '${name}';`, {
+        filePath: "app/probe.ts",
+      });
+      assert(
+        result.messages.some((m) => m.ruleId === "no-restricted-imports"),
+        name,
+      );
+    }
+    for (const name of ["@vowora/domain", "@vowora/contracts"]) {
+      const [result] = await lint.lintText(`import type {} from '${name}';`, {
+        filePath: "app/probe.ts",
+      });
+      assert.equal(result.errorCount, 0, name);
+    }
   });
 }
 test("domain/contracts expose only their public compiled entrypoint", async () => {
