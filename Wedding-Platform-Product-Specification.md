@@ -7250,3 +7250,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### MVP-001 — Full approved MVP at initial launch
 
 **Decision:** Option A (approved 2026-10-23). The first public release must include all functionality already explicitly approved as MVP in this specification, for both couples and professional planners. Do not silently remove, postpone, or reclassify approved MVP capabilities. Development may be sequenced internally, but launch requires the complete approved MVP to be operational. Later-release enhancements explicitly deferred elsewhere remain deferred. Any proposed scope reduction requires a new explicit product decision. Launch-readiness criteria and end-to-end acceptance journeys will be defined in subsequent decisions.
+
+
+### MVP-002 — Private beta before public launch
+
+**Decision:** Option B (approved 2026-10-23). Release the complete approved MVP first to a small, invitation-only beta group including both couples and professional wedding planners. Collect real-world feedback, validate critical end-to-end journeys, and resolve important defects before opening public registration. The beta is a launch validation phase, not authorization to remove previously approved MVP functionality. Public launch follows an explicit readiness review; specific beta size, duration, and exit criteria remain to be decided.
