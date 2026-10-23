@@ -96,4 +96,4 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
 
-- 2026-10-23 — 00-a implementation on `feat/00-a-marketing-site`; [handoff and executed checks](implementation/00-a-marketing.md). Independent foundation review passed; final independent review and PR publication pending. Owner merge, existing Vercel/domain verification and owner-controlled launch remain pending; 00-a is not Done and 01-a remains blocked.
+- 2026-10-23 — 00-a implementation on `feat/00-a-marketing-site`; [handoff and executed checks](implementation/00-a-marketing.md). Fresh foundation and final independent code reviews passed; [draft PR #5](https://github.com/WardDufraing/Vowora/pull/5) is open. GitHub hosted checks cannot start because of owner billing/spending limits; the automatic existing Vercel preview failed with cause unverified. Owner merge, existing Vercel/domain verification and owner-controlled launch remain pending; 00-a is not Done and 01-a remains blocked.
