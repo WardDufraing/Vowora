@@ -18,13 +18,13 @@
 
 ## Launch-first routing policy
 
-**Task 00-a is the first implementation task and first production release.** Reuse the existing Vercel project and owner's verified custom domain to publish a lightweight marketing website at `/` immediately, before building authentication or the app. Keep `/` as the marketing homepage throughout development; future app route/subdomain selection requires an explicit decision. Do not create another Vercel project or invent a domain, signup flow, pricing or waitlist. Once 00-a is live, app development continues under milestone 01 without disrupting the marketing site.
+**Task 00-a is the first implementation task and first production release.** Reuse the existing Vercel project and confirmed production domain **vowora.app** to publish a lightweight marketing website at `/` immediately, before building authentication or the app. Keep `/` as the marketing homepage throughout development; future app route/subdomain selection requires an explicit decision. Do not create another Vercel project or invent a domain, signup flow, pricing or waitlist. Once 00-a is live, app development continues under milestone 01 without disrupting the marketing site.
 
 ## Milestones and task index
 
 | Task | Single-agent deliverable | Prerequisite | Status | Brief |
 | --- | --- | --- | --- | --- |
-| 00-a | Public marketing website on existing Vercel and domain | None | Not started | [Brief](steps/00-a.md) |
+| 00-a | Public marketing website at vowora.app on existing Vercel | None | Not started | [Brief](steps/00-a.md) |
 | 01-a | Monorepo and package boundaries | 00-a | Not started | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a | Not started | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
