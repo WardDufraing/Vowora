@@ -7375,3 +7375,8 @@ Selecting a vendor should be able to connect its quote to the budget, create rel
 ### ONB-009 — Helpful module empty states
 
 **Decision:** Option B (approved 2026-10-23). When a module has no data (for example, an empty guest list or budget), show a **helpful empty state** with a concise explanation of the module's purpose, a prominent action to add the first relevant item, and contextual suggestions or examples where genuinely useful. Keep example content clearly distinguishable from real wedding data; do not automatically create fictitious guests, expenses, or other records. Tailor actions and copy to the user's role and permissions, including read-only users who cannot create items. Empty states should remain understandable and accessible on mobile and desktop and complement ONB-008 contextual guidance.
+
+
+### ONB-010 — Onboarding completion after essential setup
+
+**Decision:** Option B (approved 2026-10-23). Mark onboarding **complete once all essential, required setup is finished**, not when every optional checklist item has been completed and not merely on first dashboard visit. For couples, follow the minimal required setup approved in ONB-002; for professional planners, require the full organization setup approved in ONB-005. Optional checklist items, contextual tips, and feature tours remain accessible after onboarding completion without blocking normal use. Preserve progress for any unfinished optional steps and do not repeatedly present the initial onboarding flow to users who have completed it.
