@@ -1,4 +1,4 @@
-# Wedding Planner
+# Vowora
 
 The approved, frozen working baselines are under [docs/product](docs/product/):
 
