@@ -13,7 +13,12 @@ export const apiRootResponseSchema = z
         name: z.literal("Vowora API"),
         version: z.literal("v1"),
         status: z.literal("ok"),
-        links: z.object({ health: z.literal("/api/v1/health") }).strict(),
+        links: z
+          .object({
+            health: z.literal("/api/v1/health"),
+            openapi: z.literal("/api/v1/openapi.json"),
+          })
+          .strict(),
       })
       .strict(),
     meta: responseMetadataSchema,
@@ -51,3 +56,57 @@ export const problemDetailsSchema = z
 export type ApiRootResponse = z.infer<typeof apiRootResponseSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ProblemDetails = z.infer<typeof problemDetailsSchema>;
+
+export const openApiDocument = {
+  openapi: "3.1.0",
+  info: {
+    title: "Vowora API",
+    version: "1.0.0",
+    description: "Versioned public contract for the Vowora application API.",
+  },
+  paths: {
+    "/api/v1": {
+      get: {
+        operationId: "getApiRoot",
+        responses: {
+          "200": {
+            description: "API discovery response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiRootResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/v1/health": {
+      get: {
+        operationId: "getHealth",
+        responses: {
+          "200": {
+            description: "Application liveness response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/HealthResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      ApiRootResponse: z.toJSONSchema(apiRootResponseSchema, {
+        target: "draft-2020-12",
+      }),
+      HealthResponse: z.toJSONSchema(healthResponseSchema, {
+        target: "draft-2020-12",
+      }),
+      ProblemDetails: z.toJSONSchema(problemDetailsSchema, {
+        target: "draft-2020-12",
+      }),
+    },
+  },
+} as const;

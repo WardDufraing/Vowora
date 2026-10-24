@@ -49,8 +49,20 @@ export function methodNotAllowed(request: Request) {
     detail: "This resource does not support the requested method.",
     code: "METHOD_NOT_ALLOWED",
   });
-  response.headers.set("allow", "GET");
+  response.headers.set("allow", "GET, HEAD, OPTIONS");
   return response;
+}
+
+export function optionsResponse(request: Request) {
+  const correlationId = correlationIdFor(request);
+  return new Response(null, {
+    status: 204,
+    headers: {
+      allow: "GET, HEAD, OPTIONS",
+      "cache-control": "no-store",
+      "x-correlation-id": correlationId,
+    },
+  });
 }
 
 export function resourceNotFound(request: Request) {

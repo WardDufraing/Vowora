@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   apiRootResponseSchema,
   healthResponseSchema,
+  openApiDocument,
   problemDetailsSchema,
 } from "./index.js";
 
@@ -15,7 +17,10 @@ describe("API contracts", () => {
           name: "Vowora API",
           version: "v1",
           status: "ok",
-          links: { health: "/api/v1/health" },
+          links: {
+            health: "/api/v1/health",
+            openapi: "/api/v1/openapi.json",
+          },
         },
         meta: { correlationId },
       }),
@@ -26,6 +31,20 @@ describe("API contracts", () => {
         meta: { correlationId },
       }),
     ).toBeTruthy();
+  });
+
+  it("generates the OpenAPI 3.1 schemas from the runtime contracts", () => {
+    expect(openApiDocument.openapi).toBe("3.1.0");
+    expect(Object.keys(openApiDocument.paths)).toEqual([
+      "/api/v1",
+      "/api/v1/health",
+    ]);
+    expect(openApiDocument.components.schemas.HealthResponse).toEqual(
+      z.toJSONSchema(healthResponseSchema, { target: "draft-2020-12" }),
+    );
+    expect(JSON.parse(JSON.stringify(openApiDocument))).toEqual(
+      openApiDocument,
+    );
   });
 
   it("rejects extra response fields and unsafe problem shapes", () => {

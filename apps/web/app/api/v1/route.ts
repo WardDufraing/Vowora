@@ -3,6 +3,7 @@ import {
   correlationIdFor,
   jsonResponse,
   methodNotAllowed,
+  optionsResponse,
 } from "../../../lib/api";
 
 export function GET(request: Request) {
@@ -12,7 +13,10 @@ export function GET(request: Request) {
       name: "Vowora API",
       version: "v1",
       status: "ok",
-      links: { health: "/api/v1/health" },
+      links: {
+        health: "/api/v1/health",
+        openapi: "/api/v1/openapi.json",
+      },
     },
     meta: { correlationId },
   });
@@ -23,3 +27,4 @@ export const POST = methodNotAllowed;
 export const PUT = methodNotAllowed;
 export const PATCH = methodNotAllowed;
 export const DELETE = methodNotAllowed;
+export const OPTIONS = optionsResponse;

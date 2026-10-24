@@ -69,7 +69,10 @@ test(
           name: "Vowora API",
           version: "v1",
           status: "ok",
-          links: { health: "/api/v1/health" },
+          links: {
+            health: "/api/v1/health",
+            openapi: "/api/v1/openapi.json",
+          },
         },
         meta: { correlationId: suppliedCorrelationId },
       });
@@ -121,12 +124,38 @@ test(
         method: "POST",
       });
       assert.equal(method.status, 405);
-      assert.equal(method.headers.get("allow"), "GET");
+      assert.equal(method.headers.get("allow"), "GET, HEAD, OPTIONS");
       assert.equal(
         method.headers.get("content-type"),
         "application/problem+json",
       );
       assert.equal((await method.json()).code, "METHOD_NOT_ALLOWED");
+
+      const head = await fetch("http://127.0.0.1:3101/api/v1/health", {
+        method: "HEAD",
+      });
+      assert.equal(head.status, 200);
+      assert.equal(await head.text(), "");
+      const options = await fetch("http://127.0.0.1:3101/api/v1/health", {
+        method: "OPTIONS",
+      });
+      assert.equal(options.status, 204);
+      assert.equal(options.headers.get("allow"), "GET, HEAD, OPTIONS");
+
+      const specification = await fetch(
+        "http://127.0.0.1:3101/api/v1/openapi.json",
+      );
+      assert.equal(specification.status, 200);
+      assert.match(
+        specification.headers.get("content-type") ?? "",
+        /application\/json/,
+      );
+      const specificationBody = await specification.json();
+      assert.equal(specificationBody.openapi, "3.1.0");
+      assert.deepEqual(Object.keys(specificationBody.paths), [
+        "/api/v1",
+        "/api/v1/health",
+      ]);
     } finally {
       server.kill("SIGTERM");
       if (server.exitCode === null)
