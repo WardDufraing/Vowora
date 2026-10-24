@@ -9,7 +9,7 @@
     "./library.json": "./library.json"
   },
   "dependencies": {
-    "eslint": "9.39.5",
+    "eslint": "10.13.0",
     "eslint-config-next": "16.4.3"
   },
   "scripts": {

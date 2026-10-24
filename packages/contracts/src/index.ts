@@ -57,6 +57,29 @@ export type ApiRootResponse = z.infer<typeof apiRootResponseSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ProblemDetails = z.infer<typeof problemDetailsSchema>;
 
+const problemResponse = (description: string) => ({
+  description,
+  content: {
+    "application/problem+json": {
+      schema: { $ref: "#/components/schemas/ProblemDetails" },
+    },
+  },
+});
+
+const methodNotAllowedOperation = (operationId: string) => ({
+  operationId,
+  responses: {
+    "405": { $ref: "#/components/responses/MethodNotAllowed" },
+  },
+});
+
+const notFoundOperation = (operationId: string) => ({
+  operationId,
+  responses: {
+    "404": { $ref: "#/components/responses/ResourceNotFound" },
+  },
+});
+
 export const openApiDocument = {
   openapi: "3.1.0",
   info: {
@@ -79,6 +102,10 @@ export const openApiDocument = {
           },
         },
       },
+      post: methodNotAllowedOperation("rejectApiRootPost"),
+      put: methodNotAllowedOperation("rejectApiRootPut"),
+      patch: methodNotAllowedOperation("rejectApiRootPatch"),
+      delete: methodNotAllowedOperation("rejectApiRootDelete"),
     },
     "/api/v1/health": {
       get: {
@@ -94,9 +121,65 @@ export const openApiDocument = {
           },
         },
       },
+      post: methodNotAllowedOperation("rejectHealthPost"),
+      put: methodNotAllowedOperation("rejectHealthPut"),
+      patch: methodNotAllowedOperation("rejectHealthPatch"),
+      delete: methodNotAllowedOperation("rejectHealthDelete"),
+    },
+    "/api/v1/openapi.json": {
+      get: {
+        operationId: "getOpenApiDocument",
+        responses: {
+          "200": {
+            description: "OpenAPI 3.1 document for the versioned API",
+            content: {
+              "application/json": {
+                schema: { type: "object" },
+              },
+            },
+          },
+        },
+      },
+      post: methodNotAllowedOperation("rejectOpenApiDocumentPost"),
+      put: methodNotAllowedOperation("rejectOpenApiDocumentPut"),
+      patch: methodNotAllowedOperation("rejectOpenApiDocumentPatch"),
+      delete: methodNotAllowedOperation("rejectOpenApiDocumentDelete"),
+    },
+    "/api/v1/{path}": {
+      parameters: [
+        {
+          name: "path",
+          in: "path",
+          required: true,
+          description:
+            "Joined unmatched path below the versioned API root; the runtime catch-all can contain multiple segments.",
+          schema: { type: "string" },
+        },
+      ],
+      get: notFoundOperation("getUnknownApiResource"),
+      head: notFoundOperation("headUnknownApiResource"),
+      post: notFoundOperation("postUnknownApiResource"),
+      put: notFoundOperation("putUnknownApiResource"),
+      patch: notFoundOperation("patchUnknownApiResource"),
+      delete: notFoundOperation("deleteUnknownApiResource"),
+      options: notFoundOperation("optionsUnknownApiResource"),
     },
   },
   components: {
+    responses: {
+      ResourceNotFound: problemResponse(
+        "The requested versioned API resource does not exist.",
+      ),
+      MethodNotAllowed: {
+        ...problemResponse("The resource does not support this HTTP method."),
+        headers: {
+          Allow: {
+            description: "Methods supported by the resource.",
+            schema: { type: "string", example: "GET, HEAD, OPTIONS" },
+          },
+        },
+      },
+    },
     schemas: {
       ApiRootResponse: z.toJSONSchema(apiRootResponseSchema, {
         target: "draft-2020-12",
