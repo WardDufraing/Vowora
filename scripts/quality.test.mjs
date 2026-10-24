@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { destructiveMigrationOperations } from "./migration-safety.mjs";
 const require = createRequire(import.meta.url);
 const prettier = require.resolve("prettier/bin/prettier.cjs");
 const root = new URL("../", import.meta.url);
@@ -58,3 +59,21 @@ test(
     assert.doesNotMatch(output, new RegExp(invalidValue));
   },
 );
+
+test("migration gate rejects destructive SQL and accepts additive SQL", () => {
+  assert.deepEqual(
+    destructiveMigrationOperations(
+      'CREATE TABLE "safe" ("id" uuid PRIMARY KEY);',
+    ),
+    [],
+  );
+  assert.notEqual(
+    destructiveMigrationOperations('ALTER TABLE "safe" DROP COLUMN "id";')
+      .length,
+    0,
+  );
+  assert.deepEqual(
+    destructiveMigrationOperations("-- DROP TABLE ignored_comment;\nSELECT 1;"),
+    [],
+  );
+});

@@ -74,6 +74,26 @@ for (const layer of ["web", "marketing"]) {
     }
   });
 }
+test("database package can use infrastructure dependencies but not application internals", async () => {
+  const lint = new ESLint({
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("database"),
+  });
+  const [valid] = await lint.lintText(
+    "import { createHash } from 'node:crypto';\nvoid createHash;",
+    { filePath: "packages/database/src/probe.ts" },
+  );
+  assert.equal(valid.errorCount, 0);
+  const [invalid] = await lint.lintText(
+    "import '../../../apps/web/app/page';",
+    { filePath: "packages/database/src/probe.ts" },
+  );
+  assert(
+    invalid.messages.some(
+      (message) => message.ruleId === "no-restricted-imports",
+    ),
+  );
+});
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {
     const manifest = JSON.parse(

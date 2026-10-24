@@ -21,7 +21,8 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "pnpm --filter @vowora/web test:e2e && pnpm --filter @vowora/marketing test",
-    "test:tooling": "node --test scripts/quality.test.mjs"
+    "test:tooling": "node --test scripts/quality.test.mjs",
+    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && pnpm --filter @vowora/database test:integration"
   },
   "devDependencies": {
     "turbo": "2.11.10",
