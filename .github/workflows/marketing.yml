@@ -3,6 +3,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -21,6 +24,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm --filter @vowora/marketing exec playwright install --with-deps chromium
+      # Full tests remain mandatory on each current PR head; only superseded runs are cancelled.
       - run: pnpm test
       - uses: actions/upload-artifact@v4
         if: failure()
