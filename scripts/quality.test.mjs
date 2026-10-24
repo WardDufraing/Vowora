@@ -41,3 +41,20 @@ test("lint gate rejects real errors without weakening package boundary checks", 
   });
   assert.equal(valid.errorCount, 0);
 });
+
+test(
+  "build gate rejects invalid environment without disclosing its value",
+  { timeout: 30000 },
+  () => {
+    const invalidValue = "invalid-private-ci-probe";
+    const result = spawnSync("pnpm", ["build:web"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, VOWORA_ENV: invalidValue },
+    });
+    const output = result.stdout + result.stderr;
+    assert.notEqual(result.status, 0, output);
+    assert.match(output, /VOWORA_ENV/);
+    assert.doesNotMatch(output, new RegExp(invalidValue));
+  },
+);

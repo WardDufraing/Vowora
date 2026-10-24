@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
 
 test(
-  "production app serves only an honest noindex foundation and no API/auth routes",
+  "production app serves its noindex foundation and versioned public API",
   { timeout: 60000 },
   async () => {
     // Own process only; never reuse an unrelated service or stop a user process.
@@ -48,13 +48,114 @@ test(
         await (await fetch("http://127.0.0.1:3101/robots.txt")).text(),
         /Disallow: \//,
       );
-      for (const path of ["/api/v1", "/login", "/signup"]) {
+      for (const path of ["/login", "/signup"]) {
         assert.equal(
           (await fetch("http://127.0.0.1:3101" + path)).status,
           404,
           path,
         );
       }
+
+      const suppliedCorrelationId = "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2";
+      const root = await fetch("http://127.0.0.1:3101/api/v1", {
+        headers: { "x-correlation-id": suppliedCorrelationId },
+      });
+      assert.equal(root.status, 200);
+      assert.match(root.headers.get("content-type") ?? "", /application\/json/);
+      assert.equal(root.headers.get("cache-control"), "no-store");
+      assert.equal(root.headers.get("x-correlation-id"), suppliedCorrelationId);
+      assert.deepEqual(await root.json(), {
+        data: {
+          name: "Vowora API",
+          version: "v1",
+          status: "ok",
+          links: {
+            health: "/api/v1/health",
+            openapi: "/api/v1/openapi.json",
+          },
+        },
+        meta: { correlationId: suppliedCorrelationId },
+      });
+
+      const health = await fetch("http://127.0.0.1:3101/api/v1/health");
+      assert.equal(health.status, 200);
+      const healthBody = await health.json();
+      assert.deepEqual(healthBody.data, {
+        service: "vowora-api",
+        version: "v1",
+        status: "ok",
+      });
+      assert.match(healthBody.meta.correlationId, /^[0-9a-f-]{36}$/);
+      assert.equal(
+        health.headers.get("x-correlation-id"),
+        healthBody.meta.correlationId,
+      );
+
+      const invalidCorrelation = "private-value-that-must-not-be-reflected";
+      const missing = await fetch(
+        "http://127.0.0.1:3101/api/v1/not-a-resource",
+        { headers: { "x-correlation-id": invalidCorrelation } },
+      );
+      assert.equal(missing.status, 404);
+      assert.equal(
+        missing.headers.get("content-type"),
+        "application/problem+json",
+      );
+      const missingBody = await missing.json();
+      assert.deepEqual(
+        {
+          title: missingBody.title,
+          status: missingBody.status,
+          detail: missingBody.detail,
+          instance: missingBody.instance,
+          code: missingBody.code,
+        },
+        {
+          title: "Resource not found",
+          status: 404,
+          detail: "The requested API resource does not exist.",
+          instance: "/api/v1/not-a-resource",
+          code: "RESOURCE_NOT_FOUND",
+        },
+      );
+      assert.notEqual(missingBody.correlationId, invalidCorrelation);
+
+      const method = await fetch("http://127.0.0.1:3101/api/v1/health", {
+        method: "POST",
+      });
+      assert.equal(method.status, 405);
+      assert.equal(method.headers.get("allow"), "GET, HEAD, OPTIONS");
+      assert.equal(
+        method.headers.get("content-type"),
+        "application/problem+json",
+      );
+      assert.equal((await method.json()).code, "METHOD_NOT_ALLOWED");
+
+      const head = await fetch("http://127.0.0.1:3101/api/v1/health", {
+        method: "HEAD",
+      });
+      assert.equal(head.status, 200);
+      assert.equal(await head.text(), "");
+      const options = await fetch("http://127.0.0.1:3101/api/v1/health", {
+        method: "OPTIONS",
+      });
+      assert.equal(options.status, 204);
+      assert.equal(options.headers.get("allow"), "GET, HEAD, OPTIONS");
+
+      const specification = await fetch(
+        "http://127.0.0.1:3101/api/v1/openapi.json",
+      );
+      assert.equal(specification.status, 200);
+      assert.match(
+        specification.headers.get("content-type") ?? "",
+        /application\/json/,
+      );
+      const specificationBody = await specification.json();
+      assert.equal(specificationBody.openapi, "3.1.0");
+      assert.deepEqual(Object.keys(specificationBody.paths), [
+        "/api/v1",
+        "/api/v1/health",
+      ]);
     } finally {
       server.kill("SIGTERM");
       if (server.exitCode === null)
