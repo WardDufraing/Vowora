@@ -38,6 +38,7 @@ describe("API contracts", () => {
     expect(Object.keys(openApiDocument.paths)).toEqual([
       "/api/v1",
       "/api/v1/health",
+      "/api/v1/openapi.json",
       "/api/v1/{path}",
     ]);
     expect(openApiDocument.components.schemas.HealthResponse).toEqual(
@@ -70,6 +71,9 @@ describe("API contracts", () => {
     });
     expect(
       openApiDocument.paths["/api/v1/health"].delete.responses["405"],
+    ).toEqual({ $ref: "#/components/responses/MethodNotAllowed" });
+    expect(
+      openApiDocument.paths["/api/v1/openapi.json"].post.responses["405"],
     ).toEqual({ $ref: "#/components/responses/MethodNotAllowed" });
   });
 

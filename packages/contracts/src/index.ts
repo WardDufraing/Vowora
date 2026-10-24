@@ -126,13 +126,33 @@ export const openApiDocument = {
       patch: methodNotAllowedOperation("rejectHealthPatch"),
       delete: methodNotAllowedOperation("rejectHealthDelete"),
     },
+    "/api/v1/openapi.json": {
+      get: {
+        operationId: "getOpenApiDocument",
+        responses: {
+          "200": {
+            description: "OpenAPI 3.1 document for the versioned API",
+            content: {
+              "application/json": {
+                schema: { type: "object" },
+              },
+            },
+          },
+        },
+      },
+      post: methodNotAllowedOperation("rejectOpenApiDocumentPost"),
+      put: methodNotAllowedOperation("rejectOpenApiDocumentPut"),
+      patch: methodNotAllowedOperation("rejectOpenApiDocumentPatch"),
+      delete: methodNotAllowedOperation("rejectOpenApiDocumentDelete"),
+    },
     "/api/v1/{path}": {
       parameters: [
         {
           name: "path",
           in: "path",
           required: true,
-          description: "Unknown path below the versioned API root.",
+          description:
+            "Joined unmatched path below the versioned API root; the runtime catch-all can contain multiple segments.",
           schema: { type: "string" },
         },
       ],

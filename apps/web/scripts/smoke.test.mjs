@@ -159,6 +159,7 @@ test(
       assert.deepEqual(Object.keys(specificationBody.paths), [
         "/api/v1",
         "/api/v1/health",
+        "/api/v1/openapi.json",
         "/api/v1/{path}",
       ]);
       assert.deepEqual(
@@ -169,6 +170,10 @@ test(
         specificationBody.paths["/api/v1/health"].post.responses["405"],
         { $ref: "#/components/responses/MethodNotAllowed" },
       );
+      assert.deepEqual(
+        specificationBody.paths["/api/v1/openapi.json"].post.responses["405"],
+        { $ref: "#/components/responses/MethodNotAllowed" },
+      );
       for (const component of ["ResourceNotFound", "MethodNotAllowed"]) {
         assert.deepEqual(
           specificationBody.components.responses[component].content[
@@ -177,6 +182,21 @@ test(
           { $ref: "#/components/schemas/ProblemDetails" },
         );
       }
+
+      const specificationMethod = await fetch(
+        "http://127.0.0.1:3101/api/v1/openapi.json",
+        { method: "POST" },
+      );
+      assert.equal(specificationMethod.status, 405);
+      assert.equal(
+        specificationMethod.headers.get("content-type"),
+        "application/problem+json",
+      );
+      const specificationMethodBody = await specificationMethod.json();
+      assert.equal(specificationMethodBody.code, "METHOD_NOT_ALLOWED");
+      assert.doesNotThrow(() =>
+        problemDetailsSchema.parse(specificationMethodBody),
+      );
     } finally {
       server.kill("SIGTERM");
       if (server.exitCode === null)
