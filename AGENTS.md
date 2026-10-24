@@ -8,7 +8,7 @@ Applies to every Codex orchestrator, implementer, reviewer, tester and delegated
 2. Check task statuses, dependencies, open branches/PRs, blockers and ownership. Choose **one unblocked child task** (`00-a`, `01-a`, etc.), never a whole milestone. Prerequisite PRs must already be merged into the task's base.
 3. Read `docs/steps/<task-id>.md`, dependency handoffs, affected code and **only the relevant cited passages** of the frozen sources. Do not load the ~1 MB product specification by default.
 4. Plan the smallest complete slice: scope/non-goals, affected files and contracts, acceptance criteria, tests, risks, and any migration/rollback needs. Split oversized tasks in the roadmap before implementation.
-5. Use a **fresh implementation agent for every child task**. Never reuse an implementer for the next task. The coordinator delegates, tracks ownership and dependencies, and starts a new agent only when the next task is eligible. If fresh-agent delegation is unavailable, report it and request manual delegation; do not pretend it happened.
+5. Use a **fresh implementation session for every child task**. Never reuse an implementer for the next task. A coordinator is optional; the owner may launch a task-specific implementer directly. Do not keep a supervising agent active solely to monitor implementation. If independent review cannot be launched, leave the PR in draft and provide a manual reviewer handoff.
 
 **First task: `00-a` — launch the marketing site at `https://vowora.app` using the existing Vercel project.** App development follows at `https://app.vowora.app`.
 
@@ -50,6 +50,8 @@ The read-only policy is an agent instruction, **not** a GitHub file permission. 
 
 ## 5. Engineering and tests
 
+Follow [Codex efficiency guidance](docs/CODEX-EFFICIENCY.md) and [usage measurement](docs/CODEX-USAGE.md): default to one implementation session plus one independent reviewer, avoid duplicate agents and repeated repository reads, run targeted checks during development, and retain the full CI suite as the merge gate. Never trade correctness or independent review for credits.
+
 - Work to principal/staff-level standards: inspect existing conventions before editing, trace behavior to exact product/ARCH/UI decisions, implement the smallest coherent complete change, and document consequential trade-offs.
 - Follow approved Next.js modular monolith, Neon/Drizzle, typed API, centralized authorization, jobs, email and private storage. **Do not introduce PostgreSQL RLS** or replace approved core technologies without explicit approval.
 - Enforce server-side deny-by-default authorization, wedding/organization tenant scope, record privacy and revocation. Never rely on hidden UI controls for security. Treat all input as untrusted; protect logs, exports and tests from secrets and personal data.
@@ -73,4 +75,4 @@ The read-only policy is an agent instruction, **not** a GitHub file permission. 
 - Each handoff records exact decision IDs, implementation summary/files, branch/PR/commit links, test commands and outcomes, reviewer identity and findings disposition, migrations/configuration/rollback, owner-only actions, blockers and downstream dependencies.
 - Do not claim unperformed tests, deployment, independent review or completion. Mark a milestone Done only when every child task and required integration checks are complete.
 
-**Non-negotiable:** one fresh implementer per child task; implementer-owned tests; fresh independent reviewer; task-specific branch and PR; no autonomous merge or production deployment; verifiable evidence.
+**Non-negotiable:** one fresh implementation session per child task; implementer-owned tests; fresh independent reviewer; task-specific branch and PR; no autonomous merge or production deployment; verifiable evidence.
