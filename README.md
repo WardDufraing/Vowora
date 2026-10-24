@@ -10,6 +10,8 @@ These files are **read-only for development agents**. Any change requires explic
 
 Development starts with [docs/PLAN.md](docs/PLAN.md), with one focused [step brief](docs/steps/) per Codex agent-sized deliverable. Follow [AGENTS.md](AGENTS.md).
 
+The product foundation lives in `apps/web`. Its public liveness endpoints are `GET /api/v1` and `GET /api/v1/health`; other v1 resources are not implemented. Local builds need no secret. See the [01-c handoff](docs/implementation/01-c-ci-env-api.md) for typed environment settings and API checks.
+
 ## Marketing development
 
 The public marketing site is in `apps/marketing` (Next.js, pnpm/Turborepo). From the repository root with Node 24 and pnpm 11.25.0:

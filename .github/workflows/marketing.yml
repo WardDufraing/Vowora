@@ -5,9 +5,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: workspace-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   marketing:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,6 +26,7 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @vowora/marketing exec playwright install --with-deps chromium
       - run: pnpm test
+      - run: pnpm audit --prod --audit-level high
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

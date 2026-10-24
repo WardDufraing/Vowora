@@ -27,8 +27,8 @@
 | 00-a | Public marketing website at vowora.app on existing Vercel | None | In review | [Brief](steps/00-a.md) |
 | 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In review | [Brief](steps/00-b.md) |
 | 01-a | Monorepo and package boundaries | 00-a (merged and live) | Done | [Brief](steps/01-a.md) |
-| 01-b | Code quality and test harness | 01-a (merged PR #7) | In review | [Brief](steps/01-b.md) |
-| 01-c | CI, environment validation and API skeleton | 01-b | Not started | [Brief](steps/01-c.md) |
+| 01-b | Code quality and test harness | 01-a (merged PR #7) | Done | [Brief](steps/01-b.md) |
+| 01-c | CI, environment validation and API skeleton | 01-b (merged PR #8) | In progress | [Brief](steps/01-c.md) |
 | 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Not started | [Brief](steps/02-b.md) |
 | 02-c | Audit events and transactional outbox | 02-b | Not started | [Brief](steps/02-c.md) |
@@ -108,3 +108,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-23 — 01-b fresh implementer `/root/implement_01_b`, based on verified owner merge of [PR #7](https://github.com/WardDufraing/Vowora/pull/7) at `39b27b0`; no competing open PR. 01-a code/tests/re-review and hosted checks passed before owner merge; external app Vercel root/domain setup remains owner-controlled. [01-b harness scope and commands](implementation/01-b-test-harness.md); review/check evidence follows on task branch/PR. 01-c not started.
 
 - 2026-10-23 — 01-b [PR #8](https://github.com/WardDufraing/Vowora/pull/8), reviewed code `73e050f`: pinned source formatting, tooling/workspace ESLint, Vitest/React Testing Library and both-app Playwright pass. All59 tests and both builds pass. Initial engine minimum and future package-test typecheck findings fixed; fresh independent reviewer `/root/implement_01_b/review_01_b_fresh` passed the full diff and independently reran frozen install/uncached builds/checks/all tests. Owner merge pending; 01-c not started. Hosted outcomes tracked in PR.
+
+- 2026-10-24 — Owner merged 01-b [PR #8](https://github.com/WardDufraing/Vowora/pull/8) as `42a0b10`; all final hosted checks passed. Fresh implementer `/root/implement_01_c` started 01-c from that integrated main with no competing open PR. Scope and executed evidence are recorded in [the 01-c handoff](implementation/01-c-ci-env-api.md); 02-a remains blocked until owner merge.
