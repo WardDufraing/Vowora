@@ -20,6 +20,6 @@
   "devDependencies": {
     "@vowora/config": "workspace:*",
     "typescript": "5.9.3",
-    "eslint": "9.39.5"
+    "eslint": "10.13.0"
   }
 }
