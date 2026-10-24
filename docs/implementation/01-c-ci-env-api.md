@@ -6,7 +6,7 @@ This task implements the smallest foundation required by ARCH-002, ARCH-004, ARC
 
 Central environment parsing has separate public and server allowlists. `VOWORA_ENV` defaults to the non-secret `local` value and accepts only `local`, `preview` or `production`. `NEXT_PUBLIC_APP_URL` is optional outside production; production requires an HTTPS URL. Invalid configuration reports variable names only. Turbo hashes both values so cached builds cannot bypass validation. Tests prove invalid values stop builds without appearing in output, server-only/unknown values do not enter the public object, and production fails closed when its public URL is absent or insecure.
 
-The existing pull-request workflow retains its established check context and now has concurrency cancellation, a time bound, a SHA-pinned Gitleaks secret-scanning job and a production dependency audit after format, lint, types, builds and all tests. Dependabot covers pnpm and GitHub Actions. Pull-request jobs retain read-only repository permission and receive no production secrets. Database connectivity, migrations, auth/security tests and provider secrets remain outside this task because those systems do not exist yet.
+The existing pull-request workflow retains its established check context and now has concurrency cancellation, a time bound, a SHA-pinned TruffleHog secret-scanning job and a production dependency audit after format, lint, types, builds and all tests. Dependabot covers pnpm and GitHub Actions. Pull-request jobs retain read-only repository permission and receive no production secrets. Database connectivity, migrations, auth/security tests and provider secrets remain outside this task because those systems do not exist yet.
 
 ## Commands and evidence
 
