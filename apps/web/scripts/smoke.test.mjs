@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout } from "node:timers/promises";
+import { problemDetailsSchema } from "@vowora/contracts";
 
 test(
   "production app serves its noindex foundation and versioned public API",
@@ -102,6 +103,7 @@ test(
         "application/problem+json",
       );
       const missingBody = await missing.json();
+      assert.doesNotThrow(() => problemDetailsSchema.parse(missingBody));
       assert.deepEqual(
         {
           title: missingBody.title,
@@ -129,7 +131,9 @@ test(
         method.headers.get("content-type"),
         "application/problem+json",
       );
-      assert.equal((await method.json()).code, "METHOD_NOT_ALLOWED");
+      const methodBody = await method.json();
+      assert.equal(methodBody.code, "METHOD_NOT_ALLOWED");
+      assert.doesNotThrow(() => problemDetailsSchema.parse(methodBody));
 
       const head = await fetch("http://127.0.0.1:3101/api/v1/health", {
         method: "HEAD",
@@ -155,7 +159,24 @@ test(
       assert.deepEqual(Object.keys(specificationBody.paths), [
         "/api/v1",
         "/api/v1/health",
+        "/api/v1/{path}",
       ]);
+      assert.deepEqual(
+        specificationBody.paths["/api/v1/{path}"].get.responses["404"],
+        { $ref: "#/components/responses/ResourceNotFound" },
+      );
+      assert.deepEqual(
+        specificationBody.paths["/api/v1/health"].post.responses["405"],
+        { $ref: "#/components/responses/MethodNotAllowed" },
+      );
+      for (const component of ["ResourceNotFound", "MethodNotAllowed"]) {
+        assert.deepEqual(
+          specificationBody.components.responses[component].content[
+            "application/problem+json"
+          ].schema,
+          { $ref: "#/components/schemas/ProblemDetails" },
+        );
+      }
     } finally {
       server.kill("SIGTERM");
       if (server.exitCode === null)
