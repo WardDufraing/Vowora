@@ -17,6 +17,7 @@ function withoutSqlComments(sql) {
   let state = "normal";
   let dollarDelimiter = "";
   let escapeString = false;
+  let blockCommentDepth = 0;
   for (let index = 0; index < sql.length; index += 1) {
     const current = sql[index];
     const next = sql[index + 1];
@@ -32,10 +33,15 @@ function withoutSqlComments(sql) {
         output += current;
       } else output += " ";
     } else if (state === "block-comment") {
-      if (current === "*" && next === "/") {
+      if (current === "/" && next === "*") {
+        blockCommentDepth += 1;
         output += "  ";
         index += 1;
-        state = "normal";
+      } else if (current === "*" && next === "/") {
+        output += "  ";
+        index += 1;
+        blockCommentDepth -= 1;
+        if (blockCommentDepth === 0) state = "normal";
       } else output += current === "\n" ? "\n" : " ";
     } else if (state === "single-quote") {
       output += current === "\n" ? "\n" : " ";
@@ -85,6 +91,7 @@ function withoutSqlComments(sql) {
       index += 1;
     } else if (current === "/" && next === "*") {
       state = "block-comment";
+      blockCommentDepth = 1;
       output += "  ";
       index += 1;
     } else output += current;

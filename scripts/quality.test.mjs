@@ -120,6 +120,7 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     "SELECT 'first line\nsecond line';\nDROP TABLE sensitive;",
     "SELECT 1 AS foo$tag$; DROP TABLE sensitive; SELECT 1 AS bar$tag$;",
     "SELECT 1 AS foo$$; DROP TABLE sensitive; SELECT 1 AS bar$$;",
+    "/* outer\n /* nested */\n $tag$\n*/\nDROP TABLE sensitive;\nSELECT $tag$still text$tag$;",
   ]) {
     assert.notEqual(
       destructiveMigrationOperations(structuralAfterString).length,
@@ -127,4 +128,10 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
       structuralAfterString,
     );
   }
+  assert.deepEqual(
+    destructiveMigrationOperations(
+      "/* outer DROP TABLE ignored\n /* nested DROP VIEW ignored */\n end */\nSELECT 1;",
+    ),
+    [],
+  );
 });
