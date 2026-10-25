@@ -28,8 +28,8 @@
 | 00-b | Marketing footer preferences and four-language localization | 00-a (merged PR #5) | In review | [Brief](steps/00-b.md) |
 | 01-a | Monorepo and package boundaries | 00-a (merged and live) | Done | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a (merged PR #7) | Done | [Brief](steps/01-b.md) |
-| 01-c | CI, environment validation and API skeleton | 01-b (merged PR #8) | In progress | [Brief](steps/01-c.md) |
-| 02-a | Neon, Drizzle and migration harness | 01-c | Not started | [Brief](steps/02-a.md) |
+| 01-c | CI, environment validation and API skeleton | 01-b (merged PR #8) | Done | [Brief](steps/01-c.md) |
+| 02-a | Neon, Drizzle and migration harness | 01-c (merged corrective PR #17) | In progress | [Brief](steps/02-a.md) |
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Not started | [Brief](steps/02-b.md) |
 | 02-c | Audit events and transactional outbox | 02-b | Not started | [Brief](steps/02-c.md) |
 | 03-a | Authentication integration | 02-c | Not started | [Brief](steps/03-a.md) |
@@ -112,3 +112,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-24 — Owner merged 01-b [PR #8](https://github.com/WardDufraing/Vowora/pull/8) as `42a0b10`; all final hosted checks passed. Fresh implementer `/root/implement_01_c` started 01-c from that integrated main with no competing open PR. Scope and executed evidence are recorded in [the 01-c handoff](implementation/01-c-ci-env-api.md); 02-a remains blocked until owner merge.
 
 - 2026-10-24 — Owner merged 01-c [PR #9](https://github.com/WardDufraing/Vowora/pull/9) as `6ea2875`; hosted workspace, policy, secret-scan, and both Vercel preview checks passed. A required post-merge independent review found incomplete OpenAPI error-response linkage. Fresh corrective implementer `/root/fix_01_c_postmerge` is addressing that contract gap and a duplicate workflow concurrency key on `fix/01-c-postmerge-review`; 02-a remains blocked until the corrective PR is independently reviewed and owner-merged.
+
+- 2026-10-24 — Owner merged corrective 01-c [PR #17](https://github.com/WardDufraing/Vowora/pull/17) as `44532f2` after fresh independent re-review and all hosted checks passed. Fresh implementer `/root/implement_02_a` started 02-a from current integrated main (including subsequently merged dependency PR #16); scoped database design and evidence are in [the 02-a handoff](implementation/02-a-database.md). No external Neon, Vercel, DNS or deployment changes were made; 02-b remains blocked until 02-a owner merge.

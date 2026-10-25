@@ -46,3 +46,32 @@ jobs:
             apps/marketing/test-results/
             apps/web/test-results/
           retention-days: 7
+  database-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
+        env:
+          POSTGRES_DB: vowora_test
+          POSTGRES_USER: vowora_migrator
+          POSTGRES_PASSWORD: synthetic-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vowora_migrator -d vowora_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_MIGRATION_URL: postgresql://vowora_migrator:synthetic-ci-password@127.0.0.1:5432/vowora_test
+      DATABASE_MIGRATION_TARGET: test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:database

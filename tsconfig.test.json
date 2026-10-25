@@ -10,7 +10,10 @@
     "apps/**/*.component.test.tsx",
     "apps/**/tests/**/*.spec.ts",
     "apps/**/playwright.config.ts",
-    "packages/**/*.unit.test.ts"
+    "packages/**/*.unit.test.ts",
+    "packages/**/*.integration.test.ts",
+    "packages/**/vitest.integration.config.ts",
+    "packages/**/drizzle.config.ts"
   ],
   "exclude": ["node_modules"]
 }

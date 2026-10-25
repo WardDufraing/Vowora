@@ -21,7 +21,8 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:e2e": "pnpm --filter @vowora/web test:e2e && pnpm --filter @vowora/marketing test",
-    "test:tooling": "node --test scripts/quality.test.mjs"
+    "test:tooling": "node --test scripts/quality.test.mjs",
+    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && pnpm --filter @vowora/database test:integration"
   },
   "devDependencies": {
     "turbo": "2.11.10",
@@ -39,7 +40,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "10.13.0",
-    "typescript": "7.0.2",
-    "@types/node": "26.6.5"
+    "typescript": "5.9.3",
+    "@types/node": "24.10.0"
   }
 }

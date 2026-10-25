@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { destructiveMigrationOperations } from "./migration-safety.mjs";
 const require = createRequire(import.meta.url);
 const prettier = require.resolve("prettier/bin/prettier.cjs");
 const root = new URL("../", import.meta.url);
@@ -58,3 +59,43 @@ test(
     assert.doesNotMatch(output, new RegExp(invalidValue));
   },
 );
+
+test("migration gate rejects destructive SQL and accepts additive SQL", () => {
+  assert.deepEqual(
+    destructiveMigrationOperations(
+      'CREATE TABLE "safe" ("id" uuid PRIMARY KEY);',
+    ),
+    [],
+  );
+  assert.notEqual(
+    destructiveMigrationOperations('ALTER TABLE "safe" DROP COLUMN "id";')
+      .length,
+    0,
+  );
+  for (const destructive of [
+    'DROP VIEW "legacy_view";',
+    'DROP SEQUENCE "legacy_sequence";',
+    'DROP DOMAIN "legacy_domain";',
+    'DROP TRIGGER "legacy_trigger" ON "safe";',
+    'ALTER TABLE "safe" RENAME COLUMN "name" TO "label";',
+    'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
+    'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
+    'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
+    'DELETE FROM "safe";',
+    "ALTER TYPE \"status\" RENAME VALUE 'old' TO 'new';",
+    "SELECT '--'; DROP TABLE sensitive;",
+    "SELECT '/*'; DROP TABLE sensitive; SELECT '*/';",
+    "SELECT $$--$$; DROP TABLE sensitive;",
+    String.raw`SELECT E'--\''; DROP TABLE sensitive;`,
+  ]) {
+    assert.notEqual(
+      destructiveMigrationOperations(destructive).length,
+      0,
+      destructive,
+    );
+  }
+  assert.deepEqual(
+    destructiveMigrationOperations("-- DROP TABLE ignored_comment;\nSELECT 1;"),
+    [],
+  );
+});
