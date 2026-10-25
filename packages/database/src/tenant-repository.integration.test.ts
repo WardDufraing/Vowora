@@ -1,0 +1,332 @@
+import { randomUUID } from "node:crypto";
+
+import { and, eq } from "drizzle-orm";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { describe, expect, it } from "vitest";
+
+import {
+  parseAuthorizationContext,
+  type AuthorizationContext,
+  type TenantScopedRepository,
+} from "@vowora/domain";
+
+import { parseTestMigrationConfig } from "./config.js";
+import { withIsolatedTestSchema } from "./migrations.js";
+import {
+  assertTenantWriteScope,
+  tenantScopePredicate,
+  TenantScopeViolationError,
+  type TenantScopeColumns,
+  type TransactionHost,
+  withTenantTransaction,
+} from "./tenant.js";
+
+const records = pgTable("tenant_repository_records", {
+  id: uuid("id").primaryKey(),
+  weddingId: uuid("wedding_id"),
+  organizationId: uuid("organization_id"),
+  value: text("value").notNull(),
+});
+
+type RecordRow = typeof records.$inferSelect;
+type NewRecord = typeof records.$inferInsert;
+type Schema = { records: typeof records };
+type RepositorySession = Pick<NodePgDatabase<Schema>, "insert" | "select">;
+
+class RecordRepository implements TenantScopedRepository<
+  RepositorySession,
+  RecordRow,
+  NewRecord,
+  string
+> {
+  constructor(private readonly scopeColumns: TenantScopeColumns) {}
+
+  async findById(
+    session: RepositorySession,
+    authorization: AuthorizationContext,
+    id: string,
+  ): Promise<RecordRow | null> {
+    const [record] = await session
+      .select()
+      .from(records)
+      .where(
+        and(
+          eq(records.id, id),
+          tenantScopePredicate(authorization, this.scopeColumns),
+        ),
+      );
+    return record ?? null;
+  }
+
+  async create(
+    session: RepositorySession,
+    authorization: AuthorizationContext,
+    input: NewRecord,
+  ): Promise<RecordRow> {
+    assertTenantWriteScope(authorization, input, this.scopeColumns);
+    const [record] = await session.insert(records).values(input).returning();
+    if (!record) throw new Error("Synthetic insert did not return a record");
+    return record;
+  }
+}
+
+const migrationConfig = parseTestMigrationConfig(process.env);
+const actorId = "019a1f5e-70a0-7000-8000-000000000001";
+const weddingA = "019a1f5e-70a0-7000-8000-000000000010";
+const weddingB = "019a1f5e-70a0-7000-8000-000000000011";
+const organizationA = "019a1f5e-70a0-7000-8000-000000000020";
+const organizationB = "019a1f5e-70a0-7000-8000-000000000021";
+
+function syntheticUuid(index: number): string {
+  return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
+}
+
+function authorization(scopes: {
+  activeWeddingId?: string;
+  activeOrganizationId?: string;
+}) {
+  return parseAuthorizationContext({
+    actorId,
+    ...scopes,
+    permissionScopeVersion: "synthetic:1",
+    correlationId: randomUUID(),
+  });
+}
+
+async function withRepositoryDatabase(
+  name: string,
+  callback: (database: NodePgDatabase<Schema>) => Promise<void>,
+) {
+  await withIsolatedTestSchema(
+    migrationConfig,
+    `${name}-${randomUUID()}`,
+    async ({ client }) => {
+      await client.query(`
+        CREATE TABLE tenant_repository_records (
+          id uuid PRIMARY KEY,
+          wedding_id uuid,
+          organization_id uuid,
+          value text NOT NULL,
+          CONSTRAINT tenant_repository_records_has_scope
+            CHECK (wedding_id IS NOT NULL OR organization_id IS NOT NULL)
+        )
+      `);
+      await callback(
+        drizzle(client, { casing: "snake_case", schema: { records } }),
+      );
+    },
+  );
+}
+
+describe("tenant-scoped repository and transactions", () => {
+  it("allows active tenants and denies cross-tenant reads and writes", async () => {
+    await withRepositoryDatabase("tenant-isolation", async (database) => {
+      const weddingRepository = new RecordRepository({
+        weddingId: records.weddingId,
+      });
+      const organizationRepository = new RecordRepository({
+        organizationId: records.organizationId,
+      });
+      const combinedRepository = new RecordRepository({
+        weddingId: records.weddingId,
+        organizationId: records.organizationId,
+      });
+      const weddingContext = authorization({ activeWeddingId: weddingA });
+      const organizationContext = authorization({
+        activeOrganizationId: organizationA,
+      });
+      const weddingRecord = {
+        id: syntheticUuid(100),
+        weddingId: weddingA,
+        value: "wedding-a",
+      };
+      const otherWeddingRecord = {
+        id: syntheticUuid(101),
+        weddingId: weddingB,
+        value: "wedding-b",
+      };
+      const organizationRecord = {
+        id: syntheticUuid(102),
+        organizationId: organizationA,
+        value: "organization-a",
+      };
+      const combinedRecord = {
+        id: syntheticUuid(103),
+        weddingId: weddingA,
+        organizationId: organizationA,
+        value: "wedding-a-organization-a",
+      };
+      await database
+        .insert(records)
+        .values([
+          weddingRecord,
+          otherWeddingRecord,
+          organizationRecord,
+          combinedRecord,
+        ]);
+
+      await expect(
+        weddingRepository.findById(database, weddingContext, weddingRecord.id),
+      ).resolves.toMatchObject({ value: "wedding-a" });
+      await expect(
+        weddingRepository.findById(
+          database,
+          weddingContext,
+          otherWeddingRecord.id,
+        ),
+      ).resolves.toBeNull();
+      await expect(
+        weddingRepository.findById(
+          database,
+          organizationContext,
+          weddingRecord.id,
+        ),
+      ).resolves.toBeNull();
+      await expect(
+        organizationRepository.findById(
+          database,
+          organizationContext,
+          organizationRecord.id,
+        ),
+      ).resolves.toMatchObject({ value: "organization-a" });
+      await expect(
+        combinedRepository.findById(
+          database,
+          authorization({
+            activeWeddingId: weddingA,
+            activeOrganizationId: organizationA,
+          }),
+          combinedRecord.id,
+        ),
+      ).resolves.toMatchObject({ value: "wedding-a-organization-a" });
+      await expect(
+        combinedRepository.findById(
+          database,
+          authorization({
+            activeWeddingId: weddingA,
+            activeOrganizationId: organizationB,
+          }),
+          combinedRecord.id,
+        ),
+      ).resolves.toBeNull();
+
+      await expect(
+        weddingRepository.create(database, weddingContext, {
+          id: syntheticUuid(104),
+          weddingId: weddingB,
+          value: "forbidden",
+        }),
+      ).rejects.toBeInstanceOf(TenantScopeViolationError);
+      await expect(
+        organizationRepository.create(database, organizationContext, {
+          id: syntheticUuid(105),
+          organizationId: organizationB,
+          value: "forbidden",
+        }),
+      ).rejects.toBeInstanceOf(TenantScopeViolationError);
+      await expect(
+        combinedRepository.create(
+          database,
+          authorization({
+            activeWeddingId: weddingA,
+            activeOrganizationId: organizationA,
+          }),
+          {
+            id: syntheticUuid(106),
+            weddingId: weddingA,
+            value: "missing-required-organization",
+          },
+        ),
+      ).rejects.toBeInstanceOf(TenantScopeViolationError);
+    });
+  });
+
+  it("commits multi-record work once and rolls every record back on failure", async () => {
+    await withRepositoryDatabase("transaction-rollback", async (database) => {
+      const repository = new RecordRepository({ weddingId: records.weddingId });
+      const context = authorization({ activeWeddingId: weddingA });
+      const host: TransactionHost<RepositorySession> = {
+        transaction: (callback) => database.transaction((tx) => callback(tx)),
+      };
+
+      await withTenantTransaction(host, context, async (transaction) => {
+        await repository.create(
+          transaction.session,
+          transaction.authorization,
+          {
+            id: syntheticUuid(200),
+            weddingId: weddingA,
+            value: "committed-a",
+          },
+        );
+        await repository.create(
+          transaction.session,
+          transaction.authorization,
+          {
+            id: syntheticUuid(201),
+            weddingId: weddingA,
+            value: "committed-b",
+          },
+        );
+      });
+
+      await expect(
+        withTenantTransaction(host, context, async (transaction) => {
+          await repository.create(
+            transaction.session,
+            transaction.authorization,
+            {
+              id: syntheticUuid(202),
+              weddingId: weddingA,
+              value: "rolled-back-a",
+            },
+          );
+          await repository.create(
+            transaction.session,
+            transaction.authorization,
+            {
+              id: syntheticUuid(203),
+              weddingId: weddingA,
+              value: "rolled-back-b",
+            },
+          );
+          throw new Error("synthetic application failure");
+        }),
+      ).rejects.toThrow("synthetic application failure");
+
+      const duplicateId = syntheticUuid(204);
+      await expect(
+        withTenantTransaction(host, context, async (transaction) => {
+          await repository.create(
+            transaction.session,
+            transaction.authorization,
+            {
+              id: duplicateId,
+              weddingId: weddingA,
+              value: "rolled-back-before-constraint",
+            },
+          );
+          await repository.create(
+            transaction.session,
+            transaction.authorization,
+            {
+              id: duplicateId,
+              weddingId: weddingA,
+              value: "duplicate-primary-key",
+            },
+          );
+        }),
+      ).rejects.toThrow();
+
+      const stored = await database
+        .select({ value: records.value })
+        .from(records)
+        .where(tenantScopePredicate(context, { weddingId: records.weddingId }));
+      expect(stored.map(({ value }) => value).sort()).toEqual([
+        "committed-a",
+        "committed-b",
+      ]);
+    });
+  });
+});

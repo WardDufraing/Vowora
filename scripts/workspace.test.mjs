@@ -80,19 +80,47 @@ test("database package can use infrastructure dependencies but not application i
     overrideConfig: workspaceConfig("database"),
   });
   const [valid] = await lint.lintText(
-    "import { createHash } from 'node:crypto';\nvoid createHash;",
+    "import { createHash } from 'node:crypto';\nimport type {} from '@vowora/domain';\nvoid createHash;",
     { filePath: "packages/database/src/probe.ts" },
   );
   assert.equal(valid.errorCount, 0);
-  const [invalid] = await lint.lintText(
-    "import '../../../apps/web/app/page';",
-    { filePath: "packages/database/src/probe.ts" },
+  for (const name of [
+    "../../../apps/web/app/page",
+    "@vowora/domain/internal",
+  ]) {
+    const [invalid] = await lint.lintText(`import '${name}';`, {
+      filePath: "packages/database/src/probe.ts",
+    });
+    assert(
+      invalid.messages.some(
+        (message) => message.ruleId === "no-restricted-imports",
+      ),
+      name,
+    );
+  }
+});
+test("web route handlers cannot bypass application services for database access", async () => {
+  const lint = new ESLint({
+    cwd: new URL("apps/web/", root).pathname,
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("web"),
+  });
+  for (const name of ["@vowora/database", "@vowora/database/testing"]) {
+    const [result] = await lint.lintText(`import '${name}';`, {
+      filePath: "app/api/v1/probe/route.ts",
+    });
+    assert(
+      result.messages.some(
+        (message) => message.ruleId === "no-restricted-syntax",
+      ),
+      name,
+    );
+  }
+  const [service] = await lint.lintText(
+    "import type {} from '@vowora/domain';",
+    { filePath: "app/api/v1/probe/route.ts" },
   );
-  assert(
-    invalid.messages.some(
-      (message) => message.ruleId === "no-restricted-imports",
-    ),
-  );
+  assert.equal(service.errorCount, 0);
 });
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {

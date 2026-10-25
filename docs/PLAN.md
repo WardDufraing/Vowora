@@ -29,8 +29,8 @@
 | 01-a | Monorepo and package boundaries | 00-a (merged and live) | Done | [Brief](steps/01-a.md) |
 | 01-b | Code quality and test harness | 01-a (merged PR #7) | Done | [Brief](steps/01-b.md) |
 | 01-c | CI, environment validation and API skeleton | 01-b (merged PR #8) | Done | [Brief](steps/01-c.md) |
-| 02-a | Neon, Drizzle and migration harness | 01-c (merged corrective PR #17) | In progress | [Brief](steps/02-a.md) |
-| 02-b | Tenant-scoped repository and transaction primitives | 02-a | Not started | [Brief](steps/02-b.md) |
+| 02-a | Neon, Drizzle and migration harness | 01-c (merged corrective PR #17) | Done | [Brief](steps/02-a.md) |
+| 02-b | Tenant-scoped repository and transaction primitives | 02-a | In progress | [Brief](steps/02-b.md) |
 | 02-c | Audit events and transactional outbox | 02-b | Not started | [Brief](steps/02-c.md) |
 | 03-a | Authentication integration | 02-c | Not started | [Brief](steps/03-a.md) |
 | 03-b | Session management and account recovery | 03-a | Not started | [Brief](steps/03-b.md) |
@@ -116,3 +116,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-25 — Owner merged 02-a [PR #20](https://github.com/WardDufraing/Vowora/pull/20) as `3be683e` after database integration, hosted checks and iterative review. A required final merged review found percent-encoded database identities could bypass runtime/migration separation and several destructive rename forms escaped the migration gate. Fresh corrective implementer `/root/fix_02_a_postmerge` is addressing both with regression coverage; 02-b remains blocked until that corrective PR is independently reviewed and owner-merged.
 
 - 2026-10-24 — Owner merged corrective 01-c [PR #17](https://github.com/WardDufraing/Vowora/pull/17) as `44532f2` after fresh independent re-review and all hosted checks passed. Fresh implementer `/root/implement_02_a` started 02-a from current integrated main (including subsequently merged dependency PR #16); scoped database design and evidence are in [the 02-a handoff](implementation/02-a-database.md). No external Neon, Vercel, DNS or deployment changes were made; 02-b remains blocked until 02-a owner merge.
+
+- 2026-10-25 — Owner merged the final 02-a corrective [PR #22](https://github.com/WardDufraing/Vowora/pull/22) as `9e48d69` after independent review and all hosted checks passed. Fresh implementer `/root/implement_02_b` started tenant-scoped repository and transaction primitives from that integrated main with no competing open PR. Scope and evidence are recorded in [the 02-b handoff](implementation/02-b-tenant-repositories.md); 02-c remains blocked until owner merge.

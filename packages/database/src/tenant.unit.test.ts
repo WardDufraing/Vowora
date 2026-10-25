@@ -1,0 +1,85 @@
+import { describe, expect, it, vi } from "vitest";
+import { pgTable, uuid } from "drizzle-orm/pg-core";
+
+import { parseAuthorizationContext } from "@vowora/domain";
+
+import {
+  assertTenantWriteScope,
+  TenantScopeViolationError,
+  type TransactionHost,
+  withTenantTransaction,
+} from "./tenant.js";
+
+const context = parseAuthorizationContext({
+  actorId: "019a1f5e-70a0-7000-8000-000000000001",
+  activeWeddingId: "019a1f5e-70a0-7000-8000-000000000002",
+  activeOrganizationId: "019a1f5e-70a0-7000-8000-000000000003",
+  permissionScopeVersion: "scope:1",
+  correlationId: "fd901f2e-3f91-4e12-a32e-cf48c853fd44",
+});
+
+const scopedRecord = pgTable("scoped_record", {
+  weddingId: uuid("wedding_id"),
+  organizationId: uuid("organization_id"),
+});
+const bothScopes = {
+  weddingId: scopedRecord.weddingId,
+  organizationId: scopedRecord.organizationId,
+};
+
+describe("tenant primitives", () => {
+  it("accepts matching write scope and denies missing or different tenants", () => {
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        {
+          weddingId: context.activeWeddingId,
+          organizationId: context.activeOrganizationId,
+        },
+        bothScopes,
+      ),
+    ).not.toThrow();
+    for (const values of [
+      {},
+      { weddingId: "019a1f5e-70a0-7000-8000-000000000099" },
+      { organizationId: "019a1f5e-70a0-7000-8000-000000000099" },
+    ]) {
+      expect(() => assertTenantWriteScope(context, values, bothScopes)).toThrow(
+        TenantScopeViolationError,
+      );
+    }
+  });
+
+  it("validates once and supplies one transaction session to the callback", async () => {
+    const session = { marker: "one transaction" };
+    const callback = vi.fn(async (transaction) => transaction.session.marker);
+    let transactionCalls = 0;
+    const host: TransactionHost<typeof session> = {
+      async transaction<Result>(
+        work: (value: typeof session) => Promise<Result>,
+      ): Promise<Result> {
+        transactionCalls += 1;
+        return work(session);
+      },
+    };
+
+    await expect(withTenantTransaction(host, context, callback)).resolves.toBe(
+      "one transaction",
+    );
+    expect(transactionCalls).toBe(1);
+    expect(callback).toHaveBeenCalledWith({ authorization: context, session });
+  });
+
+  it("rejects invalid context before opening a transaction", () => {
+    const transaction = vi.fn();
+
+    expect(() =>
+      withTenantTransaction(
+        { transaction },
+        { ...context, activeWeddingId: "caller-controlled" },
+        async () => undefined,
+      ),
+    ).toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+});

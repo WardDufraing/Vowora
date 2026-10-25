@@ -33,6 +33,9 @@ export function workspaceConfig(layer) {
       "**/contracts/**",
     );
   }
+  if (layer === "database") {
+    restricted.push("@vowora/domain/**");
+  }
   return defineConfig([
     ...(isApplication ? nextVitals : []),
     ...nextTs,
@@ -60,6 +63,24 @@ export function workspaceConfig(layer) {
         ],
       },
     },
+    ...(layer === "web"
+      ? [
+          {
+            files: ["app/api/**/*.{ts,tsx}"],
+            rules: {
+              "no-restricted-syntax": [
+                "error",
+                {
+                  selector:
+                    "ImportDeclaration[source.value=/^@vowora\\/database(?:\\/|$)/]",
+                  message:
+                    "Route handlers must call application services, never database repositories directly.",
+                },
+              ],
+            },
+          },
+        ]
+      : []),
   ]);
 }
 

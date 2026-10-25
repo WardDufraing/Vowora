@@ -1,7 +1,11 @@
 {
   "extends": "@vowora/config/next.json",
   "compilerOptions": {
-    "incremental": false
+    "incremental": false,
+    "baseUrl": ".",
+    "paths": {
+      "@vowora/domain": ["packages/domain/src/index.ts"]
+    }
   },
   "include": [
     "vitest.config.ts",
