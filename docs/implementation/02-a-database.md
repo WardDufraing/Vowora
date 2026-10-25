@@ -27,12 +27,10 @@ pnpm audit --prod --audit-level high
 Migration integration tests additionally require a dedicated non-production PostgreSQL database and migration identity:
 
 ```sh
-DATABASE_MIGRATION_TARGET=test \
-DATABASE_MIGRATION_URL='postgresql://MIGRATION_USER:VALUE@TEST_HOST/TEST_DATABASE?sslmode=require' \
 pnpm test:database
 ```
 
-Never put the value in chat, source, logs or a pull request. The checked-in CI job uses a digest-pinned disposable PostgreSQL 17 service and synthetic credentials; no GitHub or Neon secret is required. Local validation used the same pinned image on an explicit loopback port with an explicit unique container name and removed that container afterward. The architecture's future persistent shared Neon test database remains an owner-managed requirement for repository/tenant suites beginning in later tasks; this task neither creates a Neon project nor binds a credential.
+Provide `DATABASE_MIGRATION_TARGET=test` and `DATABASE_MIGRATION_URL` through the test runner's environment. Never put the URL or credential value in chat, source, logs or a pull request. The checked-in CI job uses a digest-pinned disposable PostgreSQL 17 service and synthetic credentials; no GitHub or Neon secret is required. Local validation used the same pinned image on an explicit loopback port with an explicit unique container name and removed that container afterward. The architecture's future persistent shared Neon test database remains an owner-managed requirement for repository/tenant suites beginning in later tasks; this task neither creates a Neon project nor binds a credential.
 
 `pnpm --filter @vowora/database db:generate` creates a reviewed forward migration after a schema edit. `db:check` validates Drizzle migration metadata, generating again reports no drift, and `db:safety` rejects destructive SQL. Production migration execution is intentionally absent until a separately approved controlled workflow and dedicated production migration identity exist.
 

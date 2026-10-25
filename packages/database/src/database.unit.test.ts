@@ -8,11 +8,29 @@ import {
 import { testSchemaName } from "./migrations.js";
 import { createUuidV7, isUuidV7 } from "./uuid.js";
 
+function testPostgresUrl({
+  database = "vowora",
+  password,
+  username,
+}: {
+  database?: string;
+  password?: string;
+  username: string;
+}) {
+  const url = new URL(`postgresql://example.test/${database}`);
+  url.username = username;
+  if (password) url.password = password;
+  url.searchParams.set("sslmode", "require");
+  return url.toString();
+}
+
 describe("database configuration", () => {
   it("parses bounded runtime settings without requiring them at build time", () => {
     const result = parseRuntimeDatabaseConfig({
-      DATABASE_URL:
-        "postgresql://runtime:synthetic@example.test/vowora?sslmode=require",
+      DATABASE_URL: testPostgresUrl({
+        username: "runtime",
+        password: "synthetic",
+      }),
       DATABASE_POOL_MAX: "3",
       DATABASE_STATEMENT_TIMEOUT_MS: "2500",
       VOWORA_ENV: "preview",
@@ -62,8 +80,11 @@ describe("database configuration", () => {
   });
 
   it("requires a dedicated, explicitly test-only migration identity", () => {
-    const url =
-      "postgresql://migration:synthetic@example.test/vowora_test?sslmode=require";
+    const url = testPostgresUrl({
+      database: "vowora_test",
+      username: "migration",
+      password: "synthetic",
+    });
     expect(() =>
       parseTestMigrationConfig({ DATABASE_MIGRATION_URL: url }),
     ).toThrow(/DATABASE_MIGRATION_TARGET/);
@@ -76,11 +97,16 @@ describe("database configuration", () => {
     ).toThrow(DatabaseConfigurationError);
     expect(() =>
       parseTestMigrationConfig({
-        DATABASE_MIGRATION_URL:
-          "postgresql://shared:migration-value@example.test/vowora_test?sslmode=require",
+        DATABASE_MIGRATION_URL: testPostgresUrl({
+          database: "vowora_test",
+          username: "shared",
+          password: "migration-value",
+        }),
         DATABASE_MIGRATION_TARGET: "test",
-        DATABASE_URL:
-          "postgresql://shared:runtime-value@example.test/vowora?sslmode=require",
+        DATABASE_URL: testPostgresUrl({
+          username: "shared",
+          password: "runtime-value",
+        }),
       }),
     ).toThrow(DatabaseConfigurationError);
   });
