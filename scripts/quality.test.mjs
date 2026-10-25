@@ -78,6 +78,10 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'DROP DOMAIN "legacy_domain";',
     'DROP TRIGGER "legacy_trigger" ON "safe";',
     'ALTER TABLE "safe" RENAME COLUMN "name" TO "label";',
+    'ALTER TABLE "safe" RENAME CONSTRAINT "old_key" TO "new_key";',
+    'ALTER INDEX "old_index" RENAME TO "new_index";',
+    'ALTER TYPE "old_type" RENAME TO "new_type";',
+    'ALTER DOMAIN "old_domain" RENAME TO "new_domain";',
     'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
     'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
     'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
@@ -96,6 +100,38 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
   }
   assert.deepEqual(
     destructiveMigrationOperations("-- DROP TABLE ignored_comment;\nSELECT 1;"),
+    [],
+  );
+  for (const quoted of [
+    "SELECT 'DROP TABLE quoted_text';",
+    'SELECT "DROP TABLE quoted_identifier";',
+    "SELECT $$ALTER INDEX old RENAME TO new$$;",
+    "SELECT $tag$DROP TABLE tagged_text$tag$;",
+    "SELECT E'DROP DOMAIN escaped';",
+    String.raw`SELECT E'safe\' DROP TABLE quoted_text';`,
+    "SELECT E'first line\nDROP TABLE quoted_text';",
+  ]) {
+    assert.deepEqual(destructiveMigrationOperations(quoted), [], quoted);
+  }
+  for (const structuralAfterString of [
+    String.raw`SELECT 'safe\'; DROP TABLE sensitive;`,
+    String.raw`SELECT 'safe\\'; DROP TABLE sensitive;`,
+    String.raw`SELECT E'safe\\'; DROP TABLE sensitive;`,
+    "SELECT 'first line\nsecond line';\nDROP TABLE sensitive;",
+    "SELECT 1 AS foo$tag$; DROP TABLE sensitive; SELECT 1 AS bar$tag$;",
+    "SELECT 1 AS foo$$; DROP TABLE sensitive; SELECT 1 AS bar$$;",
+    "/* outer\n /* nested */\n $tag$\n*/\nDROP TABLE sensitive;\nSELECT $tag$still text$tag$;",
+  ]) {
+    assert.notEqual(
+      destructiveMigrationOperations(structuralAfterString).length,
+      0,
+      structuralAfterString,
+    );
+  }
+  assert.deepEqual(
+    destructiveMigrationOperations(
+      "/* outer DROP TABLE ignored\n /* nested DROP VIEW ignored */\n end */\nSELECT 1;",
+    ),
     [],
   );
 });

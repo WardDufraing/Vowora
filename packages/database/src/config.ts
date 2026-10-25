@@ -15,6 +15,14 @@ function hasManagedTls(url: URL): boolean {
   return tlsModes.length === 1 && managedTlsModes.has(tlsModes[0] ?? "");
 }
 
+function decodedUsername(url: URL, variable: string): string {
+  try {
+    return decodeURIComponent(url.username);
+  } catch {
+    throw new DatabaseConfigurationError([variable]);
+  }
+}
+
 const postgresUrlSchema = z
   .string()
   .min(1)
@@ -97,6 +105,7 @@ export function parseRuntimeDatabaseConfig(
     throw new DatabaseConfigurationError(issueVariables(result.error));
   }
   const url = new URL(result.data.DATABASE_URL);
+  decodedUsername(url, "DATABASE_URL");
   if (requiresManagedTls(url) && !hasManagedTls(url)) {
     throw new DatabaseConfigurationError(["DATABASE_URL"]);
   }
@@ -135,23 +144,29 @@ export function parseTestMigrationConfig(
     throw new DatabaseConfigurationError(issueVariables(result.error));
   }
   const migrationUrl = new URL(result.data.DATABASE_MIGRATION_URL);
+  const migrationUsername = decodedUsername(
+    migrationUrl,
+    "DATABASE_MIGRATION_URL",
+  );
   if (
     (requiresManagedTls(migrationUrl) && !hasManagedTls(migrationUrl)) ||
-    migrationUrl.username.length === 0 ||
+    migrationUsername.length === 0 ||
     migrationUrl.pathname.replace(/^\/+/, "").length === 0
   ) {
     throw new DatabaseConfigurationError(["DATABASE_MIGRATION_URL"]);
   }
-  if (
-    result.data.DATABASE_URL &&
-    (result.data.DATABASE_URL === result.data.DATABASE_MIGRATION_URL ||
-      new URL(result.data.DATABASE_URL).username ===
-        new URL(result.data.DATABASE_MIGRATION_URL).username)
-  ) {
-    throw new DatabaseConfigurationError([
-      "DATABASE_MIGRATION_URL",
-      "DATABASE_URL",
-    ]);
+  if (result.data.DATABASE_URL) {
+    const runtimeUrl = new URL(result.data.DATABASE_URL);
+    const runtimeUsername = decodedUsername(runtimeUrl, "DATABASE_URL");
+    if (
+      result.data.DATABASE_URL === result.data.DATABASE_MIGRATION_URL ||
+      runtimeUsername === migrationUsername
+    ) {
+      throw new DatabaseConfigurationError([
+        "DATABASE_MIGRATION_URL",
+        "DATABASE_URL",
+      ]);
+    }
   }
   return {
     connectionString: result.data.DATABASE_MIGRATION_URL,

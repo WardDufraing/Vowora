@@ -165,6 +165,54 @@ describe("database configuration", () => {
       ).toThrow(DatabaseConfigurationError);
     }
   });
+
+  it("compares decoded runtime and migration identities", () => {
+    const plainRuntime = testPostgresUrl({ username: "runtime" });
+    const encodedRuntime = plainRuntime.replace("runtime@", "%72untime@");
+    const migration = testPostgresUrl({
+      database: "vowora_test",
+      username: "runtime",
+    });
+
+    for (const [runtimeUrl, migrationUrl] of [
+      [encodedRuntime, migration],
+      [plainRuntime, migration.replace("runtime@", "%72untime@")],
+    ]) {
+      expect(() =>
+        parseTestMigrationConfig({
+          DATABASE_MIGRATION_URL: migrationUrl,
+          DATABASE_MIGRATION_TARGET: "test",
+          DATABASE_URL: runtimeUrl,
+        }),
+      ).toThrow(DatabaseConfigurationError);
+    }
+  });
+
+  it("rejects malformed encoded database identities without reflecting them", () => {
+    const malformedIdentity = "%ZZ-private-identity";
+    const malformedUrl = testPostgresUrl({ username: "runtime" }).replace(
+      "runtime@",
+      `${malformedIdentity}@`,
+    );
+
+    for (const parse of [
+      () => parseRuntimeDatabaseConfig({ DATABASE_URL: malformedUrl }),
+      () =>
+        parseTestMigrationConfig({
+          DATABASE_MIGRATION_URL: malformedUrl,
+          DATABASE_MIGRATION_TARGET: "test",
+        }),
+    ]) {
+      let error: unknown;
+      try {
+        parse();
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).toBeInstanceOf(DatabaseConfigurationError);
+      expect(String(error)).not.toContain(malformedIdentity);
+    }
+  });
 });
 
 describe("UUIDv7 convention", () => {

@@ -6,72 +6,92 @@ const destructivePatterns = [
   /\bdrop\b/i,
   /\btruncate\b/i,
   /\bdelete\s+from\b/i,
-  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column)\b/i,
+  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column|constraint)\b/i,
   /\balter\s+table\b[\s\S]*\balter\s+column\b/i,
-  /\balter\s+type\b[\s\S]*\brename\s+value\b/i,
+  /\balter\s+type\b[\s\S]*\brename\s+(?:to|value)\b/i,
+  /\balter\s+(?:index|domain)\b[\s\S]*\brename\s+to\b/i,
 ];
 
 function withoutSqlComments(sql) {
   let output = "";
   let state = "normal";
   let dollarDelimiter = "";
+  let escapeString = false;
+  let blockCommentDepth = 0;
   for (let index = 0; index < sql.length; index += 1) {
     const current = sql[index];
     const next = sql[index + 1];
     if (state === "dollar-quote") {
       if (sql.startsWith(dollarDelimiter, index)) {
-        output += dollarDelimiter;
+        output += " ".repeat(dollarDelimiter.length);
         index += dollarDelimiter.length - 1;
         state = "normal";
-      } else output += current;
+      } else output += current === "\n" ? "\n" : " ";
     } else if (state === "line-comment") {
       if (current === "\n") {
         state = "normal";
         output += current;
       } else output += " ";
     } else if (state === "block-comment") {
-      if (current === "*" && next === "/") {
+      if (current === "/" && next === "*") {
+        blockCommentDepth += 1;
         output += "  ";
         index += 1;
-        state = "normal";
+      } else if (current === "*" && next === "/") {
+        output += "  ";
+        index += 1;
+        blockCommentDepth -= 1;
+        if (blockCommentDepth === 0) state = "normal";
       } else output += current === "\n" ? "\n" : " ";
     } else if (state === "single-quote") {
-      output += current;
-      if (current === "\\" && next !== undefined) {
-        output += next;
+      output += current === "\n" ? "\n" : " ";
+      if (escapeString && current === "\\" && next !== undefined) {
+        output += next === "\n" ? "\n" : " ";
         index += 1;
       } else if (current === "'" && next === "'") {
-        output += next;
+        output += " ";
         index += 1;
-      } else if (current === "'") state = "normal";
+      } else if (current === "'") {
+        state = "normal";
+        escapeString = false;
+      }
     } else if (state === "double-quote") {
-      output += current;
+      output += current === "\n" ? "\n" : " ";
       if (current === '"' && next === '"') {
-        output += next;
+        output += " ";
         index += 1;
       } else if (current === '"') state = "normal";
     } else if (current === "$") {
-      const delimiter = sql
-        .slice(index)
-        .match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];
+      const previous = sql[index - 1];
+      const atTokenBoundary =
+        previous === undefined || !/[A-Za-z0-9_$]/.test(previous);
+      const delimiter = atTokenBoundary
+        ? sql.slice(index).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0]
+        : undefined;
       if (delimiter) {
         dollarDelimiter = delimiter;
         state = "dollar-quote";
-        output += delimiter;
+        output += " ".repeat(delimiter.length);
         index += delimiter.length - 1;
       } else output += current;
     } else if (current === "'") {
       state = "single-quote";
-      output += current;
+      const prefix = sql[index - 1];
+      const beforePrefix = sql[index - 2];
+      escapeString =
+        (prefix === "E" || prefix === "e") &&
+        (beforePrefix === undefined || !/[A-Za-z0-9_$]/.test(beforePrefix));
+      output += " ";
     } else if (current === '"') {
       state = "double-quote";
-      output += current;
+      output += " ";
     } else if (current === "-" && next === "-") {
       state = "line-comment";
       output += "  ";
       index += 1;
     } else if (current === "/" && next === "*") {
       state = "block-comment";
+      blockCommentDepth = 1;
       output += "  ";
       index += 1;
     } else output += current;
