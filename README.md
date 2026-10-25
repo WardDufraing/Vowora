@@ -32,3 +32,7 @@ Marketing languages: English `/`, Nederlands `/nl`, Français `/fr`, Deutsch `/d
 ## Code quality and tests
 
 From the repository root run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `pnpm test`. Vitest/React Testing Library run with `pnpm test:unit`; `pnpm test:e2e` runs both Playwright applications after production builds. See the [01-b test harness handoff](docs/implementation/01-b-test-harness.md) for setup, ports, formatting scope and individual commands.
+
+## Database development
+
+Database schema and migration tooling lives in `packages/database` and builds without credentials. Run `pnpm test:database` only with a dedicated synthetic PostgreSQL test database through `DATABASE_MIGRATION_URL` and `DATABASE_MIGRATION_TARGET=test`; see the [02-a database handoff](docs/implementation/02-a-database.md). Never use runtime or production credentials for migration tests.

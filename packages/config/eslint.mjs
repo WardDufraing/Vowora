@@ -5,6 +5,7 @@ import nextTs from "eslint-config-next/typescript";
 
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
+  const isApplication = layer === "web" || layer === "marketing";
   const restricted = [
     "**/domain/**",
     "**/contracts/**",
@@ -33,7 +34,7 @@ export function workspaceConfig(layer) {
     );
   }
   return defineConfig([
-    ...(layer === "domain" || layer === "contracts" ? [] : nextVitals),
+    ...(isApplication ? nextVitals : []),
     ...nextTs,
     globalIgnores([
       ".next/**",

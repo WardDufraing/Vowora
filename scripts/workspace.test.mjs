@@ -74,6 +74,26 @@ for (const layer of ["web", "marketing"]) {
     }
   });
 }
+test("database package can use infrastructure dependencies but not application internals", async () => {
+  const lint = new ESLint({
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("database"),
+  });
+  const [valid] = await lint.lintText(
+    "import { createHash } from 'node:crypto';\nvoid createHash;",
+    { filePath: "packages/database/src/probe.ts" },
+  );
+  assert.equal(valid.errorCount, 0);
+  const [invalid] = await lint.lintText(
+    "import '../../../apps/web/app/page';",
+    { filePath: "packages/database/src/probe.ts" },
+  );
+  assert(
+    invalid.messages.some(
+      (message) => message.ruleId === "no-restricted-imports",
+    ),
+  );
+});
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {
     const manifest = JSON.parse(
@@ -91,6 +111,26 @@ test("domain/contracts expose only their public compiled entrypoint", async () =
     );
     assert.equal(output, "");
   }
+});
+test("database keeps migration helpers behind its explicit testing entrypoint", async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL("packages/database/package.json", root)),
+  );
+  assert.deepEqual(Object.keys(manifest.exports), [
+    ".",
+    "./schema",
+    "./testing",
+  ]);
+  const output = execFileSync(
+    "node",
+    [
+      "--input-type=module",
+      "-e",
+      "const runtime = await import('@vowora/database'); if ('applyMigrations' in runtime || 'parseTestMigrationConfig' in runtime || 'withIsolatedTestSchema' in runtime) process.exit(1); const testing = await import('@vowora/database/testing'); if (typeof testing.applyMigrations !== 'function' || typeof testing.parseTestMigrationConfig !== 'function') process.exit(1);",
+    ],
+    { cwd: new URL("packages/database/", root), encoding: "utf8" },
+  );
+  assert.equal(output, "");
 });
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {
