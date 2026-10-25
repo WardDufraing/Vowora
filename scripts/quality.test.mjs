@@ -86,6 +86,7 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     "SELECT '--'; DROP TABLE sensitive;",
     "SELECT '/*'; DROP TABLE sensitive; SELECT '*/';",
     "SELECT $$--$$; DROP TABLE sensitive;",
+    String.raw`SELECT E'--\''; DROP TABLE sensitive;`,
   ]) {
     assert.notEqual(
       destructiveMigrationOperations(destructive).length,

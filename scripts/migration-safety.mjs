@@ -37,7 +37,10 @@ function withoutSqlComments(sql) {
       } else output += current === "\n" ? "\n" : " ";
     } else if (state === "single-quote") {
       output += current;
-      if (current === "'" && next === "'") {
+      if (current === "\\" && next !== undefined) {
+        output += next;
+        index += 1;
+      } else if (current === "'" && next === "'") {
         output += next;
         index += 1;
       } else if (current === "'") state = "normal";
