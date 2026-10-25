@@ -5,14 +5,79 @@ import { fileURLToPath } from "node:url";
 const destructivePatterns = [
   /\bdrop\b/i,
   /\btruncate\b/i,
+  /\bdelete\s+from\b/i,
   /\balter\s+table\b[\s\S]*\brename\s+(?:to|column)\b/i,
   /\balter\s+table\b[\s\S]*\balter\s+column\b/i,
+  /\balter\s+type\b[\s\S]*\brename\s+value\b/i,
 ];
 
+function withoutSqlComments(sql) {
+  let output = "";
+  let state = "normal";
+  let dollarDelimiter = "";
+  for (let index = 0; index < sql.length; index += 1) {
+    const current = sql[index];
+    const next = sql[index + 1];
+    if (state === "dollar-quote") {
+      if (sql.startsWith(dollarDelimiter, index)) {
+        output += dollarDelimiter;
+        index += dollarDelimiter.length - 1;
+        state = "normal";
+      } else output += current;
+    } else if (state === "line-comment") {
+      if (current === "\n") {
+        state = "normal";
+        output += current;
+      } else output += " ";
+    } else if (state === "block-comment") {
+      if (current === "*" && next === "/") {
+        output += "  ";
+        index += 1;
+        state = "normal";
+      } else output += current === "\n" ? "\n" : " ";
+    } else if (state === "single-quote") {
+      output += current;
+      if (current === "'" && next === "'") {
+        output += next;
+        index += 1;
+      } else if (current === "'") state = "normal";
+    } else if (state === "double-quote") {
+      output += current;
+      if (current === '"' && next === '"') {
+        output += next;
+        index += 1;
+      } else if (current === '"') state = "normal";
+    } else if (current === "$") {
+      const delimiter = sql
+        .slice(index)
+        .match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];
+      if (delimiter) {
+        dollarDelimiter = delimiter;
+        state = "dollar-quote";
+        output += delimiter;
+        index += delimiter.length - 1;
+      } else output += current;
+    } else if (current === "'") {
+      state = "single-quote";
+      output += current;
+    } else if (current === '"') {
+      state = "double-quote";
+      output += current;
+    } else if (current === "-" && next === "-") {
+      state = "line-comment";
+      output += "  ";
+      index += 1;
+    } else if (current === "/" && next === "*") {
+      state = "block-comment";
+      output += "  ";
+      index += 1;
+    } else output += current;
+  }
+  return output;
+}
+
 export function destructiveMigrationOperations(sql) {
-  const withoutComments = sql
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/--.*$/gm, " ");
+  const withoutComments = withoutSqlComments(sql);
   return destructivePatterns
     .filter((pattern) => pattern.test(withoutComments))
     .map((pattern) => pattern.source);

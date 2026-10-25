@@ -81,6 +81,11 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
     'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
     'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
+    'DELETE FROM "safe";',
+    "ALTER TYPE \"status\" RENAME VALUE 'old' TO 'new';",
+    "SELECT '--'; DROP TABLE sensitive;",
+    "SELECT '/*'; DROP TABLE sensitive; SELECT '*/';",
+    "SELECT $$--$$; DROP TABLE sensitive;",
   ]) {
     assert.notEqual(
       destructiveMigrationOperations(destructive).length,
