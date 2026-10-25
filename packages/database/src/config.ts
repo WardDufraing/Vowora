@@ -3,6 +3,16 @@ import { z } from "zod";
 const deploymentSchema = z.enum(["local", "preview", "production"]);
 const boundedInteger = (minimum: number, maximum: number, fallback: number) =>
   z.coerce.number().int().min(minimum).max(maximum).default(fallback);
+const localPostgresHosts = new Set(["127.0.0.1", "localhost", "::1"]);
+const managedTlsModes = new Set(["require", "verify-full"]);
+
+function requiresManagedTls(url: URL): boolean {
+  return !localPostgresHosts.has(url.hostname);
+}
+
+function hasManagedTls(url: URL): boolean {
+  return managedTlsModes.has(url.searchParams.get("sslmode") ?? "");
+}
 
 const postgresUrlSchema = z
   .string()
@@ -86,10 +96,7 @@ export function parseRuntimeDatabaseConfig(
     throw new DatabaseConfigurationError(issueVariables(result.error));
   }
   const url = new URL(result.data.DATABASE_URL);
-  if (
-    result.data.VOWORA_ENV !== "local" &&
-    !["require", "verify-full"].includes(url.searchParams.get("sslmode") ?? "")
-  ) {
+  if (requiresManagedTls(url) && !hasManagedTls(url)) {
     throw new DatabaseConfigurationError(["DATABASE_URL"]);
   }
   const defaultPoolMax = { local: 4, preview: 3, production: 5 } as const;
@@ -127,12 +134,10 @@ export function parseTestMigrationConfig(
     throw new DatabaseConfigurationError(issueVariables(result.error));
   }
   const migrationUrl = new URL(result.data.DATABASE_MIGRATION_URL);
-  const localHosts = new Set(["127.0.0.1", "localhost", "::1"]);
   if (
-    !localHosts.has(migrationUrl.hostname) &&
-    !["require", "verify-full"].includes(
-      migrationUrl.searchParams.get("sslmode") ?? "",
-    )
+    (requiresManagedTls(migrationUrl) && !hasManagedTls(migrationUrl)) ||
+    migrationUrl.username.length === 0 ||
+    migrationUrl.pathname.replace(/^\/+/, "").length === 0
   ) {
     throw new DatabaseConfigurationError(["DATABASE_MIGRATION_URL"]);
   }

@@ -3,9 +3,11 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const destructivePatterns = [
-  /\bdrop\s+(?:table|schema|database|type|index)\b/i,
+  /\bdrop\s+(?:(?:materialized\s+)?view|table|schema|database|type|index|sequence|function|extension)\b/i,
   /\btruncate\b/i,
   /\balter\s+table\b[\s\S]*\bdrop\s+(?:column|constraint)\b/i,
+  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column)\b/i,
+  /\balter\s+table\b[\s\S]*\balter\s+column\b[\s\S]*\btype\b/i,
 ];
 
 export function destructiveMigrationOperations(sql) {

@@ -72,6 +72,18 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
       .length,
     0,
   );
+  for (const destructive of [
+    'DROP VIEW "legacy_view";',
+    'DROP SEQUENCE "legacy_sequence";',
+    'ALTER TABLE "safe" RENAME COLUMN "name" TO "label";',
+    'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
+  ]) {
+    assert.notEqual(
+      destructiveMigrationOperations(destructive).length,
+      0,
+      destructive,
+    );
+  }
   assert.deepEqual(
     destructiveMigrationOperations("-- DROP TABLE ignored_comment;\nSELECT 1;"),
     [],

@@ -54,6 +54,16 @@ describe("database configuration", () => {
         VOWORA_ENV: "production",
       }),
     ).toThrow(DatabaseConfigurationError);
+    expect(() =>
+      parseRuntimeDatabaseConfig({
+        DATABASE_URL: "postgresql://runtime@example.test/vowora",
+      }),
+    ).toThrow(DatabaseConfigurationError);
+    expect(
+      parseRuntimeDatabaseConfig({
+        DATABASE_URL: "postgresql://runtime@127.0.0.1/vowora",
+      }).deployment,
+    ).toBe("local");
   });
 
   it("reports variable names without reflecting invalid secret values", () => {
@@ -109,6 +119,17 @@ describe("database configuration", () => {
         }),
       }),
     ).toThrow(DatabaseConfigurationError);
+    for (const invalidUrl of [
+      testPostgresUrl({ database: "vowora_test", username: "" }),
+      testPostgresUrl({ database: "", username: "migration" }),
+    ]) {
+      expect(() =>
+        parseTestMigrationConfig({
+          DATABASE_MIGRATION_URL: invalidUrl,
+          DATABASE_MIGRATION_TARGET: "test",
+        }),
+      ).toThrow(DatabaseConfigurationError);
+    }
   });
 });
 
