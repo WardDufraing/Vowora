@@ -6,9 +6,10 @@ const destructivePatterns = [
   /\bdrop\b/i,
   /\btruncate\b/i,
   /\bdelete\s+from\b/i,
-  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column)\b/i,
+  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column|constraint)\b/i,
   /\balter\s+table\b[\s\S]*\balter\s+column\b/i,
-  /\balter\s+type\b[\s\S]*\brename\s+value\b/i,
+  /\balter\s+type\b[\s\S]*\brename\s+(?:to|value)\b/i,
+  /\balter\s+(?:index|domain)\b[\s\S]*\brename\s+to\b/i,
 ];
 
 function withoutSqlComments(sql) {
@@ -20,10 +21,10 @@ function withoutSqlComments(sql) {
     const next = sql[index + 1];
     if (state === "dollar-quote") {
       if (sql.startsWith(dollarDelimiter, index)) {
-        output += dollarDelimiter;
+        output += " ".repeat(dollarDelimiter.length);
         index += dollarDelimiter.length - 1;
         state = "normal";
-      } else output += current;
+      } else output += current === "\n" ? "\n" : " ";
     } else if (state === "line-comment") {
       if (current === "\n") {
         state = "normal";
@@ -36,18 +37,18 @@ function withoutSqlComments(sql) {
         state = "normal";
       } else output += current === "\n" ? "\n" : " ";
     } else if (state === "single-quote") {
-      output += current;
+      output += current === "\n" ? "\n" : " ";
       if (current === "\\" && next !== undefined) {
-        output += next;
+        output += next === "\n" ? "\n" : " ";
         index += 1;
       } else if (current === "'" && next === "'") {
-        output += next;
+        output += " ";
         index += 1;
       } else if (current === "'") state = "normal";
     } else if (state === "double-quote") {
-      output += current;
+      output += current === "\n" ? "\n" : " ";
       if (current === '"' && next === '"') {
-        output += next;
+        output += " ";
         index += 1;
       } else if (current === '"') state = "normal";
     } else if (current === "$") {
@@ -57,15 +58,15 @@ function withoutSqlComments(sql) {
       if (delimiter) {
         dollarDelimiter = delimiter;
         state = "dollar-quote";
-        output += delimiter;
+        output += " ".repeat(delimiter.length);
         index += delimiter.length - 1;
       } else output += current;
     } else if (current === "'") {
       state = "single-quote";
-      output += current;
+      output += " ";
     } else if (current === '"') {
       state = "double-quote";
-      output += current;
+      output += " ";
     } else if (current === "-" && next === "-") {
       state = "line-comment";
       output += "  ";

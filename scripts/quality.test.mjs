@@ -78,6 +78,10 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'DROP DOMAIN "legacy_domain";',
     'DROP TRIGGER "legacy_trigger" ON "safe";',
     'ALTER TABLE "safe" RENAME COLUMN "name" TO "label";',
+    'ALTER TABLE "safe" RENAME CONSTRAINT "old_key" TO "new_key";',
+    'ALTER INDEX "old_index" RENAME TO "new_index";',
+    'ALTER TYPE "old_type" RENAME TO "new_type";',
+    'ALTER DOMAIN "old_domain" RENAME TO "new_domain";',
     'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
     'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
     'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
@@ -98,4 +102,12 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     destructiveMigrationOperations("-- DROP TABLE ignored_comment;\nSELECT 1;"),
     [],
   );
+  for (const quoted of [
+    "SELECT 'DROP TABLE quoted_text';",
+    'SELECT "DROP TABLE quoted_identifier";',
+    "SELECT $$ALTER INDEX old RENAME TO new$$;",
+    "SELECT E'DROP DOMAIN escaped';",
+  ]) {
+    assert.deepEqual(destructiveMigrationOperations(quoted), [], quoted);
+  }
 });
