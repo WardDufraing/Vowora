@@ -16,6 +16,7 @@ function withoutSqlComments(sql) {
   let output = "";
   let state = "normal";
   let dollarDelimiter = "";
+  let escapeString = false;
   for (let index = 0; index < sql.length; index += 1) {
     const current = sql[index];
     const next = sql[index + 1];
@@ -38,13 +39,16 @@ function withoutSqlComments(sql) {
       } else output += current === "\n" ? "\n" : " ";
     } else if (state === "single-quote") {
       output += current === "\n" ? "\n" : " ";
-      if (current === "\\" && next !== undefined) {
+      if (escapeString && current === "\\" && next !== undefined) {
         output += next === "\n" ? "\n" : " ";
         index += 1;
       } else if (current === "'" && next === "'") {
         output += " ";
         index += 1;
-      } else if (current === "'") state = "normal";
+      } else if (current === "'") {
+        state = "normal";
+        escapeString = false;
+      }
     } else if (state === "double-quote") {
       output += current === "\n" ? "\n" : " ";
       if (current === '"' && next === '"') {
@@ -63,6 +67,11 @@ function withoutSqlComments(sql) {
       } else output += current;
     } else if (current === "'") {
       state = "single-quote";
+      const prefix = sql[index - 1];
+      const beforePrefix = sql[index - 2];
+      escapeString =
+        (prefix === "E" || prefix === "e") &&
+        (beforePrefix === undefined || !/[A-Za-z0-9_$]/.test(beforePrefix));
       output += " ";
     } else if (current === '"') {
       state = "double-quote";
