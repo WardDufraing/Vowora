@@ -106,6 +106,7 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     "SELECT 'DROP TABLE quoted_text';",
     'SELECT "DROP TABLE quoted_identifier";',
     "SELECT $$ALTER INDEX old RENAME TO new$$;",
+    "SELECT $tag$DROP TABLE tagged_text$tag$;",
     "SELECT E'DROP DOMAIN escaped';",
     String.raw`SELECT E'safe\' DROP TABLE quoted_text';`,
     "SELECT E'first line\nDROP TABLE quoted_text';",
@@ -117,6 +118,8 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     String.raw`SELECT 'safe\\'; DROP TABLE sensitive;`,
     String.raw`SELECT E'safe\\'; DROP TABLE sensitive;`,
     "SELECT 'first line\nsecond line';\nDROP TABLE sensitive;",
+    "SELECT 1 AS foo$tag$; DROP TABLE sensitive; SELECT 1 AS bar$tag$;",
+    "SELECT 1 AS foo$$; DROP TABLE sensitive; SELECT 1 AS bar$$;",
   ]) {
     assert.notEqual(
       destructiveMigrationOperations(structuralAfterString).length,

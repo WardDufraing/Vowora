@@ -56,9 +56,12 @@ function withoutSqlComments(sql) {
         index += 1;
       } else if (current === '"') state = "normal";
     } else if (current === "$") {
-      const delimiter = sql
-        .slice(index)
-        .match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];
+      const previous = sql[index - 1];
+      const atTokenBoundary =
+        previous === undefined || !/[A-Za-z0-9_$]/.test(previous);
+      const delimiter = atTokenBoundary
+        ? sql.slice(index).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0]
+        : undefined;
       if (delimiter) {
         dollarDelimiter = delimiter;
         state = "dollar-quote";
