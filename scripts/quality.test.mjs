@@ -82,6 +82,13 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'ALTER INDEX "old_index" RENAME TO "new_index";',
     'ALTER TYPE "old_type" RENAME TO "new_type";',
     'ALTER DOMAIN "old_domain" RENAME TO "new_domain";',
+    'ALTER SEQUENCE "old_sequence" RENAME TO "new_sequence";',
+    'ALTER VIEW "old_view" RENAME TO "new_view";',
+    'ALTER MATERIALIZED VIEW "old_view" RENAME TO "new_view";',
+    "ALTER FUNCTION old_function() RENAME TO new_function;",
+    "ALTER PROCEDURE old_procedure() RENAME TO new_procedure;",
+    'ALTER SCHEMA "old_schema" RENAME TO "new_schema";',
+    'ALTER TABLE "safe" SET SCHEMA "archived";',
     'ALTER TABLE "safe" ALTER COLUMN "id" TYPE text;',
     'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
     'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
@@ -110,6 +117,8 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     "SELECT E'DROP DOMAIN escaped';",
     String.raw`SELECT E'safe\' DROP TABLE quoted_text';`,
     "SELECT E'first line\nDROP TABLE quoted_text';",
+    "SELECT 'ALTER SEQUENCE old_sequence RENAME TO new_sequence';",
+    "SELECT $$ALTER TABLE safe SET SCHEMA archived$$;",
   ]) {
     assert.deepEqual(destructiveMigrationOperations(quoted), [], quoted);
   }
@@ -134,4 +143,11 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     ),
     [],
   );
+  for (const additive of [
+    'ALTER TABLE "safe" ADD COLUMN "rename" text;',
+    'ALTER TABLE "safe" ADD COLUMN "set_schema" text;',
+    'ALTER TABLE "safe" ADD COLUMN "label" text; SELECT rename FROM metadata;',
+  ]) {
+    assert.deepEqual(destructiveMigrationOperations(additive), [], additive);
+  }
 });

@@ -6,10 +6,9 @@ const destructivePatterns = [
   /\bdrop\b/i,
   /\btruncate\b/i,
   /\bdelete\s+from\b/i,
-  /\balter\s+table\b[\s\S]*\brename\s+(?:to|column|constraint)\b/i,
+  /\balter\b[\s\S]*\brename\s+(?:to|column|constraint|value)\b/i,
+  /\balter\b[\s\S]*\bset\s+schema\b/i,
   /\balter\s+table\b[\s\S]*\balter\s+column\b/i,
-  /\balter\s+type\b[\s\S]*\brename\s+(?:to|value)\b/i,
-  /\balter\s+(?:index|domain)\b[\s\S]*\brename\s+to\b/i,
 ];
 
 function withoutSqlComments(sql) {
@@ -100,9 +99,11 @@ function withoutSqlComments(sql) {
 }
 
 export function destructiveMigrationOperations(sql) {
-  const withoutComments = withoutSqlComments(sql);
+  const statements = withoutSqlComments(sql).split(";");
   return destructivePatterns
-    .filter((pattern) => pattern.test(withoutComments))
+    .filter((pattern) =>
+      statements.some((statement) => pattern.test(statement)),
+    )
     .map((pattern) => pattern.source);
 }
 
