@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const destructivePatterns = [
   /\bdrop\b/i,
-  /\btruncate\b/i,
+  /\btruncate\b(?!\s+on\b)/i,
   /\bdelete\s+from\b/i,
   /\balter\b[\s\S]*\brename\s+(?:to|column|constraint|value)\b/i,
   /\balter\b[\s\S]*\bset\s+schema\b/i,

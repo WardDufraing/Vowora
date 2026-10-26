@@ -124,3 +124,20 @@ export type TenantScopedRepository<Session, Operations> = {
       : never
     : never;
 };
+
+export {
+  assertAuditEventEnvelope,
+  assertOutboxEventEnvelope,
+  createAuditEventEnvelope,
+  createOutboxEventEnvelope,
+  EventEnvelopeValidationError,
+} from "./events.js";
+export type {
+  AuditEventEnvelope,
+  AuditEventInput,
+  EventEnvelopeIdentity,
+  EventJsonValue,
+  EventTenantScope,
+  OutboxEventEnvelope,
+  OutboxEventInput,
+} from "./events.js";
