@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
@@ -341,6 +341,7 @@ describe("transactional audit and outbox persistence", () => {
         database
           .delete(auditEvents)
           .where(eq(auditEvents.eventId, event.audit.eventId)),
+        database.execute(sql`TRUNCATE TABLE audit_events`),
       ]) {
         await expect(mutation).rejects.toMatchObject({
           cause: {

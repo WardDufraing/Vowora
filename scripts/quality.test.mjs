@@ -93,6 +93,8 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'ALTER TABLE "safe" ALTER COLUMN "id" SET NOT NULL;',
     'ALTER TABLE "safe" ALTER COLUMN "id" DROP NOT NULL;',
     'DELETE FROM "safe";',
+    'TRUNCATE TABLE "safe";',
+    'TRUNCATE "safe";',
     "ALTER TYPE \"status\" RENAME VALUE 'old' TO 'new';",
     "SELECT '--'; DROP TABLE sensitive;",
     "SELECT '/*'; DROP TABLE sensitive; SELECT '*/';",
@@ -147,6 +149,7 @@ test("migration gate rejects destructive SQL and accepts additive SQL", () => {
     'ALTER TABLE "safe" ADD COLUMN "rename" text;',
     'ALTER TABLE "safe" ADD COLUMN "set_schema" text;',
     'ALTER TABLE "safe" ADD COLUMN "label" text; SELECT rename FROM metadata;',
+    'CREATE TRIGGER immutable BEFORE TRUNCATE ON "safe" FOR EACH STATEMENT EXECUTE FUNCTION reject_mutation();',
   ]) {
     assert.deepEqual(destructiveMigrationOperations(additive), [], additive);
   }

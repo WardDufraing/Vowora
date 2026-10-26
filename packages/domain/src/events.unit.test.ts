@@ -111,6 +111,74 @@ describe("audit and outbox event envelopes", () => {
     }
   });
 
+  it("collapses dynamic JSON validation paths and bounds durable event content", async () => {
+    const context = await authorization();
+    const privateKey = "private.person@example.com\nforged-log-line";
+    const base = {
+      eventId,
+      eventType: "wedding.changed",
+      schemaVersion: 1,
+      occurredAt,
+    } as const;
+    for (const create of [
+      () =>
+        createOutboxEventEnvelope(context, {
+          ...base,
+          payload: { [privateKey]: undefined } as never,
+        }),
+      () =>
+        createAuditEventEnvelope(context, {
+          ...base,
+          subjectType: "wedding",
+          subjectId: weddingId,
+          metadata: { [privateKey]: undefined } as never,
+        }),
+    ]) {
+      let caught: unknown;
+      try {
+        create();
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(EventEnvelopeValidationError);
+      expect(String(caught)).not.toContain(privateKey);
+      expect(String(caught)).not.toContain("@");
+      expect(String(caught)).not.toContain("\n");
+    }
+
+    expect(() =>
+      createAuditEventEnvelope(context, {
+        ...base,
+        subjectType: "wedding",
+        subjectId: weddingId,
+        metadata: { oversized: "x".repeat(4_097) },
+      }),
+    ).toThrow("Invalid event envelope: metadata");
+
+    expect(() =>
+      createOutboxEventEnvelope(context, {
+        ...base,
+        payload: Object.fromEntries(
+          Array.from({ length: 5 }, (_, index) => [
+            `part${index}`,
+            "x".repeat(4_000),
+          ]),
+        ),
+      }),
+    ).toThrow("Invalid event envelope: payload");
+
+    let deeplyNested: Record<string, unknown> = {};
+    for (let depth = 0; depth < 18; depth += 1) {
+      deeplyNested = { nested: deeplyNested };
+    }
+    expect(() =>
+      createOutboxEventEnvelope(context, {
+        ...base,
+        payload: deeplyNested as never,
+      }),
+    ).toThrow("Invalid event envelope: payload");
+  });
+
   it("rejects unresolved and cloned authorization before creating events", async () => {
     const resolved = await authorization();
     const unresolved = parseAuthorizationContextInput({

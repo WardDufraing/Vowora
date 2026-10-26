@@ -25,6 +25,11 @@ const eventJsonValueSchema: z.ZodType<EventJsonValue> = z.lazy(() =>
 );
 
 const eventJsonObjectSchema = z.record(z.string(), eventJsonValueSchema);
+const maximumEventJsonBytes = 16_384;
+const maximumEventJsonDepth = 16;
+const maximumEventJsonEntries = 512;
+const maximumEventJsonKeyLength = 128;
+const maximumEventJsonStringLength = 4_096;
 const eventNameSchema = z
   .string()
   .min(3)
@@ -99,6 +104,68 @@ function freezeJson<Value>(value: Value): Value {
   return Object.freeze(value);
 }
 
+function validateEventJson(field: "metadata" | "payload", value: unknown) {
+  const reject = (): never => {
+    throw new EventEnvelopeValidationError([field]);
+  };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    reject();
+  }
+
+  const seen = new WeakSet<object>();
+  const pending: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
+  let entries = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current) break;
+    const candidate = current.value;
+    if (candidate === null || typeof candidate === "boolean") continue;
+    if (typeof candidate === "string") {
+      if (candidate.length > maximumEventJsonStringLength) reject();
+      continue;
+    }
+    if (typeof candidate === "number") {
+      if (!Number.isFinite(candidate)) reject();
+      continue;
+    }
+    if (typeof candidate !== "object") {
+      reject();
+    }
+    const objectCandidate = candidate as object;
+    if (current.depth > maximumEventJsonDepth || seen.has(objectCandidate))
+      reject();
+    seen.add(objectCandidate);
+
+    if (Object.getOwnPropertySymbols(objectCandidate).length > 0) reject();
+
+    if (!Array.isArray(objectCandidate)) {
+      const prototype = Object.getPrototypeOf(objectCandidate);
+      if (prototype !== Object.prototype && prototype !== null) reject();
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(objectCandidate);
+    for (const [key, descriptor] of Object.entries(descriptors)) {
+      entries += 1;
+      if (
+        entries > maximumEventJsonEntries ||
+        key.length > maximumEventJsonKeyLength ||
+        descriptor.get !== undefined ||
+        descriptor.set !== undefined
+      ) {
+        reject();
+      }
+      pending.push({ value: descriptor.value, depth: current.depth + 1 });
+    }
+  }
+
+  const serialized = JSON.stringify(value);
+  if (
+    serialized === undefined ||
+    new TextEncoder().encode(serialized).byteLength > maximumEventJsonBytes
+  ) {
+    reject();
+  }
+}
+
 function parseEventInput<Output>(
   schema: z.ZodType<Output>,
   input: unknown,
@@ -107,7 +174,12 @@ function parseEventInput<Output>(
   if (!parsed.success) {
     const fields = [
       ...new Set(
-        parsed.error.issues.map((issue) => issue.path.join(".") || "event"),
+        parsed.error.issues.map((issue) => {
+          const root = String(issue.path[0] ?? "event");
+          return root === "payload" || root === "metadata"
+            ? root
+            : issue.path.join(".") || "event";
+        }),
       ),
     ].sort();
     throw new EventEnvelopeValidationError(fields);
@@ -136,6 +208,12 @@ export function createAuditEventEnvelope(
   authorization: AuthorizationContext,
   input: AuditEventInput,
 ): AuditEventEnvelope {
+  validateEventJson(
+    "metadata",
+    typeof input === "object" && input !== null
+      ? (input as AuditEventInput).metadata
+      : undefined,
+  );
   const parsed = parseEventInput(auditEventInputSchema, input);
   const event = freezeJson({
     ...parsed,
@@ -152,6 +230,12 @@ export function createOutboxEventEnvelope(
   authorization: AuthorizationContext,
   input: OutboxEventInput,
 ): OutboxEventEnvelope {
+  validateEventJson(
+    "payload",
+    typeof input === "object" && input !== null
+      ? (input as OutboxEventInput).payload
+      : undefined,
+  );
   const parsed = parseEventInput(outboxEventInputSchema, input);
   const event = freezeJson({
     ...parsed,
