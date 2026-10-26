@@ -1,0 +1,19 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { getAuth } from "../../lib/auth";
+
+export const dynamic = "force-dynamic";
+
+export default async function AccountPage() {
+  const current = await getAuth().api.getSession({ headers: await headers() });
+  if (!current) redirect("/sign-in");
+  if (!current.user.emailVerified) redirect("/verify-email");
+  return (
+    <main>
+      <p>Vowora</p>
+      <h1>Account access confirmed</h1>
+      <p>You are signed in with a verified email address.</p>
+    </main>
+  );
+}

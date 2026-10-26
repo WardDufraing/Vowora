@@ -4,6 +4,9 @@
     "incremental": false,
     "baseUrl": ".",
     "paths": {
+      "@vowora/contracts": ["packages/contracts/src/index.ts"],
+      "@vowora/database": ["packages/database/src/index.ts"],
+      "@vowora/database/testing": ["packages/database/src/testing.ts"],
       "@vowora/domain": ["packages/domain/src/index.ts"]
     }
   },
@@ -11,9 +14,11 @@
     "vitest.config.ts",
     "test/**/*.ts",
     "apps/**/*.unit.test.ts",
+    "apps/**/*.integration.test.ts",
     "apps/**/*.component.test.tsx",
     "apps/**/tests/**/*.spec.ts",
     "apps/**/playwright.config.ts",
+    "apps/**/vitest.integration.config.ts",
     "packages/**/*.unit.test.ts",
     "packages/**/*.integration.test.ts",
     "packages/**/vitest.integration.config.ts",

@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("product foundation renders honestly and remains outside search", async ({
+test("account entry points render honestly and remain outside search", async ({
   page,
 }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveTitle("Vowora — Application foundation");
+  await expect(page).toHaveTitle("Vowora — Account access");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "The application is in development.",
   );
   await expect(
     page.getByText(
-      "Planning features and account access are not available yet.",
+      "Planning features are in development. Account access is available.",
     ),
   ).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
@@ -19,7 +19,44 @@ test("product foundation renders honestly and remains outside search", async ({
     "noindex, nofollow",
   );
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByRole("link")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    "href",
+    "/sign-in",
+  );
+  await expect(
+    page.getByRole("link", { name: "Create account" }),
+  ).toHaveAttribute("href", "/sign-up");
+});
+
+test("sign-up and sign-in forms expose accessible account controls", async ({
+  page,
+}) => {
+  for (const [path, heading, button] of [
+    ["/sign-up", "Create your account", "Create account"],
+    ["/sign-in", "Sign in", "Sign in"],
+  ]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
+    await expect(page.getByLabel("Email")).toHaveAttribute(
+      "autocomplete",
+      "email",
+    );
+    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByRole("button", { name: button })).toBeVisible();
+  }
+});
+
+test("verification page offers an enumeration-safe resend form", async ({
+  page,
+}) => {
+  await page.goto("/verify-email");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Verify your email",
+  );
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send verification email" }),
+  ).toBeVisible();
 });
 
 test("product foundation fits narrow mobile viewports", async ({ page }) => {

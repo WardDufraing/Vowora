@@ -22,7 +22,7 @@
     "test:unit:watch": "vitest",
     "test:e2e": "pnpm --filter @vowora/web test:e2e && pnpm --filter @vowora/marketing test",
     "test:tooling": "node --test scripts/quality.test.mjs",
-    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && turbo run test:integration --filter=@vowora/database"
+    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && turbo run test:integration --filter=@vowora/database --filter=@vowora/web"
   },
   "devDependencies": {
     "turbo": "2.11.10",

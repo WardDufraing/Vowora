@@ -15,6 +15,7 @@ export const apiRootResponseSchema = z
         status: z.literal("ok"),
         links: z
           .object({
+            auth: z.literal("/api/v1/auth/get-session"),
             health: z.literal("/api/v1/health"),
             openapi: z.literal("/api/v1/openapi.json"),
           })
@@ -77,6 +78,36 @@ const notFoundOperation = (operationId: string) => ({
   operationId,
   responses: {
     "404": { $ref: "#/components/responses/ResourceNotFound" },
+  },
+});
+
+const authenticationFailure = {
+  $ref: "#/components/responses/AuthenticationFailed",
+} as const;
+
+const emailPasswordRequest = (includeName: boolean) => ({
+  required: true,
+  content: {
+    "application/json": {
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          ...(includeName
+            ? { name: { type: "string", minLength: 1, maxLength: 100 } }
+            : {}),
+          email: { type: "string", format: "email", maxLength: 320 },
+          password: { type: "string", minLength: 12, maxLength: 128 },
+          callbackURL: { type: "string", format: "uri", maxLength: 2048 },
+        },
+        required: [
+          ...(includeName ? ["name"] : []),
+          "email",
+          "password",
+          "callbackURL",
+        ],
+      },
+    },
   },
 });
 
@@ -145,6 +176,116 @@ export const openApiDocument = {
       patch: methodNotAllowedOperation("rejectOpenApiDocumentPatch"),
       delete: methodNotAllowedOperation("rejectOpenApiDocumentDelete"),
     },
+    "/api/v1/auth/sign-up/email": {
+      post: {
+        operationId: "signUpWithEmail",
+        requestBody: emailPasswordRequest(true),
+        responses: {
+          "200": {
+            description:
+              "Account accepted; verification is required before sign-in.",
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+          "400": authenticationFailure,
+          "403": authenticationFailure,
+          "429": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/auth/sign-in/email": {
+      post: {
+        operationId: "signInWithEmail",
+        requestBody: emailPasswordRequest(false),
+        responses: {
+          "200": {
+            description: "Verified account session created.",
+            headers: {
+              "Set-Cookie": {
+                description: "Secure, HTTP-only, host-only web session cookie.",
+                schema: { type: "string" },
+              },
+            },
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+          "400": authenticationFailure,
+          "403": authenticationFailure,
+          "429": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/auth/send-verification-email": {
+      post: {
+        operationId: "sendVerificationEmail",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  email: { type: "string", format: "email", maxLength: 320 },
+                  callbackURL: {
+                    type: "string",
+                    format: "uri",
+                    maxLength: 2048,
+                  },
+                },
+                required: ["email", "callbackURL"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description:
+              "Enumeration-safe acknowledgement regardless of account existence.",
+            content: { "application/json": { schema: { type: "object" } } },
+          },
+          "400": authenticationFailure,
+          "429": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/auth/verify-email": {
+      get: {
+        operationId: "verifyEmail",
+        parameters: [
+          {
+            name: "token",
+            in: "query",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "callbackURL",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uri" },
+          },
+        ],
+        responses: {
+          "302": { description: "Email verified and redirected to the app." },
+          "400": authenticationFailure,
+          "403": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/auth/get-session": {
+      get: {
+        operationId: "getAuthenticationSession",
+        responses: {
+          "200": {
+            description: "Current session, or null when anonymous.",
+            content: {
+              "application/json": {
+                schema: { oneOf: [{ type: "object" }, { type: "null" }] },
+              },
+            },
+          },
+        },
+      },
+    },
     "/api/v1/{path}": {
       parameters: [
         {
@@ -179,6 +320,9 @@ export const openApiDocument = {
           },
         },
       },
+      AuthenticationFailed: problemResponse(
+        "The authentication request could not be completed.",
+      ),
     },
     schemas: {
       ApiRootResponse: z.toJSONSchema(apiRootResponseSchema, {

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Vowora — Application foundation",
-  description: "The Vowora application is in development.",
+  title: "Vowora — Account access",
+  description: "Sign in to the Vowora wedding planning application.",
   robots: { index: false, follow: false },
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
