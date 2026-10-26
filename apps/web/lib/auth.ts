@@ -9,6 +9,7 @@ import {
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { after } from "next/server";
+import { z } from "zod";
 
 import { readAuthEnvironment } from "./env";
 import {
@@ -24,6 +25,7 @@ export function createVoworaAuth(options: {
   readonly backgroundTaskHandler: (promise: Promise<unknown>) => void;
   readonly database: AuthDatabase;
   readonly rateLimitEnabled?: boolean;
+  readonly scheduleBackgroundTask: (task: () => Promise<void>) => void;
   readonly secret: string;
   readonly sendVerificationEmail: SendVerificationEmail;
 }) {
@@ -60,9 +62,15 @@ export function createVoworaAuth(options: {
       sendOnSignIn: false,
       autoSignInAfterVerification: false,
       sendVerificationEmail: async ({ user: recipient, url }) => {
-        await options.sendVerificationEmail({
-          recipient: recipient.email,
-          verificationUrl: url,
+        options.scheduleBackgroundTask(async () => {
+          try {
+            await options.sendVerificationEmail({
+              recipient: recipient.email,
+              verificationUrl: url,
+            });
+          } catch {
+            // The account remains unverified and can safely request another link.
+          }
         });
       },
     },
@@ -105,6 +113,7 @@ export function getAuth() {
     baseURL: environment.NEXT_PUBLIC_APP_URL,
     backgroundTaskHandler: (promise) => after(() => promise),
     database,
+    scheduleBackgroundTask: (task) => after(task),
     secret: environment.AUTH_SECRET,
     sendVerificationEmail: createResendVerificationEmailSender({
       apiKey: environment.RESEND_API_KEY,
@@ -125,6 +134,14 @@ export async function handleAuthRequest(
       title: "Authentication route not found",
       detail: "The requested authentication route is not available.",
       code: "AUTHENTICATION_ROUTE_NOT_FOUND",
+    });
+  }
+  if (!(await hasValidAuthContract(request))) {
+    return problemResponse(request, {
+      status: 400,
+      title: "Authentication request failed",
+      detail: "The authentication request could not be completed.",
+      code: "AUTHENTICATION_FAILED",
     });
   }
   const callbackURL = await callbackURLFrom(request);
@@ -172,10 +189,85 @@ const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([
   ["/api/v1/auth/verify-email", new Set(["GET"])],
 ]);
 
+const callbackURLSchema = z.string().min(1).max(2048);
+const emailSchema = z.email().max(320);
+const passwordSchema = z.string().min(12).max(128);
+const authBodySchemas = new Map<string, z.ZodType>([
+  [
+    "/api/v1/auth/send-verification-email",
+    z.object({ email: emailSchema, callbackURL: callbackURLSchema }).strict(),
+  ],
+  [
+    "/api/v1/auth/sign-in/email",
+    z
+      .object({
+        email: emailSchema,
+        password: passwordSchema,
+        callbackURL: callbackURLSchema,
+      })
+      .strict(),
+  ],
+  [
+    "/api/v1/auth/sign-up/email",
+    z
+      .object({
+        name: z.string().trim().min(1).max(100),
+        email: emailSchema,
+        password: passwordSchema,
+        callbackURL: callbackURLSchema,
+      })
+      .strict(),
+  ],
+]);
+
 function isAllowedAuthRoute(request: Request): boolean {
   return Boolean(
     allowedAuthRoutes.get(new URL(request.url).pathname)?.has(request.method),
   );
+}
+
+async function hasValidAuthContract(request: Request): Promise<boolean> {
+  const url = new URL(request.url);
+  if (request.method === "GET") {
+    if (url.pathname === "/api/v1/auth/get-session") {
+      return url.searchParams.size === 0;
+    }
+    if (url.pathname === "/api/v1/auth/verify-email") {
+      const keys = [...url.searchParams.keys()];
+      if (keys.some((key) => key !== "token" && key !== "callbackURL")) {
+        return false;
+      }
+      if (
+        url.searchParams.getAll("token").length !== 1 ||
+        url.searchParams.getAll("callbackURL").length > 1
+      ) {
+        return false;
+      }
+      return z
+        .object({
+          token: z.string().min(1).max(4096),
+          callbackURL: callbackURLSchema.optional(),
+        })
+        .strict()
+        .safeParse({
+          token: url.searchParams.get("token"),
+          callbackURL: url.searchParams.get("callbackURL") ?? undefined,
+        }).success;
+    }
+    return false;
+  }
+  const schema = authBodySchemas.get(url.pathname);
+  if (
+    !schema ||
+    !request.headers.get("content-type")?.includes("application/json")
+  ) {
+    return false;
+  }
+  try {
+    return schema.safeParse(await request.clone().json()).success;
+  } catch {
+    return false;
+  }
 }
 
 async function callbackURLFrom(request: Request): Promise<unknown> {

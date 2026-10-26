@@ -53,6 +53,7 @@ describe("Better Auth PostgreSQL integration", () => {
           verificationUrl: string;
         }> = [];
         const backgroundTasks: Array<Promise<unknown>> = [];
+        const scheduledTasks: Array<() => Promise<void>> = [];
         let releaseDelivery: (() => void) | undefined;
         let deliveryGate = new Promise<void>((resolve) => {
           releaseDelivery = resolve;
@@ -62,6 +63,7 @@ describe("Better Auth PostgreSQL integration", () => {
           backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
           database: createTestDatabase(client),
           rateLimitEnabled: false,
+          scheduleBackgroundTask: (task) => scheduledTasks.push(task),
           secret,
           sendVerificationEmail: async (message) => {
             await deliveryGate;
@@ -89,6 +91,22 @@ describe("Better Auth PostgreSQL integration", () => {
             .rows[0],
         ).toEqual({ count: 0 });
 
+        for (const invalidSignUp of [
+          { ...validCredentials, image: "https://attacker.example/image" },
+          { ...validCredentials, name: "x".repeat(101) },
+        ]) {
+          const invalid = await handleAuthRequest(
+            auth,
+            post("/sign-up/email", invalidSignUp),
+            baseURL,
+          );
+          expect(invalid.status).toBe(400);
+        }
+        expect(
+          (await client.query("SELECT count(*)::int AS count FROM auth_user"))
+            .rows[0],
+        ).toEqual({ count: 0 });
+
         const signUp = await auth.handler(
           post("/sign-up/email", validCredentials),
         );
@@ -99,8 +117,11 @@ describe("Better Auth PostgreSQL integration", () => {
           (await client.query("SELECT count(*)::int AS count FROM auth_user"))
             .rows[0],
         ).toEqual({ count: 1 });
+        expect(scheduledTasks).toHaveLength(1);
+        const firstDelivery = scheduledTasks.shift()?.();
+        expect(firstDelivery).toBeDefined();
         releaseDelivery?.();
-        await Promise.all(backgroundTasks.splice(0));
+        await Promise.all([firstDelivery, ...backgroundTasks.splice(0)]);
         expect(deliveries).toHaveLength(1);
         expect(deliveries[0]?.recipient).toBe(validCredentials.email);
         expect(deliveries[0]?.verificationUrl).toContain(
@@ -132,8 +153,12 @@ describe("Better Auth PostgreSQL integration", () => {
         expect(unknownResend.status).toBe(200);
         expect(existingResend.status).toBe(200);
         expect(await unknownResend.json()).toEqual(await existingResend.json());
+        expect(scheduledTasks).toHaveLength(1);
         deliveryGate = Promise.resolve();
-        await Promise.all(backgroundTasks.splice(0));
+        await Promise.all([
+          scheduledTasks.shift()?.(),
+          ...backgroundTasks.splice(0),
+        ]);
         expect(deliveries).toHaveLength(2);
 
         for (const [method, path] of [
@@ -219,11 +244,13 @@ describe("Better Auth PostgreSQL integration", () => {
         );
 
         const failedDeliveryTasks: Array<Promise<unknown>> = [];
+        const failedScheduledTasks: Array<() => Promise<void>> = [];
         const authWithFailedDelivery = createVoworaAuth({
           baseURL,
           backgroundTaskHandler: (promise) => failedDeliveryTasks.push(promise),
           database: createTestDatabase(client),
           rateLimitEnabled: false,
+          scheduleBackgroundTask: (task) => failedScheduledTasks.push(task),
           secret,
           sendVerificationEmail: async () => {
             throw new Error("synthetic delivery failure");
@@ -237,7 +264,11 @@ describe("Better Auth PostgreSQL integration", () => {
             ),
           );
         expect(acceptedDespiteDeliveryFailure.status).toBe(200);
-        await Promise.all(failedDeliveryTasks);
+        expect(failedScheduledTasks).toHaveLength(1);
+        await Promise.all([
+          failedScheduledTasks[0]?.(),
+          ...failedDeliveryTasks,
+        ]);
         expect(
           (
             await client.query(

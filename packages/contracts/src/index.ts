@@ -96,9 +96,9 @@ const emailPasswordRequest = (includeName: boolean) => ({
           ...(includeName
             ? { name: { type: "string", minLength: 1, maxLength: 100 } }
             : {}),
-          email: { type: "string", format: "email" },
+          email: { type: "string", format: "email", maxLength: 320 },
           password: { type: "string", minLength: 12, maxLength: 128 },
-          callbackURL: { type: "string", format: "uri" },
+          callbackURL: { type: "string", format: "uri", maxLength: 2048 },
         },
         required: [
           ...(includeName ? ["name"] : []),
@@ -224,8 +224,12 @@ export const openApiDocument = {
                 type: "object",
                 additionalProperties: false,
                 properties: {
-                  email: { type: "string", format: "email" },
-                  callbackURL: { type: "string", format: "uri" },
+                  email: { type: "string", format: "email", maxLength: 320 },
+                  callbackURL: {
+                    type: "string",
+                    format: "uri",
+                    maxLength: 2048,
+                  },
                 },
                 required: ["email", "callbackURL"],
               },
