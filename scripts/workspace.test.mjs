@@ -229,3 +229,34 @@ test("Turbo app filters do not pull in the other deployable app", () => {
     assert(!run.tasks.some((t) => t.package === `@vowora/${other}`));
   }
 });
+
+test("persistent migrations cannot run from builds, Vercel, or ordinary CI", async () => {
+  const rootManifest = JSON.parse(
+    await readFile(new URL("package.json", root)),
+  );
+  const databaseManifest = JSON.parse(
+    await readFile(new URL("packages/database/package.json", root)),
+  );
+  const turbo = JSON.parse(await readFile(new URL("turbo.json", root)));
+  const marketingWorkflow = await readFile(
+    new URL(".github/workflows/marketing.yml", root),
+    "utf8",
+  );
+  const migrationWorkflow = await readFile(
+    new URL(".github/workflows/persistent-migrations.yml", root),
+    "utf8",
+  );
+  for (const script of [
+    rootManifest.scripts.build,
+    rootManifest.scripts["build:web"],
+    rootManifest.scripts["build:marketing"],
+    databaseManifest.scripts.build,
+  ]) {
+    assert.doesNotMatch(script, /migrate:persistent|persistent-migrate-cli/);
+  }
+  assert(!turbo.tasks.build.dependsOn?.includes("db:migrate:persistent"));
+  assert.doesNotMatch(marketingWorkflow, /db:migrate:persistent/);
+  assert.match(migrationWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(migrationWorkflow, /\b(push|pull_request|schedule):/);
+  assert.match(migrationWorkflow, /cancel-in-progress: false/);
+});

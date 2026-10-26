@@ -27,6 +27,12 @@
         "DATABASE_MIGRATION_USERNAME",
         "DATABASE_MIGRATION_DATABASE"
       ]
+    },
+    "test:persistent-migrations": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": [],
+      "env": ["DATABASE_MIGRATION_URL", "DATABASE_MIGRATION_TARGET"]
     }
   }
 }

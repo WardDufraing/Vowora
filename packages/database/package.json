@@ -24,12 +24,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src drizzle.config.ts vitest.integration.config.ts",
+    "lint": "eslint src drizzle.config.ts vitest.integration.config.ts vitest.persistent.config.ts",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:check": "drizzle-kit check --config drizzle.config.ts",
     "db:drift": "node ../../scripts/drizzle-drift.mjs",
     "db:safety": "node ../../scripts/migration-safety.mjs drizzle",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:persistent-migrations": "vitest run --config vitest.persistent.config.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.2.0",
