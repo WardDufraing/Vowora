@@ -3,6 +3,8 @@ export {
   parseRuntimeDatabaseConfig,
 } from "./config.js";
 export { createRuntimeDatabase } from "./client.js";
+export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
+export type { AuditOutboxSession } from "./audit-outbox.js";
 export { createUuidV7, isUuidV7 } from "./uuid.js";
 export {
   assertTenantWriteScope,
