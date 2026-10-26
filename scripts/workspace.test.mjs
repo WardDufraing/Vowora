@@ -259,4 +259,19 @@ test("persistent migrations cannot run from builds, Vercel, or ordinary CI", asy
   assert.match(migrationWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(migrationWorkflow, /\b(push|pull_request|schedule):/);
   assert.match(migrationWorkflow, /cancel-in-progress: false/);
+  assert.match(migrationWorkflow, /refs\/heads\/main/);
+  assert.match(migrationWorkflow, /refs\/heads\/production/);
+  assert.match(migrationWorkflow, /ref:.*production.*main/);
+  const migrationStep = migrationWorkflow.indexOf(
+    "- name: Run controlled persistent migration",
+  );
+  assert(migrationStep > 0);
+  assert(
+    migrationWorkflow.indexOf("DATABASE_MIGRATION_URL") > migrationStep,
+    "database secrets are scoped to the final migration step",
+  );
+  assert.match(
+    migrationWorkflow.slice(migrationStep),
+    /node packages\/database\/dist\/persistent-migrate-cli\.js/,
+  );
 });

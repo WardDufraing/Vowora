@@ -10,7 +10,7 @@ The workflow has no Vercel, build, import or application-startup hook. It is inv
 
 Both `--target staging|production` and `--mode apply|verify` are mandatory. A production apply additionally requires the exact non-secret phrase `APPLY_VOWORA_PRODUCTION_MIGRATIONS`. The configuration requires a password-bearing direct migration URL and a separate password-bearing runtime URL for the same database. It rejects pooled migration hosts, unsafe or duplicate TLS modes on managed hosts, malformed or residual encoded identities, matching migration/runtime users and host/database mismatches. Errors name only configuration fields or safe failure categories.
 
-The connected server must report the migration username and database encoded in the direct URL. The runtime role must exist, allow login, have no privileged role attributes and have no memberships. A session advisory lock serializes apply and verify operations. Apply uses Drizzle's persistent `drizzle.__drizzle_migrations` journal, so a completed migration is not reapplied. Runtime-grant reconciliation is transactional and repeatable; a failed run is retried forward after its cause is corrected. There is no down migration.
+The connected server must report the migration username and database encoded in the direct URL, and the database-resident `vowora.environment` marker must exactly match the selected target. The runner authenticates the runtime URL and confirms its reported role/database before taking the migration lock or changing schema. The runtime role must exist, allow login, have no privileged role attributes and have no memberships. A session advisory lock serializes apply and verify operations. Apply uses Drizzle's persistent `drizzle.__drizzle_migrations` journal, so a completed migration is not reapplied. Runtime-grant reconciliation is transactional and repeatable; a failed run is retried forward after its cause is corrected. There is no down migration.
 
 The workflow revokes database/schema/table/sequence/function access from `PUBLIC` and the runtime role before granting the exact current runtime permissions:
 
@@ -31,16 +31,26 @@ CREATE ROLE vowora_runtime LOGIN PASSWORD '<generated-secret>'
   NOREPLICATION NOBYPASSRLS;
 ```
 
+Bind the database itself to its environment once, using its real database name. The runner reads this marker before any migration, preventing production credentials from being run under the staging target:
+
+```sql
+ALTER DATABASE vowora SET "vowora.environment" TO 'staging';
+-- In the separate production database, use 'production' instead.
+```
+
+Reconnect after setting the marker and confirm it with `SHOW "vowora.environment"`.
+
 The migration URL must be Neon's **direct** connection for the dedicated migration identity. `DATABASE_URL` must use `vowora_runtime`; it may use Neon's pooler. Both managed URLs must contain exactly one `sslmode=require` or `sslmode=verify-full`. Never place `DATABASE_MIGRATION_URL` in Vercel.
 
 Preferred execution is GitHub **Settings → Environments**:
 
 1. Create `staging` and `production` environments.
 2. In each environment add secret `DATABASE_MIGRATION_URL` and secret `DATABASE_URL` for that environment only.
-3. Add required reviewers to `production` and prevent self-review where the GitHub plan supports it.
-4. Open **Actions → Persistent database migration → Run workflow**.
-5. Select the exact target and `verify` or `apply`. For production `apply`, enter `APPLY_VOWORA_PRODUCTION_MIGRATIONS` exactly.
-6. After apply succeeds, run `verify` separately and inspect the safe one-line result.
+3. Restrict the `staging` Environment deployment branch to `main`, and the `production` Environment deployment branch to `production`. This is mandatory because workflows from arbitrary refs must never receive database secrets.
+4. Add required reviewers to `production` and prevent self-review where the GitHub plan supports it.
+5. Open **Actions → Persistent database migration → Run workflow** from `main` for staging or `production` for production.
+6. Select the exact target and `verify` or `apply`. For production `apply`, enter `APPLY_VOWORA_PRODUCTION_MIGRATIONS` exactly.
+7. After apply succeeds, run `verify` separately and inspect the safe one-line result.
 
 For an audited local execution, load both values from a password manager into the process environment without putting them in shell history, then run:
 
@@ -71,4 +81,4 @@ pnpm test:persistent-migrations
 pnpm audit --prod --audit-level high
 ```
 
-The full non-database suite passed 88 unit/component tests, four tooling tests, twelve boundary tests, one production smoke test and 30 Chromium tests. The existing database suite passed migration metadata, drift and safety, nine database tests and one Better Auth PostgreSQL integration test. The new disposable-only suite passed three real PostgreSQL tests covering preflight before schema changes, idempotent three-entry journal application, exact grants/denials including no future-table access, and concurrent-lock rejection. The production audit passed its high-severity gate and reports the existing moderate optional development-server `esbuild` advisory. Independent review is pending.
+The full non-database suite passed 88 unit/component tests, four tooling tests, twelve boundary tests, one production smoke test and 30 Chromium tests. The existing database suite passed migration metadata, drift and safety, nine database tests and one Better Auth PostgreSQL integration test. The initial disposable-only suite passed three real PostgreSQL tests covering preflight before schema changes, idempotent three-entry journal application, exact grants/denials including no future-table access, and concurrent-lock rejection. Independent reviewer `/root/implement_persistent_migrations/review_persistent_migrations` found two high issues (target was not bound to the database; workflow secrets were job-scoped and dispatch was not ref-restricted) and one medium issue (verification did not authenticate the runtime URL). The database marker, branch restrictions, final-step-only secrets and runtime connection preflight address all three. The post-fix disposable suite passes five tests, adding cross-target marker and wrong-password regressions. Fresh independent re-review is pending. The production audit passed its high-severity gate and reports the existing moderate optional development-server `esbuild` advisory.

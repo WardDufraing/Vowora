@@ -28,17 +28,16 @@ concurrency:
 jobs:
   migrate:
     name: ${{ inputs.mode }} ${{ inputs.target }} database
+    if: >-
+      (inputs.target == 'staging' && github.ref == 'refs/heads/main') ||
+      (inputs.target == 'production' && github.ref == 'refs/heads/production')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ${{ inputs.target }}
-    env:
-      DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      MIGRATION_TARGET: ${{ inputs.target }}
-      MIGRATION_MODE: ${{ inputs.mode }}
-      PRODUCTION_CONFIRMATION: ${{ inputs.production_confirmation }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.target == 'production' && 'production' || 'main' }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -50,10 +49,18 @@ jobs:
           pnpm --filter @vowora/database db:check
           pnpm --filter @vowora/database db:drift
           pnpm --filter @vowora/database db:safety
+      - name: Build reviewed migration CLI without database secrets
+        run: pnpm exec turbo run build --filter=@vowora/database
       - name: Run controlled persistent migration
         shell: bash
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MIGRATION_TARGET: ${{ inputs.target }}
+          MIGRATION_MODE: ${{ inputs.mode }}
+          PRODUCTION_CONFIRMATION: ${{ inputs.production_confirmation }}
         run: >-
-          pnpm db:migrate:persistent
+          node packages/database/dist/persistent-migrate-cli.js
           --target "$MIGRATION_TARGET"
           --mode "$MIGRATION_MODE"
           --confirm-production "$PRODUCTION_CONFIRMATION"

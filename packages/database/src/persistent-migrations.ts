@@ -51,6 +51,44 @@ function clientFor(config: PersistentMigrationConfig) {
   });
 }
 
+function runtimeClientFor(config: PersistentMigrationConfig) {
+  return new Client({
+    connectionString: config.runtimeConnectionString,
+    connectionTimeoutMillis: config.connectionTimeoutMs,
+    statement_timeout: config.statementTimeoutMs,
+    query_timeout: config.statementTimeoutMs,
+    application_name: `vowora_runtime_preflight_${config.target}`,
+  });
+}
+
+async function verifyRuntimeConnection(
+  config: PersistentMigrationConfig,
+): Promise<void> {
+  const runtime = runtimeClientFor(config);
+  let connected = false;
+  try {
+    await runtime.connect();
+    connected = true;
+    const identity = await runtime.query<{
+      current_user: string;
+      current_database: string;
+    }>("SELECT current_user, current_database()");
+    if (
+      identity.rows[0]?.current_user !== config.runtimeUsername ||
+      identity.rows[0]?.current_database !== config.databaseName
+    ) {
+      throw new PersistentMigrationError(
+        "runtime connection identity mismatch",
+      );
+    }
+  } catch (error) {
+    if (error instanceof PersistentMigrationError) throw error;
+    throw new PersistentMigrationError("runtime connection failed");
+  } finally {
+    if (connected) await runtime.end();
+  }
+}
+
 async function assertRuntimeRoleIsRestricted(
   client: InstanceType<typeof Client>,
   runtimeUsername: string,
@@ -356,6 +394,15 @@ export async function runPersistentMigration(
         "connected database identity mismatch",
       );
     }
+    const environment = await client.query<{ environment: string | null }>(
+      "SELECT current_setting('vowora.environment', true) AS environment",
+    );
+    if (environment.rows[0]?.environment !== config.target) {
+      throw new PersistentMigrationError(
+        "database environment marker mismatch",
+      );
+    }
+    await verifyRuntimeConnection(config);
     const lock = await client.query<{ acquired: boolean }>(
       "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
       [lockName],

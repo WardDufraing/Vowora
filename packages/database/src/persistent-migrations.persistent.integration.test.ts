@@ -46,6 +46,17 @@ function config(mode: "apply" | "verify" = "apply") {
   });
 }
 
+function productionConfig() {
+  return parsePersistentMigrationConfig({
+    target: "production",
+    mode: "verify",
+    environment: {
+      DATABASE_MIGRATION_URL: migrationUrl,
+      DATABASE_URL: runtimeUrl(),
+    },
+  });
+}
+
 async function administrator(): Promise<InstanceType<typeof Client>> {
   if (!migrationUrl) throw new Error("DATABASE_MIGRATION_URL is required");
   const client = new Client({ connectionString: migrationUrl });
@@ -71,14 +82,33 @@ describe("persistent migration workflow", () => {
     try {
       await dropRuntimeRole(client);
       await client.query("DROP TABLE IF EXISTS future_runtime_table");
+      const database = new URL(migrationUrl!).pathname.replace(/^\/+/, "");
+      await client.query(
+        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'staging'`,
+      );
     } finally {
       await client.end();
     }
   });
 
-  it("fails before schema changes when the runtime identity is not restricted", async () => {
+  it("binds the selected target to the database-resident marker", async () => {
+    await expect(runPersistentMigration(productionConfig())).rejects.toThrow(
+      "database environment marker mismatch",
+    );
+    const client = await administrator();
+    try {
+      const journal = await client.query(
+        "SELECT to_regclass('drizzle.__drizzle_migrations') AS journal",
+      );
+      expect(journal.rows[0]?.journal).toBeNull();
+    } finally {
+      await client.end();
+    }
+  });
+
+  it("fails before schema changes when the runtime identity cannot authenticate", async () => {
     await expect(runPersistentMigration(config())).rejects.toThrow(
-      "runtime identity is not restricted",
+      "runtime connection failed",
     );
     const client = await administrator();
     try {
@@ -200,5 +230,21 @@ describe("persistent migration workflow", () => {
       ]);
       await client.end();
     }
+  });
+
+  it("authenticates the runtime credential during verification", async () => {
+    const wrongRuntime = new URL(runtimeUrl());
+    wrongRuntime.password = "wrong-synthetic-password";
+    const wrongPassword = parsePersistentMigrationConfig({
+      target: "staging",
+      mode: "verify",
+      environment: {
+        DATABASE_MIGRATION_URL: migrationUrl,
+        DATABASE_URL: wrongRuntime.toString(),
+      },
+    });
+    await expect(runPersistentMigration(wrongPassword)).rejects.toThrow(
+      "runtime connection failed",
+    );
   });
 });
