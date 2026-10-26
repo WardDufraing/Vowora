@@ -14,6 +14,7 @@ export function GET(request: Request) {
       version: "v1",
       status: "ok",
       links: {
+        auth: "/api/v1/auth/get-session",
         health: "/api/v1/health",
         openapi: "/api/v1/openapi.json",
       },

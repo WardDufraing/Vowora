@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EnvironmentConfigurationError,
+  readAuthEnvironment,
   readApplicationEnvironment,
   readPublicEnvironment,
   readServerEnvironment,
@@ -64,6 +65,49 @@ describe("environment validation", () => {
         NEXT_PUBLIC_APP_URL: "https://app.vowora.app",
       },
       serverEnvironment: { VOWORA_ENV: "production" },
+    });
+  });
+
+  it("requires private auth configuration without reflecting values", () => {
+    const privateValue = "too-short-private-value";
+    expect(() =>
+      readAuthEnvironment({
+        AUTH_SECRET: privateValue,
+        AUTH_EMAIL_FROM: "invalid-private-from",
+        RESEND_API_KEY: privateValue,
+        NEXT_PUBLIC_APP_URL: "http://app.vowora.app",
+        VOWORA_ENV: "production",
+      }),
+    ).toThrow(EnvironmentConfigurationError);
+    try {
+      readAuthEnvironment({
+        AUTH_SECRET: privateValue,
+        AUTH_EMAIL_FROM: "invalid-private-from",
+        RESEND_API_KEY: privateValue,
+        NEXT_PUBLIC_APP_URL: "http://app.vowora.app",
+        VOWORA_ENV: "production",
+      });
+    } catch (error) {
+      expect(String(error)).not.toContain(privateValue);
+      expect(error).toMatchObject({
+        variables: expect.arrayContaining(["AUTH_SECRET", "AUTH_EMAIL_FROM"]),
+      });
+    }
+  });
+
+  it("accepts an HTTPS production auth configuration", () => {
+    expect(
+      readAuthEnvironment({
+        AUTH_SECRET: "synthetic-auth-secret-with-more-than-32-characters",
+        AUTH_EMAIL_FROM: "accounts@vowora.app",
+        RESEND_API_KEY: "synthetic-resend-key",
+        NEXT_PUBLIC_APP_URL: "https://app.vowora.app",
+        VOWORA_ENV: "production",
+      }),
+    ).toMatchObject({
+      AUTH_EMAIL_FROM: "accounts@vowora.app",
+      NEXT_PUBLIC_APP_URL: "https://app.vowora.app",
+      VOWORA_ENV: "production",
     });
   });
 });

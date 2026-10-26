@@ -49,12 +49,14 @@ test(
         await (await fetch("http://127.0.0.1:3101/robots.txt")).text(),
         /Disallow: \//,
       );
-      for (const path of ["/login", "/signup"]) {
-        assert.equal(
-          (await fetch("http://127.0.0.1:3101" + path)).status,
-          404,
-          path,
-        );
+      for (const [path, content] of [
+        ["/sign-in", "<h1>Sign in</h1>"],
+        ["/sign-up", "<h1>Create your account</h1>"],
+        ["/verify-email", "<h1>Verify your email</h1>"],
+      ]) {
+        const accountPage = await fetch("http://127.0.0.1:3101" + path);
+        assert.equal(accountPage.status, 200, path);
+        assert.match(await accountPage.text(), new RegExp(content));
       }
 
       const suppliedCorrelationId = "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2";
@@ -71,6 +73,7 @@ test(
           version: "v1",
           status: "ok",
           links: {
+            auth: "/api/v1/auth/get-session",
             health: "/api/v1/health",
             openapi: "/api/v1/openapi.json",
           },
@@ -160,6 +163,11 @@ test(
         "/api/v1",
         "/api/v1/health",
         "/api/v1/openapi.json",
+        "/api/v1/auth/sign-up/email",
+        "/api/v1/auth/sign-in/email",
+        "/api/v1/auth/send-verification-email",
+        "/api/v1/auth/verify-email",
+        "/api/v1/auth/get-session",
         "/api/v1/{path}",
       ]);
       assert.deepEqual(

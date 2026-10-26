@@ -55,6 +55,10 @@ export async function applyMigrations(
   }
 }
 
+export function createTestDatabase(client: InstanceType<typeof Client>) {
+  return drizzle(client, { casing: "snake_case", schema });
+}
+
 export async function withIsolatedTestSchema<T>(
   config: TestMigrationConfig,
   runIdentifier: string,

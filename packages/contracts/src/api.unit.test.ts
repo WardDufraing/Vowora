@@ -18,6 +18,7 @@ describe("API contracts", () => {
           version: "v1",
           status: "ok",
           links: {
+            auth: "/api/v1/auth/get-session",
             health: "/api/v1/health",
             openapi: "/api/v1/openapi.json",
           },
@@ -39,6 +40,11 @@ describe("API contracts", () => {
       "/api/v1",
       "/api/v1/health",
       "/api/v1/openapi.json",
+      "/api/v1/auth/sign-up/email",
+      "/api/v1/auth/sign-in/email",
+      "/api/v1/auth/send-verification-email",
+      "/api/v1/auth/verify-email",
+      "/api/v1/auth/get-session",
       "/api/v1/{path}",
     ]);
     expect(openApiDocument.components.schemas.HealthResponse).toEqual(
@@ -75,6 +81,14 @@ describe("API contracts", () => {
     expect(
       openApiDocument.paths["/api/v1/openapi.json"].post.responses["405"],
     ).toEqual({ $ref: "#/components/responses/MethodNotAllowed" });
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-in/email"].post.responses["403"],
+    ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
+    expect(
+      openApiDocument.components.responses.AuthenticationFailed.content[
+        "application/problem+json"
+      ].schema,
+    ).toEqual({ $ref: "#/components/schemas/ProblemDetails" });
   });
 
   it("rejects extra response fields and unsafe problem shapes", () => {

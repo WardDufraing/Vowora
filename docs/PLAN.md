@@ -32,7 +32,7 @@
 | 02-a | Neon, Drizzle and migration harness | 01-c (merged corrective PR #17) | Done | [Brief](steps/02-a.md) |
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Done | [Brief](steps/02-b.md) |
 | 02-c | Audit events and transactional outbox | 02-b | In review | [Brief](steps/02-c.md) |
-| 03-a | Authentication integration | 02-c | Not started | [Brief](steps/03-a.md) |
+| 03-a | Authentication integration | 02-c | In review | [Brief](steps/03-a.md) |
 | 03-b | Session management and account recovery | 03-a | Not started | [Brief](steps/03-b.md) |
 | 03-c | Authentication abuse protections and tests | 03-b | Not started | [Brief](steps/03-c.md) |
 | 04-a | Permission vocabulary and role model | 03-c | Not started | [Brief](steps/04-a.md) |
@@ -120,3 +120,5 @@ Record dated PR/commit links, tests actually run, reviewer outcome, blockers and
 - 2026-10-25 — Owner merged the final 02-a corrective [PR #22](https://github.com/WardDufraing/Vowora/pull/22) as `9e48d69` after independent review and all hosted checks passed. Fresh implementer `/root/implement_02_b` started tenant-scoped repository and transaction primitives from that integrated main with no competing open PR. Scope and evidence are recorded in [the 02-b handoff](implementation/02-b-tenant-repositories.md); 02-c remains blocked until owner merge.
 
 - 2026-10-26 — Owner merged 02-b [PR #23](https://github.com/WardDufraing/Vowora/pull/23) as `530aba8`. Fresh implementer `/root/implement_02_c` started typed audit events and transactional outbox capture from that integrated main with no competing open PR. Scope, validation and review evidence are recorded in [the 02-c handoff](implementation/02-c-audit-outbox.md); 03-a remains blocked until owner merge.
+
+- 2026-10-26 — Owner merged 02-c [PR #24](https://github.com/WardDufraing/Vowora/pull/24) as `02e9a3c`. Fresh implementer `/root/implement_03_a` started authentication integration from that integrated main; continuation implementer `/root/continue_03_a` preserved the same task branch after the original session reached its usage limit. Scope and executed evidence are recorded in [the 03-a handoff](implementation/03-a-authentication.md). 03-b remains blocked until owner merge and 03-a review completion.

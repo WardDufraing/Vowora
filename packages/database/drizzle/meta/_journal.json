@@ -15,6 +15,13 @@
       "when": 1793006167945,
       "tag": "0001_brief_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793008378673,
+      "tag": "0002_cool_junta",
+      "breakpoints": true
     }
   ]
 }
