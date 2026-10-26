@@ -48,6 +48,7 @@ function clientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_migrate_${config.target}`,
+    options: "-c search_path=public,pg_catalog",
   });
 }
 
@@ -58,6 +59,7 @@ function runtimeClientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_runtime_preflight_${config.target}`,
+    options: "-c search_path=public,pg_catalog",
   });
 }
 
@@ -87,6 +89,26 @@ async function verifyRuntimeConnection(
   } finally {
     if (connected) await runtime.end();
   }
+}
+
+export async function readDatabaseEnvironmentMarker(
+  client: InstanceType<typeof Client>,
+): Promise<string | undefined> {
+  const environment = await client.query<{ markers: string[] | null }>(
+    `SELECT array_agg(
+              substring(setting FROM position('=' IN setting) + 1)
+              ORDER BY setting
+            ) AS markers
+       FROM pg_db_role_setting role_setting
+       JOIN pg_database database
+         ON database.oid = role_setting.setdatabase
+      CROSS JOIN LATERAL unnest(role_setting.setconfig) setting
+      WHERE database.datname = current_database()
+        AND role_setting.setrole = 0
+        AND split_part(setting, '=', 1) = 'vowora.environment'`,
+  );
+  const markers = environment.rows[0]?.markers;
+  return markers?.length === 1 ? markers[0] : undefined;
 }
 
 async function assertRuntimeRoleIsRestricted(
@@ -394,10 +416,7 @@ export async function runPersistentMigration(
         "connected database identity mismatch",
       );
     }
-    const environment = await client.query<{ environment: string | null }>(
-      "SELECT current_setting('vowora.environment', true) AS environment",
-    );
-    if (environment.rows[0]?.environment !== config.target) {
+    if ((await readDatabaseEnvironmentMarker(client)) !== config.target) {
       throw new PersistentMigrationError(
         "database environment marker mismatch",
       );

@@ -4,7 +4,10 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { parsePersistentMigrationConfig } from "./persistent-migration-config.js";
-import { runPersistentMigration } from "./persistent-migrations.js";
+import {
+  readDatabaseEnvironmentMarker,
+  runPersistentMigration,
+} from "./persistent-migrations.js";
 
 const { Client } = pg;
 const migrationUrl = process.env.DATABASE_MIGRATION_URL;
@@ -46,17 +49,6 @@ function config(mode: "apply" | "verify" = "apply") {
   });
 }
 
-function productionConfig() {
-  return parsePersistentMigrationConfig({
-    target: "production",
-    mode: "verify",
-    environment: {
-      DATABASE_MIGRATION_URL: migrationUrl,
-      DATABASE_URL: runtimeUrl(),
-    },
-  });
-}
-
 async function administrator(): Promise<InstanceType<typeof Client>> {
   if (!migrationUrl) throw new Error("DATABASE_MIGRATION_URL is required");
   const client = new Client({ connectionString: migrationUrl });
@@ -84,7 +76,7 @@ describe("persistent migration workflow", () => {
       await client.query("DROP TABLE IF EXISTS future_runtime_table");
       const database = new URL(migrationUrl!).pathname.replace(/^\/+/, "");
       await client.query(
-        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'staging'`,
+        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'production'`,
       );
     } finally {
       await client.end();
@@ -92,15 +84,28 @@ describe("persistent migration workflow", () => {
   });
 
   it("binds the selected target to the database-resident marker", async () => {
-    await expect(runPersistentMigration(productionConfig())).rejects.toThrow(
-      "database environment marker mismatch",
-    );
+    const priorOptions = process.env.PGOPTIONS;
+    process.env.PGOPTIONS = "-c vowora.environment=staging";
+    try {
+      await expect(runPersistentMigration(config())).rejects.toThrow(
+        "database environment marker mismatch",
+      );
+    } finally {
+      if (priorOptions === undefined) delete process.env.PGOPTIONS;
+      else process.env.PGOPTIONS = priorOptions;
+    }
     const client = await administrator();
     try {
+      await client.query("SET \"vowora.environment\" TO 'staging'");
+      expect(await readDatabaseEnvironmentMarker(client)).toBe("production");
       const journal = await client.query(
         "SELECT to_regclass('drizzle.__drizzle_migrations') AS journal",
       );
       expect(journal.rows[0]?.journal).toBeNull();
+      const database = new URL(migrationUrl!).pathname.replace(/^\/+/, "");
+      await client.query(
+        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'staging'`,
+      );
     } finally {
       await client.end();
     }

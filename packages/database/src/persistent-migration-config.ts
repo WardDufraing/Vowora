@@ -119,11 +119,15 @@ export function parsePersistentMigrationConfig(input: {
 
   if (
     migrationUrl.hostname.toLowerCase().includes("-pooler.") ||
+    migrationUrl.searchParams.has("options") ||
     (requiresTls(migrationUrl) && !hasManagedTls(migrationUrl))
   ) {
     fields.push("DATABASE_MIGRATION_URL");
   }
-  if (requiresTls(runtimeUrl) && !hasManagedTls(runtimeUrl)) {
+  if (
+    runtimeUrl.searchParams.has("options") ||
+    (requiresTls(runtimeUrl) && !hasManagedTls(runtimeUrl))
+  ) {
     fields.push("DATABASE_URL");
   }
   if (

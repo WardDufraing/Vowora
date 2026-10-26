@@ -77,6 +77,17 @@ describe("persistent migration configuration", () => {
     expect(() => parse({ migration })).toThrow(/DATABASE_MIGRATION_URL/);
   });
 
+  it("rejects connection-string session options", () => {
+    expect(() =>
+      parse({
+        migration: `${migrationUrl}&options=-c%20vowora.environment%3Dstaging`,
+      }),
+    ).toThrow(/DATABASE_MIGRATION_URL/);
+    expect(() =>
+      parse({ runtime: `${runtimeUrl}&options=-c%20search_path%3Dpublic` }),
+    ).toThrow(/DATABASE_URL/);
+  });
+
   it("requires runtime TLS on a managed host", () => {
     expect(() =>
       parse({ runtime: runtimeUrl.replace("?sslmode=require", "") }),
