@@ -211,7 +211,11 @@ const authBodySchemas = new Map<string, z.ZodType>([
     "/api/v1/auth/sign-up/email",
     z
       .object({
-        name: z.string().trim().min(1).max(100),
+        name: z
+          .string()
+          .min(1)
+          .max(100)
+          .refine((value) => value.trim().length > 0),
         email: emailSchema,
         password: passwordSchema,
         callbackURL: callbackURLSchema,

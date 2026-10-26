@@ -94,6 +94,7 @@ describe("Better Auth PostgreSQL integration", () => {
         for (const invalidSignUp of [
           { ...validCredentials, image: "https://attacker.example/image" },
           { ...validCredentials, name: "x".repeat(101) },
+          { ...validCredentials, name: `x${" ".repeat(100)}` },
         ]) {
           const invalid = await handleAuthRequest(
             auth,
