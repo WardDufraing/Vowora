@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { pgTable, uuid } from "drizzle-orm/pg-core";
 
-import { parseAuthorizationContext } from "@vowora/domain";
+import {
+  parseAuthorizationContextInput,
+  resolveAuthorizationContext,
+  type AuthorizationContext,
+  type AuthorizationContextVerifier,
+} from "@vowora/domain";
 
 import {
   assertTenantWriteScope,
@@ -10,13 +15,22 @@ import {
   withTenantTransaction,
 } from "./tenant.js";
 
-const context = parseAuthorizationContext({
+const contextInput = {
   actorId: "019a1f5e-70a0-7000-8000-000000000001",
   activeWeddingId: "019a1f5e-70a0-7000-8000-000000000002",
   activeOrganizationId: "019a1f5e-70a0-7000-8000-000000000003",
   permissionScopeVersion: "scope:1",
   correlationId: "fd901f2e-3f91-4e12-a32e-cf48c853fd44",
-});
+};
+const verifier: AuthorizationContextVerifier = {
+  async authorize(candidate) {
+    return candidate.actorId === contextInput.actorId;
+  },
+};
+
+function authorization() {
+  return resolveAuthorizationContext(contextInput, verifier);
+}
 
 const scopedRecord = pgTable("scoped_record", {
   weddingId: uuid("wedding_id"),
@@ -28,7 +42,8 @@ const bothScopes = {
 };
 
 describe("tenant primitives", () => {
-  it("accepts matching write scope and denies missing or different tenants", () => {
+  it("accepts matching write scope and denies missing or different tenants", async () => {
+    const context = await authorization();
     expect(() =>
       assertTenantWriteScope(
         context,
@@ -51,6 +66,7 @@ describe("tenant primitives", () => {
   });
 
   it("validates once and supplies one transaction session to the callback", async () => {
+    const context = await authorization();
     const session = { marker: "one transaction" };
     const callback = vi.fn(async (transaction) => transaction.session.marker);
     let transactionCalls = 0;
@@ -70,13 +86,28 @@ describe("tenant primitives", () => {
     expect(callback).toHaveBeenCalledWith({ authorization: context, session });
   });
 
-  it("rejects invalid context before opening a transaction", () => {
+  it("rejects unresolved context before opening a transaction", () => {
     const transaction = vi.fn();
+    const unresolved = parseAuthorizationContextInput(contextInput);
 
     expect(() =>
       withTenantTransaction(
         { transaction },
-        { ...context, activeWeddingId: "caller-controlled" },
+        unresolved as unknown as AuthorizationContext,
+        async () => undefined,
+      ),
+    ).toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a clone of a resolved context before opening a transaction", async () => {
+    const transaction = vi.fn();
+    const resolved = await authorization();
+
+    expect(() =>
+      withTenantTransaction(
+        { transaction },
+        { ...resolved } as AuthorizationContext,
         async () => undefined,
       ),
     ).toThrow();

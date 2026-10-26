@@ -6,8 +6,10 @@ import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
 import {
-  parseAuthorizationContext,
+  resolveAuthorizationContext,
   type AuthorizationContext,
+  type AuthorizationContextVerifier,
+  type TenantRepositoryCall,
   type TenantScopedRepository,
 } from "@vowora/domain";
 
@@ -33,18 +35,25 @@ type RecordRow = typeof records.$inferSelect;
 type NewRecord = typeof records.$inferInsert;
 type Schema = { records: typeof records };
 type RepositorySession = Pick<NodePgDatabase<Schema>, "insert" | "select">;
+interface RecordOperations {
+  findById(
+    call: TenantRepositoryCall<RepositorySession>,
+    id: string,
+  ): Promise<RecordRow | null>;
+  create(
+    call: TenantRepositoryCall<RepositorySession>,
+    input: NewRecord,
+  ): Promise<RecordRow>;
+}
 
 class RecordRepository implements TenantScopedRepository<
   RepositorySession,
-  RecordRow,
-  NewRecord,
-  string
+  RecordOperations
 > {
   constructor(private readonly scopeColumns: TenantScopeColumns) {}
 
   async findById(
-    session: RepositorySession,
-    authorization: AuthorizationContext,
+    { authorization, session }: TenantRepositoryCall<RepositorySession>,
     id: string,
   ): Promise<RecordRow | null> {
     const [record] = await session
@@ -60,8 +69,7 @@ class RecordRepository implements TenantScopedRepository<
   }
 
   async create(
-    session: RepositorySession,
-    authorization: AuthorizationContext,
+    { authorization, session }: TenantRepositoryCall<RepositorySession>,
     input: NewRecord,
   ): Promise<RecordRow> {
     assertTenantWriteScope(authorization, input, this.scopeColumns);
@@ -77,6 +85,21 @@ const weddingA = "019a1f5e-70a0-7000-8000-000000000010";
 const weddingB = "019a1f5e-70a0-7000-8000-000000000011";
 const organizationA = "019a1f5e-70a0-7000-8000-000000000020";
 const organizationB = "019a1f5e-70a0-7000-8000-000000000021";
+const allowedWeddings = new Set([weddingA, weddingB]);
+const allowedOrganizations = new Set([organizationA, organizationB]);
+
+const verifier: AuthorizationContextVerifier = {
+  async authorize(candidate) {
+    return (
+      candidate.actorId === actorId &&
+      candidate.permissionScopeVersion === "synthetic:1" &&
+      (candidate.activeWeddingId === undefined ||
+        allowedWeddings.has(candidate.activeWeddingId)) &&
+      (candidate.activeOrganizationId === undefined ||
+        allowedOrganizations.has(candidate.activeOrganizationId))
+    );
+  },
+};
 
 function syntheticUuid(index: number): string {
   return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
@@ -86,12 +109,22 @@ function authorization(scopes: {
   activeWeddingId?: string;
   activeOrganizationId?: string;
 }) {
-  return parseAuthorizationContext({
-    actorId,
-    ...scopes,
-    permissionScopeVersion: "synthetic:1",
-    correlationId: randomUUID(),
-  });
+  return resolveAuthorizationContext(
+    {
+      actorId,
+      ...scopes,
+      permissionScopeVersion: "synthetic:1",
+      correlationId: randomUUID(),
+    },
+    verifier,
+  );
+}
+
+function repositoryCall(
+  session: RepositorySession,
+  authorization: AuthorizationContext,
+): TenantRepositoryCall<RepositorySession> {
+  return { authorization, session };
 }
 
 async function withRepositoryDatabase(
@@ -132,9 +165,17 @@ describe("tenant-scoped repository and transactions", () => {
         weddingId: records.weddingId,
         organizationId: records.organizationId,
       });
-      const weddingContext = authorization({ activeWeddingId: weddingA });
-      const organizationContext = authorization({
+      const weddingContext = await authorization({ activeWeddingId: weddingA });
+      const organizationContext = await authorization({
         activeOrganizationId: organizationA,
+      });
+      const combinedContext = await authorization({
+        activeWeddingId: weddingA,
+        activeOrganizationId: organizationA,
+      });
+      const mismatchedCombinedContext = await authorization({
+        activeWeddingId: weddingA,
+        activeOrganizationId: organizationB,
       });
       const weddingRecord = {
         id: syntheticUuid(100),
@@ -167,130 +208,107 @@ describe("tenant-scoped repository and transactions", () => {
         ]);
 
       await expect(
-        weddingRepository.findById(database, weddingContext, weddingRecord.id),
+        weddingRepository.findById(
+          repositoryCall(database, weddingContext),
+          weddingRecord.id,
+        ),
       ).resolves.toMatchObject({ value: "wedding-a" });
       await expect(
         weddingRepository.findById(
-          database,
-          weddingContext,
+          repositoryCall(database, weddingContext),
           otherWeddingRecord.id,
         ),
       ).resolves.toBeNull();
       await expect(
         weddingRepository.findById(
-          database,
-          organizationContext,
+          repositoryCall(database, organizationContext),
           weddingRecord.id,
         ),
       ).resolves.toBeNull();
       await expect(
         organizationRepository.findById(
-          database,
-          organizationContext,
+          repositoryCall(database, organizationContext),
           organizationRecord.id,
         ),
       ).resolves.toMatchObject({ value: "organization-a" });
       await expect(
         combinedRepository.findById(
-          database,
-          authorization({
-            activeWeddingId: weddingA,
-            activeOrganizationId: organizationA,
-          }),
+          repositoryCall(database, combinedContext),
           combinedRecord.id,
         ),
       ).resolves.toMatchObject({ value: "wedding-a-organization-a" });
       await expect(
         combinedRepository.findById(
-          database,
-          authorization({
-            activeWeddingId: weddingA,
-            activeOrganizationId: organizationB,
-          }),
+          repositoryCall(database, mismatchedCombinedContext),
           combinedRecord.id,
         ),
       ).resolves.toBeNull();
 
       await expect(
-        weddingRepository.create(database, weddingContext, {
+        weddingRepository.create(repositoryCall(database, weddingContext), {
           id: syntheticUuid(104),
           weddingId: weddingB,
           value: "forbidden",
         }),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
       await expect(
-        organizationRepository.create(database, organizationContext, {
-          id: syntheticUuid(105),
-          organizationId: organizationB,
-          value: "forbidden",
-        }),
-      ).rejects.toBeInstanceOf(TenantScopeViolationError);
-      await expect(
-        combinedRepository.create(
-          database,
-          authorization({
-            activeWeddingId: weddingA,
-            activeOrganizationId: organizationA,
-          }),
+        organizationRepository.create(
+          repositoryCall(database, organizationContext),
           {
-            id: syntheticUuid(106),
-            weddingId: weddingA,
-            value: "missing-required-organization",
+            id: syntheticUuid(105),
+            organizationId: organizationB,
+            value: "forbidden",
           },
         ),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
+      await expect(
+        combinedRepository.create(repositoryCall(database, combinedContext), {
+          id: syntheticUuid(106),
+          weddingId: weddingA,
+          value: "missing-required-organization",
+        }),
+      ).rejects.toBeInstanceOf(TenantScopeViolationError);
+      await expect(
+        authorization({
+          activeWeddingId: "019a1f5e-70a0-7000-8000-000000000099",
+        }),
+      ).rejects.toMatchObject({ fields: ["authorization"] });
     });
   });
 
   it("commits multi-record work once and rolls every record back on failure", async () => {
     await withRepositoryDatabase("transaction-rollback", async (database) => {
       const repository = new RecordRepository({ weddingId: records.weddingId });
-      const context = authorization({ activeWeddingId: weddingA });
+      const context = await authorization({ activeWeddingId: weddingA });
       const host: TransactionHost<RepositorySession> = {
         transaction: (callback) => database.transaction((tx) => callback(tx)),
       };
 
       await withTenantTransaction(host, context, async (transaction) => {
-        await repository.create(
-          transaction.session,
-          transaction.authorization,
-          {
-            id: syntheticUuid(200),
-            weddingId: weddingA,
-            value: "committed-a",
-          },
-        );
-        await repository.create(
-          transaction.session,
-          transaction.authorization,
-          {
-            id: syntheticUuid(201),
-            weddingId: weddingA,
-            value: "committed-b",
-          },
-        );
+        await repository.create(transaction, {
+          id: syntheticUuid(200),
+          weddingId: weddingA,
+          value: "committed-a",
+        });
+        await repository.create(transaction, {
+          id: syntheticUuid(201),
+          weddingId: weddingA,
+          value: "committed-b",
+        });
       });
 
       await expect(
         withTenantTransaction(host, context, async (transaction) => {
-          await repository.create(
-            transaction.session,
-            transaction.authorization,
-            {
-              id: syntheticUuid(202),
-              weddingId: weddingA,
-              value: "rolled-back-a",
-            },
-          );
-          await repository.create(
-            transaction.session,
-            transaction.authorization,
-            {
-              id: syntheticUuid(203),
-              weddingId: weddingA,
-              value: "rolled-back-b",
-            },
-          );
+          await repository.create(transaction, {
+            id: syntheticUuid(202),
+            weddingId: weddingA,
+            value: "rolled-back-a",
+          });
+          await repository.create(transaction, {
+            id: syntheticUuid(203),
+            weddingId: weddingA,
+            value: "rolled-back-b",
+          });
           throw new Error("synthetic application failure");
         }),
       ).rejects.toThrow("synthetic application failure");
@@ -298,24 +316,16 @@ describe("tenant-scoped repository and transactions", () => {
       const duplicateId = syntheticUuid(204);
       await expect(
         withTenantTransaction(host, context, async (transaction) => {
-          await repository.create(
-            transaction.session,
-            transaction.authorization,
-            {
-              id: duplicateId,
-              weddingId: weddingA,
-              value: "rolled-back-before-constraint",
-            },
-          );
-          await repository.create(
-            transaction.session,
-            transaction.authorization,
-            {
-              id: duplicateId,
-              weddingId: weddingA,
-              value: "duplicate-primary-key",
-            },
-          );
+          await repository.create(transaction, {
+            id: duplicateId,
+            weddingId: weddingA,
+            value: "rolled-back-before-constraint",
+          });
+          await repository.create(transaction, {
+            id: duplicateId,
+            weddingId: weddingA,
+            value: "duplicate-primary-key",
+          });
         }),
       ).rejects.toThrow();
 

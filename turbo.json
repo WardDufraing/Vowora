@@ -16,6 +16,17 @@
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": []
+    },
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": [],
+      "env": [
+        "DATABASE_MIGRATION_URL",
+        "DATABASE_MIGRATION_TARGET",
+        "DATABASE_MIGRATION_USERNAME",
+        "DATABASE_MIGRATION_DATABASE"
+      ]
     }
   }
 }

@@ -3,6 +3,19 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const databaseSourcePattern =
+  "/(?:^@vowora\\/database(?:\\/|$)|\\/packages\\/database(?:\\/|$))/";
+const routeDatabaseRestrictions = [
+  "ImportDeclaration",
+  "ExportNamedDeclaration",
+  "ExportAllDeclaration",
+  "ImportExpression",
+].map((nodeType) => ({
+  selector: `${nodeType}[source.value=${databaseSourcePattern}]`,
+  message:
+    "Route handlers must call application services, never database repositories directly.",
+}));
+
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
   const isApplication = layer === "web" || layer === "marketing";
@@ -68,15 +81,7 @@ export function workspaceConfig(layer) {
           {
             files: ["app/api/**/*.{ts,tsx}"],
             rules: {
-              "no-restricted-syntax": [
-                "error",
-                {
-                  selector:
-                    "ImportDeclaration[source.value=/^@vowora\\/database(?:\\/|$)/]",
-                  message:
-                    "Route handlers must call application services, never database repositories directly.",
-                },
-              ],
+              "no-restricted-syntax": ["error", ...routeDatabaseRestrictions],
             },
           },
         ]

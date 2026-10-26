@@ -105,8 +105,21 @@ test("web route handlers cannot bypass application services for database access"
     overrideConfigFile: true,
     overrideConfig: workspaceConfig("web"),
   });
-  for (const name of ["@vowora/database", "@vowora/database/testing"]) {
-    const [result] = await lint.lintText(`import '${name}';`, {
+  for (const [name, source] of [
+    ["package import", "import '@vowora/database';"],
+    ["testing subpath", "import '@vowora/database/testing';"],
+    ["dynamic import", "void import('@vowora/database');"],
+    [
+      "named re-export",
+      "export { createRuntimeDatabase } from '@vowora/database';",
+    ],
+    ["star re-export", "export * from '@vowora/database';"],
+    [
+      "relative database source",
+      "import '../../../../../packages/database/src/client';",
+    ],
+  ]) {
+    const [result] = await lint.lintText(source, {
       filePath: "app/api/v1/probe/route.ts",
     });
     assert(
@@ -159,6 +172,30 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
     { cwd: new URL("packages/database/", root), encoding: "utf8" },
   );
   assert.equal(output, "");
+});
+test("database integration task builds workspace dependencies on a clean checkout", () => {
+  const run = JSON.parse(
+    execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "turbo",
+        "run",
+        "test:integration",
+        "--filter=@vowora/database",
+        "--dry=json",
+      ],
+      { cwd: root, encoding: "utf8" },
+    ),
+  );
+  const integration = run.tasks.find(
+    (task) => task.taskId === "@vowora/database#test:integration",
+  );
+  assert(integration, "database integration task is present");
+  assert(
+    integration.dependencies.includes("@vowora/domain#build"),
+    "database integration depends on the domain build",
+  );
 });
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {

@@ -2,8 +2,9 @@ import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
-  parseAuthorizationContext,
+  assertAuthorizationContext,
   type AuthorizationContext,
+  type TenantRepositoryCall,
 } from "@vowora/domain";
 
 export interface TenantScopeColumns {
@@ -44,6 +45,7 @@ export function tenantScopePredicate(
   authorization: AuthorizationContext,
   columns: TenantScopeColumns,
 ): SQL {
+  assertAuthorizationContext(authorization);
   const predicates: SQL[] = [];
   for (const [contextKey, , column] of scopeEntries(columns)) {
     if (column === undefined) continue;
@@ -62,6 +64,7 @@ export function assertTenantWriteScope(
   values: TenantScopeValues,
   requiredColumns: TenantScopeColumns,
 ): void {
+  assertAuthorizationContext(authorization);
   let required = false;
   for (const [contextKey, valueKey] of scopeDimensions) {
     if (requiredColumns[valueKey] === undefined) continue;
@@ -84,10 +87,7 @@ export interface TransactionHost<Session> {
   ): Promise<Result>;
 }
 
-export interface TenantTransaction<Session> {
-  readonly authorization: AuthorizationContext;
-  readonly session: Session;
-}
+export type TenantTransaction<Session> = TenantRepositoryCall<Session>;
 
 /** Application-service transaction boundary for bounded database work only.
  * Repositories receive the same caller-owned session and validated context;
@@ -95,9 +95,11 @@ export interface TenantTransaction<Session> {
  * callback so they cannot extend database lock lifetimes. */
 export function withTenantTransaction<Session, Result>(
   host: TransactionHost<Session>,
-  contextInput: unknown,
+  authorization: AuthorizationContext,
   callback: (context: TenantTransaction<Session>) => Promise<Result>,
 ): Promise<Result> {
-  const authorization = parseAuthorizationContext(contextInput);
-  return host.transaction((session) => callback({ authorization, session }));
+  assertAuthorizationContext(authorization);
+  return host.transaction((session) =>
+    callback(Object.freeze({ authorization, session })),
+  );
 }
