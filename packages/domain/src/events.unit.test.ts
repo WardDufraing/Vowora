@@ -177,6 +177,13 @@ describe("audit and outbox event envelopes", () => {
         payload: deeplyNested as never,
       }),
     ).toThrow("Invalid event envelope: payload");
+
+    expect(() =>
+      createOutboxEventEnvelope(context, {
+        ...base,
+        payload: { sparse: new Array(513) } as never,
+      }),
+    ).toThrow("Invalid event envelope: payload");
   });
 
   it("rejects unresolved and cloned authorization before creating events", async () => {

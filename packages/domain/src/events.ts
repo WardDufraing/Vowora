@@ -138,7 +138,9 @@ function validateEventJson(field: "metadata" | "payload", value: unknown) {
 
     if (Object.getOwnPropertySymbols(objectCandidate).length > 0) reject();
 
-    if (!Array.isArray(objectCandidate)) {
+    if (Array.isArray(objectCandidate)) {
+      if (objectCandidate.length > maximumEventJsonEntries) reject();
+    } else {
       const prototype = Object.getPrototypeOf(objectCandidate);
       if (prototype !== Object.prototype && prototype !== null) reject();
     }
