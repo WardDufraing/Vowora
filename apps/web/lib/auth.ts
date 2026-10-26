@@ -8,6 +8,7 @@ import {
 } from "@vowora/database";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { after } from "next/server";
 
 import { readAuthEnvironment } from "./env";
 import {
@@ -20,11 +21,11 @@ type AuthDatabase = Parameters<typeof drizzleAdapter>[0];
 
 export function createVoworaAuth(options: {
   readonly baseURL: string;
+  readonly backgroundTaskHandler: (promise: Promise<unknown>) => void;
   readonly database: AuthDatabase;
   readonly rateLimitEnabled?: boolean;
   readonly secret: string;
   readonly sendVerificationEmail: SendVerificationEmail;
-  readonly secureCookies: boolean;
 }) {
   return betterAuth({
     appName: "Vowora",
@@ -41,9 +42,10 @@ export function createVoworaAuth(options: {
     }),
     advanced: {
       cookiePrefix: "vowora",
-      useSecureCookies: options.secureCookies,
+      useSecureCookies: new URL(options.baseURL).protocol === "https:",
       crossSubDomainCookies: { enabled: false },
       database: { generateId: () => createUuidV7() },
+      backgroundTasks: { handler: options.backgroundTaskHandler },
     },
     emailAndPassword: {
       enabled: true,
@@ -67,6 +69,29 @@ export function createVoworaAuth(options: {
     // Distributed abuse controls are task 03-c. Keep the framework's bounded
     // local protection enabled until that shared store is introduced.
     rateLimit: { enabled: options.rateLimitEnabled ?? true, storage: "memory" },
+    disabledPaths: [
+      "/account-info",
+      "/change-email",
+      "/change-password",
+      "/delete-user",
+      "/delete-user/callback",
+      "/get-access-token",
+      "/link-social",
+      "/list-accounts",
+      "/list-sessions",
+      "/refresh-token",
+      "/request-password-reset",
+      "/reset-password",
+      "/reset-password/:token",
+      "/revoke-other-sessions",
+      "/revoke-session",
+      "/revoke-sessions",
+      "/set-password",
+      "/sign-in/social",
+      "/sign-out",
+      "/unlink-account",
+      "/update-user",
+    ],
   });
 }
 
@@ -78,9 +103,9 @@ export function getAuth() {
   const { database } = createRuntimeDatabase(process.env);
   runtimeAuth = createVoworaAuth({
     baseURL: environment.NEXT_PUBLIC_APP_URL,
+    backgroundTaskHandler: (promise) => after(() => promise),
     database,
     secret: environment.AUTH_SECRET,
-    secureCookies: environment.VOWORA_ENV !== "local",
     sendVerificationEmail: createResendVerificationEmailSender({
       apiKey: environment.RESEND_API_KEY,
       from: environment.AUTH_EMAIL_FROM,
@@ -94,6 +119,14 @@ export async function handleAuthRequest(
   request: Request,
   baseURL: string,
 ): Promise<Response> {
+  if (!isAllowedAuthRoute(request)) {
+    return problemResponse(request, {
+      status: 404,
+      title: "Authentication route not found",
+      detail: "The requested authentication route is not available.",
+      code: "AUTHENTICATION_ROUTE_NOT_FOUND",
+    });
+  }
   const callbackURL = await callbackURLFrom(request);
   if (
     callbackURL !== undefined &&
@@ -129,6 +162,20 @@ export async function handleAuthRequest(
     statusText: response.statusText,
     headers,
   });
+}
+
+const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([
+  ["/api/v1/auth/get-session", new Set(["GET"])],
+  ["/api/v1/auth/send-verification-email", new Set(["POST"])],
+  ["/api/v1/auth/sign-in/email", new Set(["POST"])],
+  ["/api/v1/auth/sign-up/email", new Set(["POST"])],
+  ["/api/v1/auth/verify-email", new Set(["GET"])],
+]);
+
+function isAllowedAuthRoute(request: Request): boolean {
+  return Boolean(
+    allowedAuthRoutes.get(new URL(request.url).pathname)?.has(request.method),
+  );
 }
 
 async function callbackURLFrom(request: Request): Promise<unknown> {

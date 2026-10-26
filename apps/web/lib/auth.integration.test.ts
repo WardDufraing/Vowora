@@ -11,7 +11,7 @@ import { problemDetailsSchema } from "@vowora/contracts";
 import { createVoworaAuth, handleAuthRequest } from "./auth";
 
 const config = parseTestMigrationConfig(process.env);
-const baseURL = "http://auth.vowora.test";
+const baseURL = "https://auth.vowora.test";
 const secret = "synthetic-auth-secret-at-least-thirty-two-characters";
 
 function request(path: string, init?: RequestInit) {
@@ -52,13 +52,19 @@ describe("Better Auth PostgreSQL integration", () => {
           recipient: string;
           verificationUrl: string;
         }> = [];
+        const backgroundTasks: Array<Promise<unknown>> = [];
+        let releaseDelivery: (() => void) | undefined;
+        let deliveryGate = new Promise<void>((resolve) => {
+          releaseDelivery = resolve;
+        });
         const auth = createVoworaAuth({
           baseURL,
+          backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
           database: createTestDatabase(client),
           rateLimitEnabled: false,
           secret,
-          secureCookies: true,
           sendVerificationEmail: async (message) => {
+            await deliveryGate;
             deliveries.push(message);
           },
         });
@@ -88,6 +94,13 @@ describe("Better Auth PostgreSQL integration", () => {
         );
         expect(signUp.status).toBe(200);
         expect(signUp.headers.get("set-cookie")).toBeNull();
+        expect(deliveries).toHaveLength(0);
+        expect(
+          (await client.query("SELECT count(*)::int AS count FROM auth_user"))
+            .rows[0],
+        ).toEqual({ count: 1 });
+        releaseDelivery?.();
+        await Promise.all(backgroundTasks.splice(0));
         expect(deliveries).toHaveLength(1);
         expect(deliveries[0]?.recipient).toBe(validCredentials.email);
         expect(deliveries[0]?.verificationUrl).toContain(
@@ -119,7 +132,26 @@ describe("Better Auth PostgreSQL integration", () => {
         expect(unknownResend.status).toBe(200);
         expect(existingResend.status).toBe(200);
         expect(await unknownResend.json()).toEqual(await existingResend.json());
+        deliveryGate = Promise.resolve();
+        await Promise.all(backgroundTasks.splice(0));
         expect(deliveries).toHaveLength(2);
+
+        for (const [method, path] of [
+          ["POST", "/change-password"],
+          ["GET", "/list-sessions"],
+          ["POST", "/request-password-reset"],
+          ["POST", "/sign-out"],
+        ]) {
+          const unavailable = await handleAuthRequest(
+            auth,
+            request(path, { method }),
+            baseURL,
+          );
+          expect(unavailable.status).toBe(404);
+          expect(await unavailable.json()).toMatchObject({
+            code: "AUTHENTICATION_ROUTE_NOT_FOUND",
+          });
+        }
 
         const duplicate = await auth.handler(
           post("/sign-up/email", validCredentials),
@@ -185,6 +217,34 @@ describe("Better Auth PostgreSQL integration", () => {
         expect(rows.rows[0]?.id).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
         );
+
+        const failedDeliveryTasks: Array<Promise<unknown>> = [];
+        const authWithFailedDelivery = createVoworaAuth({
+          baseURL,
+          backgroundTaskHandler: (promise) => failedDeliveryTasks.push(promise),
+          database: createTestDatabase(client),
+          rateLimitEnabled: false,
+          secret,
+          sendVerificationEmail: async () => {
+            throw new Error("synthetic delivery failure");
+          },
+        });
+        const acceptedDespiteDeliveryFailure =
+          await authWithFailedDelivery.handler(
+            post(
+              "/sign-up/email",
+              credentials("delivery-failure@example.test"),
+            ),
+          );
+        expect(acceptedDespiteDeliveryFailure.status).toBe(200);
+        await Promise.all(failedDeliveryTasks);
+        expect(
+          (
+            await client.query(
+              "SELECT count(*)::int AS count FROM auth_user WHERE email = 'delivery-failure@example.test'",
+            )
+          ).rows[0],
+        ).toEqual({ count: 1 });
       },
     );
   });

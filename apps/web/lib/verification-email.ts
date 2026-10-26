@@ -28,8 +28,10 @@ export function createResendVerificationEmailSender(config: {
   readonly apiKey: string;
   readonly from: string;
   readonly fetch?: typeof fetch;
+  readonly timeoutMs?: number;
 }): SendVerificationEmail {
   const request = config.fetch ?? fetch;
+  const timeoutMs = config.timeoutMs ?? 5_000;
   return async ({ recipient, verificationUrl }) => {
     const idempotencyKey = createHash("sha256")
       .update(verificationUrl)
@@ -44,6 +46,7 @@ export function createResendVerificationEmailSender(config: {
           "Content-Type": "application/json",
           "Idempotency-Key": `vowora-verification-${idempotencyKey}`,
         },
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           from: config.from,
           to: [recipient],

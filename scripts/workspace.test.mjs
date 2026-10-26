@@ -197,6 +197,17 @@ test("database integration task builds workspace dependencies on a clean checkou
     "database integration depends on the domain build",
   );
 });
+test("root test typecheck resolves integration imports without compiled package output", async () => {
+  const config = JSON.parse(
+    await readFile(new URL("tsconfig.test.json", root)),
+  );
+  assert.deepEqual(config.compilerOptions.paths, {
+    "@vowora/contracts": ["packages/contracts/src/index.ts"],
+    "@vowora/database": ["packages/database/src/index.ts"],
+    "@vowora/database/testing": ["packages/database/src/testing.ts"],
+    "@vowora/domain": ["packages/domain/src/index.ts"],
+  });
+});
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {
     const run = JSON.parse(

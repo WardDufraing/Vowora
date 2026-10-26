@@ -30,6 +30,7 @@ describe("verification email delivery", () => {
       Authorization: "Bearer private-test-key",
       "Content-Type": "application/json",
     });
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect((init?.headers as Record<string, string>)["Idempotency-Key"]).toBe(
       (request.mock.calls[1]![1]?.headers as Record<string, string>)[
         "Idempotency-Key"
@@ -73,5 +74,28 @@ describe("verification email delivery", () => {
         "VerificationEmailDeliveryError: Verification email delivery failed",
       );
     }
+  });
+
+  it("bounds a stalled provider request with an abort signal", async () => {
+    const request = vi.fn<typeof fetch>((_input, init) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("timed out", "AbortError")),
+        );
+      });
+    });
+    const sender = createResendVerificationEmailSender({
+      apiKey: "private-test-key",
+      from: "accounts@vowora.app",
+      fetch: request,
+      timeoutMs: 1,
+    });
+
+    await expect(
+      sender({
+        recipient: "partner@example.test",
+        verificationUrl: "https://app.vowora.app/verify",
+      }),
+    ).rejects.toBeInstanceOf(VerificationEmailDeliveryError);
   });
 });
