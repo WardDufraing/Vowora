@@ -80,19 +80,60 @@ test("database package can use infrastructure dependencies but not application i
     overrideConfig: workspaceConfig("database"),
   });
   const [valid] = await lint.lintText(
-    "import { createHash } from 'node:crypto';\nvoid createHash;",
+    "import { createHash } from 'node:crypto';\nimport type {} from '@vowora/domain';\nvoid createHash;",
     { filePath: "packages/database/src/probe.ts" },
   );
   assert.equal(valid.errorCount, 0);
-  const [invalid] = await lint.lintText(
-    "import '../../../apps/web/app/page';",
-    { filePath: "packages/database/src/probe.ts" },
+  for (const name of [
+    "../../../apps/web/app/page",
+    "@vowora/domain/internal",
+  ]) {
+    const [invalid] = await lint.lintText(`import '${name}';`, {
+      filePath: "packages/database/src/probe.ts",
+    });
+    assert(
+      invalid.messages.some(
+        (message) => message.ruleId === "no-restricted-imports",
+      ),
+      name,
+    );
+  }
+});
+test("web route handlers cannot bypass application services for database access", async () => {
+  const lint = new ESLint({
+    cwd: new URL("apps/web/", root).pathname,
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("web"),
+  });
+  for (const [name, source] of [
+    ["package import", "import '@vowora/database';"],
+    ["testing subpath", "import '@vowora/database/testing';"],
+    ["dynamic import", "void import('@vowora/database');"],
+    [
+      "named re-export",
+      "export { createRuntimeDatabase } from '@vowora/database';",
+    ],
+    ["star re-export", "export * from '@vowora/database';"],
+    [
+      "relative database source",
+      "import '../../../../../packages/database/src/client';",
+    ],
+  ]) {
+    const [result] = await lint.lintText(source, {
+      filePath: "app/api/v1/probe/route.ts",
+    });
+    assert(
+      result.messages.some(
+        (message) => message.ruleId === "no-restricted-syntax",
+      ),
+      name,
+    );
+  }
+  const [service] = await lint.lintText(
+    "import type {} from '@vowora/domain';",
+    { filePath: "app/api/v1/probe/route.ts" },
   );
-  assert(
-    invalid.messages.some(
-      (message) => message.ruleId === "no-restricted-imports",
-    ),
-  );
+  assert.equal(service.errorCount, 0);
 });
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {
@@ -131,6 +172,30 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
     { cwd: new URL("packages/database/", root), encoding: "utf8" },
   );
   assert.equal(output, "");
+});
+test("database integration task builds workspace dependencies on a clean checkout", () => {
+  const run = JSON.parse(
+    execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "turbo",
+        "run",
+        "test:integration",
+        "--filter=@vowora/database",
+        "--dry=json",
+      ],
+      { cwd: root, encoding: "utf8" },
+    ),
+  );
+  const integration = run.tasks.find(
+    (task) => task.taskId === "@vowora/database#test:integration",
+  );
+  assert(integration, "database integration task is present");
+  assert(
+    integration.dependencies.includes("@vowora/domain#build"),
+    "database integration depends on the domain build",
+  );
 });
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {
