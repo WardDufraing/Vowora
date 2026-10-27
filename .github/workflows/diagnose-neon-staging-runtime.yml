@@ -1,0 +1,38 @@
+name: Diagnose Neon staging runtime connection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 5
+    steps:
+      - name: Diagnose runtime login (read-only)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Staging DATABASE_URL secret is missing"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os, urllib.parse, sys
+          u=urllib.parse.urlparse(os.environ["DATABASE_URL"])
+          if u.scheme not in ("postgres", "postgresql") or not u.hostname or not u.password:
+              sys.exit("Invalid DATABASE_URL format")
+          if not u.hostname.endswith(".neon.tech"):
+              sys.exit("Expected Neon database host; refusing connection")
+          print("Runtime URL format: valid; Neon hostname: valid")
+          print("Runtime role:", urllib.parse.unquote(u.username or ""))
+          print("Database:", urllib.parse.unquote(u.path.lstrip("/")))
+          PY
+          echo "Testing runtime database connection..."
+          PGCONNECT_TIMEOUT=8 psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c "SELECT current_user AS runtime_role, current_database() AS database_name, inet_server_port() AS port;"
