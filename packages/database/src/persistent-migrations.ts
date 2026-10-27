@@ -26,6 +26,17 @@ const allApplicationTables = [
   ...appendOnlyTables,
   ...authTables,
 ] as const;
+const tablePrivileges = [
+  "SELECT",
+  "INSERT",
+  "UPDATE",
+  "DELETE",
+  "TRUNCATE",
+  "REFERENCES",
+  "TRIGGER",
+] as const;
+const columnPrivileges = ["SELECT", "INSERT", "UPDATE", "REFERENCES"] as const;
+const sequencePrivileges = ["USAGE", "SELECT", "UPDATE"] as const;
 
 export class PersistentMigrationError extends Error {
   constructor(readonly reason: string) {
@@ -39,6 +50,60 @@ function quoteIdentifier(identifier: string): string {
     throw new PersistentMigrationError("invalid runtime identity");
   }
   return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+function expectedTablePrivileges(schemaName: string, tableName: string) {
+  if (schemaName !== "public") return new Set<string>();
+  if ((authTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT", "UPDATE", "DELETE"]);
+  }
+  if ((appendOnlyTables as readonly string[]).includes(tableName)) {
+    return new Set(["INSERT"]);
+  }
+  return new Set<string>();
+}
+
+function expectedColumnPrivileges(schemaName: string, tableName: string) {
+  if (schemaName !== "public") return new Set<string>();
+  if ((authTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT", "UPDATE"]);
+  }
+  if ((appendOnlyTables as readonly string[]).includes(tableName)) {
+    return new Set(["INSERT"]);
+  }
+  return new Set<string>();
+}
+
+async function revokeColumnPrivileges(
+  client: InstanceType<typeof Client>,
+  grantee: string,
+): Promise<void> {
+  const relations = await client.query<{
+    schema_name: string;
+    relation_name: string;
+    columns: string[];
+  }>(
+    `SELECT namespace.nspname AS schema_name,
+            relation.relname AS relation_name,
+            json_agg(attribute.attname ORDER BY attribute.attnum) AS columns
+       FROM pg_class relation
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+       JOIN pg_attribute attribute ON attribute.attrelid = relation.oid
+      WHERE namespace.nspname IN ('public', $1)
+        AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+        AND attribute.attnum > 0
+        AND NOT attribute.attisdropped
+      GROUP BY namespace.nspname, relation.relname`,
+    [journalSchema],
+  );
+  const quotedGrantee =
+    grantee === "PUBLIC" ? grantee : quoteIdentifier(grantee);
+  for (const relation of relations.rows) {
+    const columns = relation.columns.map(quoteIdentifier).join(", ");
+    await client.query(
+      `REVOKE ALL PRIVILEGES (${columns}) ON TABLE ${quoteIdentifier(relation.schema_name)}.${quoteIdentifier(relation.relation_name)} FROM ${quotedGrantee}`,
+    );
+  }
 }
 
 function clientFor(config: PersistentMigrationConfig) {
@@ -196,6 +261,8 @@ async function reconcileRuntimeGrants(
     await client.query(
       `REVOKE ALL ON ALL TABLES IN SCHEMA "${journalSchema}" FROM ${role}`,
     );
+    await revokeColumnPrivileges(client, "PUBLIC");
+    await revokeColumnPrivileges(client, config.runtimeUsername);
     await client.query(
       `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ${auth} TO ${role}`,
     );
@@ -208,6 +275,15 @@ async function reconcileRuntimeGrants(
     );
     await client.query(
       'ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM PUBLIC',
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON TABLES FROM ${role}`,
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON SEQUENCES FROM ${role}`,
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM ${role}`,
     );
     await client.query("COMMIT");
   } catch (error) {
@@ -240,11 +316,11 @@ async function verifyMigrationJournal(
 async function hasTablePrivilege(
   client: InstanceType<typeof Client>,
   role: string,
-  table: string,
+  table: number,
   privilege: string,
 ): Promise<boolean> {
   const result = await client.query<{ allowed: boolean }>(
-    "SELECT has_table_privilege($1, $2, $3) AS allowed",
+    "SELECT has_table_privilege($1, $2::oid, $3) AS allowed",
     [role, table, privilege],
   );
   return result.rows[0]?.allowed === true;
@@ -255,24 +331,6 @@ async function verifyRuntimeGrants(
   config: PersistentMigrationConfig,
 ): Promise<void> {
   await assertRuntimeRoleIsRestricted(client, config.runtimeUsername);
-  const schemaPrivileges = await client.query<{
-    public_usage: boolean;
-    public_create: boolean;
-    journal_usage: boolean;
-  }>(
-    `SELECT has_schema_privilege($1, 'public', 'USAGE') AS public_usage,
-            has_schema_privilege($1, 'public', 'CREATE') AS public_create,
-            has_schema_privilege($1, 'drizzle', 'USAGE') AS journal_usage`,
-    [config.runtimeUsername],
-  );
-  const schemas = schemaPrivileges.rows[0];
-  if (
-    !schemas?.public_usage ||
-    schemas.public_create ||
-    schemas.journal_usage
-  ) {
-    throw new PersistentMigrationError("runtime schema privileges mismatch");
-  }
   const databasePrivileges = await client.query<{
     can_connect: boolean;
     can_create: boolean;
@@ -287,108 +345,196 @@ async function verifyRuntimeGrants(
   if (!database?.can_connect || database.can_create || database.can_temp) {
     throw new PersistentMigrationError("runtime database privileges mismatch");
   }
-  const publicPrivileges = await client.query<{ exposed: boolean }>(
-    `SELECT
-       EXISTS (
-         SELECT 1 FROM pg_database database,
-           LATERAL aclexplode(COALESCE(database.datacl, acldefault('d', database.datdba))) acl
-         WHERE database.datname = current_database() AND acl.grantee = 0
-       ) OR EXISTS (
-         SELECT 1 FROM pg_namespace namespace,
-           LATERAL aclexplode(COALESCE(namespace.nspacl, acldefault('n', namespace.nspowner))) acl
-         WHERE namespace.nspname IN ('public', 'drizzle') AND acl.grantee = 0
-       ) OR EXISTS (
-         SELECT 1 FROM information_schema.role_table_grants
-         WHERE table_schema IN ('public', 'drizzle') AND grantee = 'PUBLIC'
-       ) AS exposed`,
+
+  const schemas = await client.query<{ oid: number; schema_name: string }>(
+    `SELECT oid, nspname AS schema_name
+       FROM pg_namespace
+      WHERE nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+        AND nspname <> 'information_schema'`,
   );
-  if (publicPrivileges.rows[0]?.exposed) {
+  for (const schema of schemas.rows) {
+    for (const privilege of ["USAGE", "CREATE"]) {
+      const result = await client.query<{ allowed: boolean }>(
+        "SELECT has_schema_privilege($1, $2::oid, $3) AS allowed",
+        [config.runtimeUsername, schema.oid, privilege],
+      );
+      const expected = schema.schema_name === "public" && privilege === "USAGE";
+      if (result.rows[0]?.allowed !== expected) {
+        throw new PersistentMigrationError(
+          "runtime schema privileges mismatch",
+        );
+      }
+    }
+  }
+
+  const relations = await client.query<{
+    oid: number;
+    schema_name: string;
+    relation_name: string;
+  }>(
+    `SELECT relation.oid, namespace.nspname AS schema_name,
+            relation.relname AS relation_name
+       FROM pg_class relation
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+        AND namespace.nspname <> 'information_schema'
+        AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')`,
+  );
+  for (const relation of relations.rows) {
+    const expected = expectedTablePrivileges(
+      relation.schema_name,
+      relation.relation_name,
+    );
+    for (const privilege of tablePrivileges) {
+      const allowed = await hasTablePrivilege(
+        client,
+        config.runtimeUsername,
+        relation.oid,
+        privilege,
+      );
+      if (allowed !== expected.has(privilege)) {
+        throw new PersistentMigrationError("runtime table privileges mismatch");
+      }
+    }
+  }
+
+  const columns = await client.query<{
+    relation_oid: number;
+    attribute_number: number;
+    schema_name: string;
+    relation_name: string;
+  }>(
+    `SELECT relation.oid AS relation_oid,
+            attribute.attnum AS attribute_number,
+            namespace.nspname AS schema_name,
+            relation.relname AS relation_name
+       FROM pg_class relation
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+       JOIN pg_attribute attribute ON attribute.attrelid = relation.oid
+      WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+        AND namespace.nspname <> 'information_schema'
+        AND relation.relkind IN ('r', 'p', 'v', 'm', 'f')
+        AND attribute.attnum > 0
+        AND NOT attribute.attisdropped`,
+  );
+  for (const column of columns.rows) {
+    const expected = expectedColumnPrivileges(
+      column.schema_name,
+      column.relation_name,
+    );
+    for (const privilege of columnPrivileges) {
+      const result = await client.query<{ allowed: boolean }>(
+        "SELECT has_column_privilege($1, $2::oid, $3::smallint, $4) AS allowed",
+        [
+          config.runtimeUsername,
+          column.relation_oid,
+          column.attribute_number,
+          privilege,
+        ],
+      );
+      if (result.rows[0]?.allowed !== expected.has(privilege)) {
+        throw new PersistentMigrationError(
+          "runtime column privileges mismatch",
+        );
+      }
+    }
+  }
+
+  const sequences = await client.query<{ oid: number }>(
+    `SELECT relation.oid
+       FROM pg_class relation
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+        AND namespace.nspname <> 'information_schema'
+        AND relation.relkind = 'S'`,
+  );
+  for (const sequence of sequences.rows) {
+    for (const privilege of sequencePrivileges) {
+      const result = await client.query<{ allowed: boolean }>(
+        "SELECT has_sequence_privilege($1, $2::oid, $3) AS allowed",
+        [config.runtimeUsername, sequence.oid, privilege],
+      );
+      if (result.rows[0]?.allowed) {
+        throw new PersistentMigrationError(
+          "runtime sequence privileges mismatch",
+        );
+      }
+    }
+  }
+
+  const routines = await client.query<{ oid: number }>(
+    `SELECT routine.oid
+       FROM pg_proc routine
+       JOIN pg_namespace namespace ON namespace.oid = routine.pronamespace
+      WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+        AND namespace.nspname <> 'information_schema'`,
+  );
+  for (const routine of routines.rows) {
+    const result = await client.query<{ allowed: boolean }>(
+      "SELECT has_function_privilege($1, $2::oid, 'EXECUTE') AS allowed",
+      [config.runtimeUsername, routine.oid],
+    );
+    if (result.rows[0]?.allowed) {
+      throw new PersistentMigrationError("runtime routine privileges mismatch");
+    }
+  }
+
+  const exposedPrivileges = await client.query<{ exposed: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM pg_database database,
+         LATERAL aclexplode(COALESCE(database.datacl, acldefault('d', database.datdba))) acl
+       WHERE database.datname = current_database() AND acl.grantee = 0
+     ) OR EXISTS (
+       SELECT 1 FROM pg_namespace namespace,
+         LATERAL aclexplode(COALESCE(namespace.nspacl, acldefault('n', namespace.nspowner))) acl
+       WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+         AND namespace.nspname <> 'information_schema' AND acl.grantee = 0
+     ) OR EXISTS (
+       SELECT 1 FROM pg_class relation
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace,
+         LATERAL aclexplode(COALESCE(
+           relation.relacl,
+           acldefault(CASE WHEN relation.relkind = 'S' THEN 's'::"char" ELSE 'r'::"char" END, relation.relowner)
+         )) acl
+       WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+         AND namespace.nspname <> 'information_schema' AND acl.grantee = 0
+     ) OR EXISTS (
+       SELECT 1 FROM pg_attribute attribute
+       JOIN pg_class relation ON relation.oid = attribute.attrelid
+       JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace,
+         LATERAL aclexplode(COALESCE(attribute.attacl, acldefault('c', relation.relowner))) acl
+       WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+         AND namespace.nspname <> 'information_schema'
+         AND attribute.attnum > 0 AND NOT attribute.attisdropped AND acl.grantee = 0
+     ) OR EXISTS (
+       SELECT 1 FROM pg_proc routine
+       JOIN pg_namespace namespace ON namespace.oid = routine.pronamespace,
+         LATERAL aclexplode(COALESCE(routine.proacl, acldefault('f', routine.proowner))) acl
+       WHERE namespace.nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+         AND namespace.nspname <> 'information_schema' AND acl.grantee = 0
+     ) AS exposed`,
+  );
+  if (exposedPrivileges.rows[0]?.exposed) {
     throw new PersistentMigrationError("public database privileges remain");
   }
 
-  for (const table of authTables) {
-    for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
-      if (
-        !(await hasTablePrivilege(
-          client,
-          config.runtimeUsername,
-          `public.${table}`,
-          privilege,
-        ))
-      ) {
-        throw new PersistentMigrationError("runtime table privileges mismatch");
-      }
-    }
-    if (
-      await hasTablePrivilege(
-        client,
-        config.runtimeUsername,
-        `public.${table}`,
-        "TRUNCATE",
-      )
-    ) {
-      throw new PersistentMigrationError("runtime table privileges mismatch");
-    }
-  }
-  for (const table of appendOnlyTables) {
-    for (const privilege of ["SELECT", "UPDATE", "DELETE", "TRUNCATE"]) {
-      if (
-        await hasTablePrivilege(
-          client,
-          config.runtimeUsername,
-          `public.${table}`,
-          privilege,
-        )
-      ) {
-        throw new PersistentMigrationError("runtime table privileges mismatch");
-      }
-    }
-    if (
-      !(await hasTablePrivilege(
-        client,
-        config.runtimeUsername,
-        `public.${table}`,
-        "INSERT",
-      ))
-    ) {
-      throw new PersistentMigrationError("runtime table privileges mismatch");
-    }
-  }
-  for (const privilege of [
-    "SELECT",
-    "INSERT",
-    "UPDATE",
-    "DELETE",
-    "TRUNCATE",
-  ]) {
-    if (
-      await hasTablePrivilege(
-        client,
-        config.runtimeUsername,
-        "public.schema_metadata",
-        privilege,
-      )
-    ) {
-      throw new PersistentMigrationError("runtime table privileges mismatch");
-    }
-  }
-  for (const privilege of [
-    "SELECT",
-    "INSERT",
-    "UPDATE",
-    "DELETE",
-    "TRUNCATE",
-  ]) {
-    if (
-      await hasTablePrivilege(
-        client,
-        config.runtimeUsername,
-        `${journalSchema}.${journalTable}`,
-        privilege,
-      )
-    ) {
-      throw new PersistentMigrationError("runtime journal privileges mismatch");
-    }
+  const defaultPrivileges = await client.query<{ exposed: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM pg_default_acl defaults
+         CROSS JOIN LATERAL aclexplode(defaults.defaclacl) acl
+         JOIN pg_roles runtime ON runtime.rolname = $1
+        WHERE acl.grantee IN (0, runtime.oid)
+          AND (defaults.defaclnamespace = 0 OR defaults.defaclnamespace IN (
+            SELECT oid FROM pg_namespace
+             WHERE nspname NOT LIKE 'pg\\_%' ESCAPE '\\'
+               AND nspname <> 'information_schema'
+          ))
+     ) AS exposed`,
+    [config.runtimeUsername],
+  );
+  if (defaultPrivileges.rows[0]?.exposed) {
+    throw new PersistentMigrationError("runtime default privileges mismatch");
   }
   if (allApplicationTables.length !== 7) {
     throw new PersistentMigrationError("runtime grant manifest mismatch");

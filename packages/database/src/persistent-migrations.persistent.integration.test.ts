@@ -83,6 +83,37 @@ describe("persistent migration workflow", () => {
     }
   });
 
+  it("rejects endpoint and TLS query overrides before opening a connection", () => {
+    const overriddenMigration = new URL(migrationUrl!);
+    overriddenMigration.port = "1";
+    overriddenMigration.searchParams.set("host", "127.0.0.1");
+    overriddenMigration.searchParams.set("port", new URL(migrationUrl!).port);
+    const unsafeRuntime = new URL(runtimeUrl());
+    unsafeRuntime.searchParams.set("sslmode", "require");
+    unsafeRuntime.searchParams.set("uselibpqcompat", "true");
+
+    expect(() =>
+      parsePersistentMigrationConfig({
+        target: "staging",
+        mode: "apply",
+        environment: {
+          DATABASE_MIGRATION_URL: overriddenMigration.toString(),
+          DATABASE_URL: runtimeUrl(),
+        },
+      }),
+    ).toThrow("DATABASE_MIGRATION_URL");
+    expect(() =>
+      parsePersistentMigrationConfig({
+        target: "staging",
+        mode: "apply",
+        environment: {
+          DATABASE_MIGRATION_URL: migrationUrl,
+          DATABASE_URL: unsafeRuntime.toString(),
+        },
+      }),
+    ).toThrow("DATABASE_URL");
+  });
+
   it("binds the selected target to the database-resident marker", async () => {
     const priorOptions = process.env.PGOPTIONS;
     process.env.PGOPTIONS = "-c vowora.environment=staging";
@@ -217,6 +248,69 @@ describe("persistent migration workflow", () => {
       ).rejects.toThrow(/permission denied/);
     } finally {
       await futureDenied.end();
+    }
+  });
+
+  it("detects and reconciles privilege drift on every supported object class", async () => {
+    const admin = await administrator();
+    try {
+      await admin.query(
+        `CREATE SEQUENCE IF NOT EXISTS future_runtime_sequence`,
+      );
+      await admin.query(
+        `CREATE OR REPLACE FUNCTION future_runtime_function() RETURNS integer
+         LANGUAGE sql AS 'SELECT 1'`,
+      );
+      await admin.query(
+        `REVOKE ALL ON FUNCTION future_runtime_function() FROM PUBLIC`,
+      );
+    } finally {
+      await admin.end();
+    }
+
+    const driftCases: ReadonlyArray<{
+      readonly grant: string;
+      readonly reason: string;
+    }> = [
+      {
+        grant: `GRANT SELECT ON future_runtime_table TO "${runtimeRole}"`,
+        reason: "runtime table privileges mismatch",
+      },
+      {
+        grant: `GRANT UPDATE (id) ON future_runtime_table TO "${runtimeRole}"`,
+        reason: "runtime column privileges mismatch",
+      },
+      {
+        grant: `GRANT USAGE ON SEQUENCE future_runtime_sequence TO "${runtimeRole}"`,
+        reason: "runtime sequence privileges mismatch",
+      },
+      {
+        grant: `GRANT EXECUTE ON FUNCTION future_runtime_function() TO "${runtimeRole}"`,
+        reason: "runtime routine privileges mismatch",
+      },
+      {
+        grant: "GRANT SELECT ON future_runtime_table TO PUBLIC",
+        reason: "runtime table privileges mismatch",
+      },
+      {
+        grant: `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO "${runtimeRole}"`,
+        reason: "runtime default privileges mismatch",
+      },
+    ];
+
+    for (const drift of driftCases) {
+      const grant = await administrator();
+      try {
+        await grant.query(drift.grant);
+      } finally {
+        await grant.end();
+      }
+      await expect(runPersistentMigration(config("verify"))).rejects.toThrow(
+        drift.reason,
+      );
+      await expect(
+        runPersistentMigration(config("apply")),
+      ).resolves.toBeUndefined();
     }
   });
 

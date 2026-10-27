@@ -88,6 +88,40 @@ describe("persistent migration configuration", () => {
     ).toThrow(/DATABASE_URL/);
   });
 
+  it.each([
+    "host=ep-other-pooler.eu-central-1.aws.neon.tech",
+    "hostaddr=127.0.0.1",
+    "port=5433",
+    "user=other",
+    "password=other",
+    "database=other",
+    "dbname=other",
+    "service=other",
+    "sslcert=client.crt",
+    "sslkey=client.key",
+    "sslrootcert=ca.crt",
+    "sslnegotiation=direct",
+    "uselibpqcompat=true",
+    "channel_binding=disable",
+    "channel_binding=require&channel_binding=require",
+  ])("rejects connection parameter override %s", (parameter) => {
+    expect(() => parse({ migration: `${migrationUrl}&${parameter}` })).toThrow(
+      /DATABASE_MIGRATION_URL/,
+    );
+    expect(() => parse({ runtime: `${runtimeUrl}&${parameter}` })).toThrow(
+      /DATABASE_URL/,
+    );
+  });
+
+  it("accepts Neon's supported channel binding parameter", () => {
+    expect(() =>
+      parse({
+        migration: `${migrationUrl}&channel_binding=require`,
+        runtime: `${runtimeUrl}&channel_binding=require`,
+      }),
+    ).not.toThrow();
+  });
+
   it("requires runtime TLS on a managed host", () => {
     expect(() =>
       parse({ runtime: runtimeUrl.replace("?sslmode=require", "") }),

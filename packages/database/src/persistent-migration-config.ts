@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const managedTlsModes = new Set(["require", "verify-full"]);
+const allowedConnectionParameters = new Set(["sslmode", "channel_binding"]);
 const localHosts = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const targetSchema = z.enum(["staging", "production"]);
 const modeSchema = z.enum(["apply", "verify"]);
@@ -55,6 +56,21 @@ function requiresTls(url: URL): boolean {
 function hasManagedTls(url: URL): boolean {
   const modes = url.searchParams.getAll("sslmode");
   return modes.length === 1 && managedTlsModes.has(modes[0] ?? "");
+}
+
+function hasSafeConnectionParameters(url: URL): boolean {
+  const names = [...url.searchParams.keys()];
+  if (names.some((name) => !allowedConnectionParameters.has(name)))
+    return false;
+  if (new Set(names).size !== names.length) return false;
+
+  const channelBinding = url.searchParams.getAll("channel_binding");
+  return (
+    channelBinding.length === 0 ||
+    (channelBinding.length === 1 &&
+      channelBinding[0] === "require" &&
+      hasManagedTls(url))
+  );
 }
 
 function normalizedNeonHost(hostname: string): string {
@@ -119,14 +135,18 @@ export function parsePersistentMigrationConfig(input: {
 
   if (
     migrationUrl.hostname.toLowerCase().includes("-pooler.") ||
-    migrationUrl.searchParams.has("options") ||
-    (requiresTls(migrationUrl) && !hasManagedTls(migrationUrl))
+    !hasSafeConnectionParameters(migrationUrl) ||
+    migrationUrl.hash !== "" ||
+    ((requiresTls(migrationUrl) || migrationUrl.searchParams.has("sslmode")) &&
+      !hasManagedTls(migrationUrl))
   ) {
     fields.push("DATABASE_MIGRATION_URL");
   }
   if (
-    runtimeUrl.searchParams.has("options") ||
-    (requiresTls(runtimeUrl) && !hasManagedTls(runtimeUrl))
+    !hasSafeConnectionParameters(runtimeUrl) ||
+    runtimeUrl.hash !== "" ||
+    ((requiresTls(runtimeUrl) || runtimeUrl.searchParams.has("sslmode")) &&
+      !hasManagedTls(runtimeUrl))
   ) {
     fields.push("DATABASE_URL");
   }
