@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::DATABASE_MIGRATIONS_URL is missing"
+            echo "::error::DATABASE_MIGRATION_URL is missing"
             exit 1
           fi
           RESULT=$(psql "$DATABASE_URL" -X -t -A -v ON_ERROR_STOP=1 -c "
