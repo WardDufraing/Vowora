@@ -114,6 +114,36 @@ describe("API contracts", () => {
         "application/problem+json"
       ].schema,
     ).toEqual({ $ref: "#/components/schemas/ProblemDetails" });
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-in/email"].post.responses["401"],
+    ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-in/email"].post.responses["500"],
+    ).toEqual({
+      $ref: "#/components/responses/AuthenticationServiceFailure",
+    });
+    expect(
+      openApiDocument.paths["/api/v1/auth/request-password-reset"].post
+        .responses["403"],
+    ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
+    expect(
+      openApiDocument.paths["/api/v1/auth/request-password-reset"].post
+        .responses["500"],
+    ).toEqual({
+      $ref: "#/components/responses/AuthenticationServiceFailure",
+    });
+    expect(
+      openApiDocument.paths["/api/v1/auth/reset-password"].post.responses[
+        "500"
+      ],
+    ).toEqual({
+      $ref: "#/components/responses/AuthenticationServiceFailure",
+    });
+    expect(
+      openApiDocument.components.responses.AuthenticationServiceFailure.content[
+        "application/problem+json"
+      ].schema,
+    ).toEqual({ $ref: "#/components/schemas/ProblemDetails" });
   });
 
   it("rejects extra response fields and unsafe problem shapes", () => {

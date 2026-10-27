@@ -121,6 +121,9 @@ const notFoundOperation = (operationId: string) => ({
 const authenticationFailure = {
   $ref: "#/components/responses/AuthenticationFailed",
 } as const;
+const authenticationServiceFailure = {
+  $ref: "#/components/responses/AuthenticationServiceFailure",
+} as const;
 const sessionServiceFailure = {
   $ref: "#/components/responses/SessionServiceFailure",
 } as const;
@@ -229,6 +232,7 @@ export const openApiDocument = {
           "400": authenticationFailure,
           "403": authenticationFailure,
           "429": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -248,8 +252,10 @@ export const openApiDocument = {
             content: { "application/json": { schema: { type: "object" } } },
           },
           "400": authenticationFailure,
+          "401": authenticationFailure,
           "403": authenticationFailure,
           "429": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -283,7 +289,9 @@ export const openApiDocument = {
             content: { "application/json": { schema: { type: "object" } } },
           },
           "400": authenticationFailure,
+          "403": authenticationFailure,
           "429": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -308,6 +316,7 @@ export const openApiDocument = {
           "302": { description: "Email verified and redirected to the app." },
           "400": authenticationFailure,
           "403": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -323,6 +332,7 @@ export const openApiDocument = {
               },
             },
           },
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -361,7 +371,9 @@ export const openApiDocument = {
             },
           },
           "400": authenticationFailure,
+          "403": authenticationFailure,
           "429": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -398,6 +410,7 @@ export const openApiDocument = {
             },
           },
           "400": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -433,6 +446,7 @@ export const openApiDocument = {
           },
           "400": authenticationFailure,
           "403": authenticationFailure,
+          "500": authenticationServiceFailure,
         },
       },
     },
@@ -521,6 +535,9 @@ export const openApiDocument = {
       },
       AuthenticationFailed: problemResponse(
         "The authentication request could not be completed.",
+      ),
+      AuthenticationServiceFailure: problemResponse(
+        "The authentication service is temporarily unavailable.",
       ),
       SessionServiceFailure: problemResponse(
         "The session request could not be completed.",
