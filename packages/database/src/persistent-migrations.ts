@@ -114,7 +114,7 @@ function clientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_migrate_${config.target}`,
-    options: "-c search_path=public,pg_catalog",
+
   });
 }
 
@@ -125,7 +125,7 @@ function runtimeClientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_runtime_preflight_${config.target}`,
-    options: "-c search_path=public,pg_catalog",
+
   });
 }
 
@@ -137,6 +137,7 @@ async function verifyRuntimeConnection(
   try {
     await runtime.connect();
     connected = true;
+    await runtime.query("SET search_path TO public, pg_catalog");
     const identity = await runtime.query<{
       current_user: string;
       current_database: string;
@@ -565,6 +566,7 @@ export async function runPersistentMigration(
   try {
     await client.connect();
     connected = true;
+    await client.query("SET search_path TO public, pg_catalog");
     const identity = await client.query<{
       current_user: string;
       current_database: string;
