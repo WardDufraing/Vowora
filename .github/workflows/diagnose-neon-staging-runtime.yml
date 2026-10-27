@@ -36,3 +36,39 @@ jobs:
           echo "Testing runtime database connection..."
           PGCONNECT_TIMEOUT=8 psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
             -c "SELECT current_user AS runtime_role, current_database() AS database_name, inet_server_port() AS port;"
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Diagnose Node PostgreSQL connection
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node --input-type=module <<'JS'
+          import pg from "pg";
+          const client = new pg.Client({
+            connectionString: process.env.DATABASE_URL,
+            connectionTimeoutMillis: 5000,
+            statement_timeout: 15000,
+            query_timeout: 15000,
+            application_name: "vowora_runtime_preflight_staging",
+            options: "-c search_path=public,pg_catalog",
+          });
+          try {
+            await client.connect();
+            const result = await client.query("SELECT current_user, current_database()");
+            console.log("Node runtime connection successful:", result.rows[0]);
+          } catch (error) {
+            console.error("Node runtime connection failed:", {
+              code: error.code,
+              message: error.message,
+              detail: error.detail,
+            });
+            process.exitCode = 1;
+          } finally {
+            await client.end().catch(() => {});
+          }
+          JS
