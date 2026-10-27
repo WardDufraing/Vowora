@@ -20,7 +20,7 @@ jobs:
 
       - name: Verify database identity and ownership
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
           if [ -z "$DATABASE_URL" ]; then
@@ -39,7 +39,7 @@ jobs:
 
       - name: Set staging database comment
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
           psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
@@ -47,7 +47,7 @@ jobs:
 
       - name: Verify staging marker
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
           RESULT=$(psql "$DATABASE_URL" -X -t -A -v ON_ERROR_STOP=1 \
