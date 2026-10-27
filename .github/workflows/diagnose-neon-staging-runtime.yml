@@ -44,6 +44,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Diagnose Node PostgreSQL connection
+        working-directory: packages/database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
