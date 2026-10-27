@@ -1,4 +1,3 @@
-
 name: Set Neon Staging Environment
 
 on:
@@ -19,54 +18,42 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Check database identity and permissions
+      - name: Verify database identity and ownership
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
         run: |
           set -euo pipefail
-
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::DATABASE_URL is missing"
+            echo "::error::DATABASE_MIGRATIONS_URL is missing"
+            exit 1
+          fi
+          RESULT=$(psql "$DATABASE_URL" -X -t -A -v ON_ERROR_STOP=1 -c "
+            SELECT current_database() = 'vowora'
+              AND current_user = pg_get_userbyid(datdba)
+            FROM pg_database WHERE datname = current_database();
+          ")
+          if [ "$RESULT" != "t" ]; then
+            echo "::error::Expected vowora database connected as its owner"
             exit 1
           fi
 
-          psql "$DATABASE_URL" \
-            -X -v ON_ERROR_STOP=1 \
-            -c "
-              SELECT current_database() AS database,
-                     current_user AS connected_role,
-                     pg_get_userbyid(d.datdba) AS owner,
-                     (SELECT rolname
-                      FROM pg_roles
-                      WHERE oid = d.datdba) = current_user
-                       AS is_owner
-              FROM pg_database d
-              WHERE d.datname = current_database();
-            "
-
-      - name: Set staging environment marker
+      - name: Set staging database comment
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
         run: |
           set -euo pipefail
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c "COMMENT ON DATABASE vowora IS 'vowora:staging';"
 
-          psql "$DATABASE_URL" \
-            -X -v ON_ERROR_STOP=1 \
-            -c 'ALTER DATABASE vowora SET "vowora.environment" TO '\''staging'\'';'
-
-      - name: Verify marker on new connection
+      - name: Verify staging marker
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATIONS_URL }}
         run: |
           set -euo pipefail
-
-          RESULT=$(psql "$DATABASE_URL" \
-            -X -t -A -v ON_ERROR_STOP=1 \
-            -c "SELECT current_setting('vowora.environment', true);")
-
-          if [ "$RESULT" != "staging" ]; then
+          RESULT=$(psql "$DATABASE_URL" -X -t -A -v ON_ERROR_STOP=1 \
+            -c "SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = current_database();")
+          if [ "$RESULT" != "vowora:staging" ]; then
             echo "::error::Staging marker verification failed"
             exit 1
           fi
-
-          echo "Neon staging environment marker verified"
+          echo "Neon staging database marker verified"
