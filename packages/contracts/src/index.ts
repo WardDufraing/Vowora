@@ -286,6 +286,104 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/auth/request-password-reset": {
+      post: {
+        operationId: "requestPasswordReset",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  email: { type: "string", format: "email", maxLength: 320 },
+                  redirectTo: {
+                    type: "string",
+                    format: "uri",
+                    maxLength: 2048,
+                  },
+                },
+                required: ["email", "redirectTo"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Enumeration-safe recovery acknowledgement." },
+          "400": authenticationFailure,
+          "429": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/auth/reset-password": {
+      post: {
+        operationId: "resetPassword",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  token: { type: "string", minLength: 1, maxLength: 4096 },
+                  newPassword: {
+                    type: "string",
+                    minLength: 12,
+                    maxLength: 128,
+                  },
+                },
+                required: ["token", "newPassword"],
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Password reset and existing sessions revoked.",
+          },
+          "400": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/account/sessions": {
+      get: {
+        operationId: "listAccountSessions",
+        responses: {
+          "200": { description: "Privacy-minimized active session list." },
+          "401": authenticationFailure,
+          "403": authenticationFailure,
+        },
+      },
+      delete: {
+        operationId: "revokeOtherAccountSessions",
+        responses: {
+          "204": { description: "Other sessions revoked." },
+          "401": authenticationFailure,
+          "403": authenticationFailure,
+        },
+      },
+    },
+    "/api/v1/account/sessions/{sessionId}": {
+      parameters: [
+        {
+          name: "sessionId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      delete: {
+        operationId: "revokeAccountSession",
+        responses: {
+          "204": { description: "Session revoked." },
+          "401": authenticationFailure,
+          "403": authenticationFailure,
+          "404": { $ref: "#/components/responses/ResourceNotFound" },
+        },
+      },
+    },
     "/api/v1/{path}": {
       parameters: [
         {

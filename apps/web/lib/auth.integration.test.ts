@@ -9,6 +9,12 @@ import { describe, expect, it } from "vitest";
 import { problemDetailsSchema } from "@vowora/contracts";
 
 import { createVoworaAuth, handleAuthRequest } from "./auth";
+import {
+  listAccountSessions,
+  requireSensitiveSession,
+  revokeAccountSession,
+  revokeOtherAccountSessions,
+} from "./session-management";
 
 const config = parseTestMigrationConfig(process.env);
 const baseURL = "https://auth.vowora.test";
@@ -52,6 +58,10 @@ describe("Better Auth PostgreSQL integration", () => {
           recipient: string;
           verificationUrl: string;
         }> = [];
+        const resetDeliveries: Array<{
+          recipient: string;
+          resetUrl: string;
+        }> = [];
         const backgroundTasks: Array<Promise<unknown>> = [];
         const scheduledTasks: Array<() => Promise<void>> = [];
         let releaseDelivery: (() => void) | undefined;
@@ -65,6 +75,9 @@ describe("Better Auth PostgreSQL integration", () => {
           rateLimitEnabled: false,
           scheduleBackgroundTask: (task) => scheduledTasks.push(task),
           secret,
+          sendPasswordResetEmail: async (message) => {
+            resetDeliveries.push(message);
+          },
           sendVerificationEmail: async (message) => {
             await deliveryGate;
             deliveries.push(message);
@@ -165,8 +178,6 @@ describe("Better Auth PostgreSQL integration", () => {
         for (const [method, path] of [
           ["POST", "/change-password"],
           ["GET", "/list-sessions"],
-          ["POST", "/request-password-reset"],
-          ["POST", "/sign-out"],
         ]) {
           const unavailable = await handleAuthRequest(
             auth,
@@ -253,6 +264,7 @@ describe("Better Auth PostgreSQL integration", () => {
           rateLimitEnabled: false,
           scheduleBackgroundTask: (task) => failedScheduledTasks.push(task),
           secret,
+          sendPasswordResetEmail: async () => {},
           sendVerificationEmail: async () => {
             throw new Error("synthetic delivery failure");
           },
@@ -277,6 +289,262 @@ describe("Better Auth PostgreSQL integration", () => {
             )
           ).rows[0],
         ).toEqual({ count: 1 });
+      },
+    );
+  });
+
+  it("manages owned sessions and consumes password resets exactly once", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `session-recovery-${randomUUID()}`,
+      async ({ client }) => {
+        const scheduledTasks: Array<() => Promise<void>> = [];
+        const resetDeliveries: Array<{ recipient: string; resetUrl: string }> =
+          [];
+        const auth = createVoworaAuth({
+          baseURL,
+          backgroundTaskHandler: () => {},
+          database: createTestDatabase(client),
+          rateLimitEnabled: false,
+          scheduleBackgroundTask: (task) => scheduledTasks.push(task),
+          secret,
+          sendPasswordResetEmail: async (message) => {
+            resetDeliveries.push(message);
+          },
+          sendVerificationEmail: async () => {},
+        });
+        const primary = credentials("sessions@example.test");
+        const second = credentials("other@example.test");
+        for (const identity of [primary, second]) {
+          expect(
+            (await auth.handler(post("/sign-up/email", identity))).status,
+          ).toBe(200);
+        }
+        scheduledTasks.splice(0);
+        await client.query("UPDATE auth_user SET email_verified = true");
+
+        const signIn = async (
+          identity: ReturnType<typeof credentials>,
+          agent: string,
+        ) => {
+          const response = await auth.handler(
+            request("/sign-in/email", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "User-Agent": agent,
+              },
+              body: JSON.stringify(identity),
+            }),
+          );
+          expect(response.status).toBe(200);
+          return response.headers.get("set-cookie")!;
+        };
+        const firstCookie = await signIn(primary, "Desktop synthetic browser");
+        const secondCookie = await signIn(primary, "Mobile synthetic browser");
+        const otherCookie = await signIn(second, "Other synthetic browser");
+
+        const listResponse = await listAccountSessions(
+          auth,
+          request("/ignored", { headers: { Cookie: firstCookie } }),
+        );
+        expect(listResponse.status).toBe(200);
+        const listed = (await listResponse.json()) as {
+          data: Array<{
+            id: string;
+            current: boolean;
+            device: string;
+            token?: string;
+          }>;
+        };
+        expect(listed.data).toHaveLength(2);
+        expect(listed.data.some((entry) => entry.current)).toBe(true);
+        expect(listed.data.every((entry) => entry.token === undefined)).toBe(
+          true,
+        );
+        const secondary = listed.data.find((entry) => !entry.current)!;
+
+        const otherRow = await client.query<{ id: string }>(
+          "SELECT s.id FROM auth_session s JOIN auth_user u ON u.id = s.user_id WHERE u.email = $1",
+          [second.email],
+        );
+        const crossAccount = await revokeAccountSession(
+          auth,
+          request("/ignored", {
+            method: "DELETE",
+            headers: { Cookie: firstCookie },
+          }),
+          otherRow.rows[0]!.id,
+        );
+        expect(crossAccount.status).toBe(404);
+
+        expect(
+          (
+            await revokeAccountSession(
+              auth,
+              request("/ignored", {
+                method: "DELETE",
+                headers: { Cookie: firstCookie },
+              }),
+              secondary.id,
+            )
+          ).status,
+        ).toBe(204);
+        expect(
+          await auth.api.getSession({
+            headers: new Headers({ Cookie: secondCookie }),
+          }),
+        ).toBeNull();
+        expect(
+          await auth.api.getSession({
+            headers: new Headers({ Cookie: otherCookie }),
+          }),
+        ).not.toBeNull();
+
+        const thirdCookie = await signIn(primary, "Third synthetic browser");
+        expect(
+          (
+            await revokeOtherAccountSessions(
+              auth,
+              request("/ignored", {
+                method: "DELETE",
+                headers: { Cookie: firstCookie },
+              }),
+            )
+          ).status,
+        ).toBe(204);
+        expect(
+          await auth.api.getSession({
+            headers: new Headers({ Cookie: thirdCookie }),
+          }),
+        ).toBeNull();
+        expect(
+          await auth.api.getSession({
+            headers: new Headers({ Cookie: firstCookie }),
+          }),
+        ).not.toBeNull();
+
+        const unknownReset = await handleAuthRequest(
+          auth,
+          post("/request-password-reset", {
+            email: "missing@example.test",
+            redirectTo: `${baseURL}/reset-password`,
+          }),
+          baseURL,
+        );
+        const crossOriginReset = await handleAuthRequest(
+          auth,
+          post("/request-password-reset", {
+            email: primary.email,
+            redirectTo: "https://attacker.example/reset-password",
+          }),
+          baseURL,
+        );
+        const overpostedReset = await handleAuthRequest(
+          auth,
+          post("/request-password-reset", {
+            email: primary.email,
+            redirectTo: `${baseURL}/reset-password`,
+            revealAccount: true,
+          }),
+          baseURL,
+        );
+        expect(crossOriginReset.status).toBe(403);
+        expect(overpostedReset.status).toBe(400);
+        const knownReset = await handleAuthRequest(
+          auth,
+          post("/request-password-reset", {
+            email: primary.email,
+            redirectTo: `${baseURL}/reset-password`,
+          }),
+          baseURL,
+        );
+        expect(unknownReset.status).toBe(200);
+        expect(knownReset.status).toBe(200);
+        expect(await unknownReset.json()).toEqual(await knownReset.json());
+        expect(resetDeliveries).toHaveLength(0);
+        expect(scheduledTasks).toHaveLength(1);
+        await scheduledTasks.shift()?.();
+        expect(resetDeliveries).toHaveLength(1);
+        expect(resetDeliveries[0]?.resetUrl).not.toContain(primary.email);
+
+        const callback = await handleAuthRequest(
+          auth,
+          new Request(resetDeliveries[0]!.resetUrl, { redirect: "manual" }),
+          baseURL,
+        );
+        expect(callback.status).toBe(302);
+        const token = new URL(
+          callback.headers.get("location")!,
+        ).searchParams.get("token")!;
+        const resetRequest = () =>
+          handleAuthRequest(
+            auth,
+            post("/reset-password", {
+              token,
+              newPassword: "replacement-passphrase-456",
+            }),
+            baseURL,
+          );
+        const concurrent = await Promise.all([resetRequest(), resetRequest()]);
+        expect(concurrent.map((response) => response.status).sort()).toEqual([
+          200, 400,
+        ]);
+        expect(
+          await auth.api.getSession({
+            headers: new Headers({ Cookie: firstCookie }),
+          }),
+        ).toBeNull();
+        expect(
+          (await auth.handler(post("/sign-in/email", primary))).status,
+        ).toBe(401);
+        expect(
+          (
+            await auth.handler(
+              post("/sign-in/email", {
+                ...primary,
+                password: "replacement-passphrase-456",
+              }),
+            )
+          ).status,
+        ).toBe(200);
+
+        const userId = (
+          await client.query<{ id: string }>(
+            "SELECT id FROM auth_user WHERE email = $1",
+            [primary.email],
+          )
+        ).rows[0]!.id;
+        await client.query(
+          "INSERT INTO auth_verification (id, identifier, value, expires_at) VALUES ($1, $2, $3, now() - interval '1 second')",
+          [randomUUID(), "reset-password:expired-token", userId],
+        );
+        expect(
+          (
+            await handleAuthRequest(
+              auth,
+              post("/reset-password", {
+                token: "expired-token",
+                newPassword: "another-passphrase-789",
+              }),
+              baseURL,
+            )
+          ).status,
+        ).toBe(400);
+
+        const freshCookie = await signIn(
+          { ...primary, password: "replacement-passphrase-456" },
+          "Fresh browser",
+        );
+        await client.query(
+          "UPDATE auth_session SET created_at = now() - interval '16 minutes' WHERE user_id = (SELECT id FROM auth_user WHERE email = $1)",
+          [primary.email],
+        );
+        const stale = await requireSensitiveSession(
+          auth,
+          new Headers({ Cookie: freshCookie }),
+        );
+        expect(stale?.stale).toBe(true);
       },
     );
   });

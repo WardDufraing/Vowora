@@ -49,6 +49,19 @@ button:disabled {
   cursor: wait;
   opacity: 0.7;
 }
+.session-list {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+.session-list li {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+  padding: 1rem;
+}
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {

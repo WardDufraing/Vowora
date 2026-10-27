@@ -10,6 +10,9 @@ export default function SignInPage() {
       <p>Your email address must be verified before access is granted.</p>
       <AuthForm mode="sign-in" />
       <p>
+        <Link href="/forgot-password">Forgot your password?</Link>
+      </p>
+      <p>
         Need an account? <Link href="/sign-up">Create one</Link>
       </p>
     </main>

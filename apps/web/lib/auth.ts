@@ -13,7 +13,9 @@ import { z } from "zod";
 
 import { readAuthEnvironment } from "./env";
 import {
+  createResendPasswordResetEmailSender,
   createResendVerificationEmailSender,
+  type SendPasswordResetEmail,
   type SendVerificationEmail,
 } from "./verification-email";
 import { correlationIdFor, problemResponse } from "./api";
@@ -28,6 +30,7 @@ export function createVoworaAuth(options: {
   readonly scheduleBackgroundTask: (task: () => Promise<void>) => void;
   readonly secret: string;
   readonly sendVerificationEmail: SendVerificationEmail;
+  readonly sendPasswordResetEmail: SendPasswordResetEmail;
 }) {
   return betterAuth({
     appName: "Vowora",
@@ -55,6 +58,25 @@ export function createVoworaAuth(options: {
       autoSignIn: false,
       minPasswordLength: 12,
       maxPasswordLength: 128,
+      resetPasswordTokenExpiresIn: 60 * 60,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user: recipient, url }) => {
+        options.scheduleBackgroundTask(async () => {
+          try {
+            await options.sendPasswordResetEmail({
+              recipient: recipient.email,
+              resetUrl: url,
+            });
+          } catch {
+            // The single-use token expires and a new request can be made safely.
+          }
+        });
+      },
+    },
+    session: {
+      expiresIn: 60 * 60 * 24 * 30,
+      updateAge: 60 * 60 * 24,
+      freshAge: 60 * 15,
     },
     emailVerification: {
       expiresIn: 60 * 60,
@@ -86,13 +108,7 @@ export function createVoworaAuth(options: {
       "/get-access-token",
       "/link-social",
       "/list-accounts",
-      "/list-sessions",
       "/refresh-token",
-      "/request-password-reset",
-      "/reset-password",
-      "/reset-password/:token",
-      "/revoke-other-sessions",
-      "/revoke-session",
       "/revoke-sessions",
       "/set-password",
       "/sign-in/social",
@@ -116,6 +132,10 @@ export function getAuth() {
     scheduleBackgroundTask: (task) => after(task),
     secret: environment.AUTH_SECRET,
     sendVerificationEmail: createResendVerificationEmailSender({
+      apiKey: environment.RESEND_API_KEY,
+      from: environment.AUTH_EMAIL_FROM,
+    }),
+    sendPasswordResetEmail: createResendPasswordResetEmailSender({
       apiKey: environment.RESEND_API_KEY,
       from: environment.AUTH_EMAIL_FROM,
     }),
@@ -187,12 +207,27 @@ const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([
   ["/api/v1/auth/sign-in/email", new Set(["POST"])],
   ["/api/v1/auth/sign-up/email", new Set(["POST"])],
   ["/api/v1/auth/verify-email", new Set(["GET"])],
+  ["/api/v1/auth/request-password-reset", new Set(["POST"])],
+  ["/api/v1/auth/reset-password", new Set(["POST"])],
 ]);
 
 const callbackURLSchema = z.string().min(1).max(2048);
 const emailSchema = z.email().max(320);
 const passwordSchema = z.string().min(12).max(128);
 const authBodySchemas = new Map<string, z.ZodType>([
+  [
+    "/api/v1/auth/request-password-reset",
+    z.object({ email: emailSchema, redirectTo: callbackURLSchema }).strict(),
+  ],
+  [
+    "/api/v1/auth/reset-password",
+    z
+      .object({
+        newPassword: passwordSchema,
+        token: z.string().min(1).max(4096),
+      })
+      .strict(),
+  ],
   [
     "/api/v1/auth/send-verification-email",
     z.object({ email: emailSchema, callbackURL: callbackURLSchema }).strict(),
@@ -225,14 +260,29 @@ const authBodySchemas = new Map<string, z.ZodType>([
 ]);
 
 function isAllowedAuthRoute(request: Request): boolean {
-  return Boolean(
-    allowedAuthRoutes.get(new URL(request.url).pathname)?.has(request.method),
-  );
+  const pathname = new URL(request.url).pathname;
+  if (
+    request.method === "GET" &&
+    /^\/api\/v1\/auth\/reset-password\/[^/]+$/.test(pathname)
+  ) {
+    return true;
+  }
+  return Boolean(allowedAuthRoutes.get(pathname)?.has(request.method));
 }
 
 async function hasValidAuthContract(request: Request): Promise<boolean> {
   const url = new URL(request.url);
   if (request.method === "GET") {
+    if (/^\/api\/v1\/auth\/reset-password\/[^/]+$/.test(url.pathname)) {
+      const token = url.pathname.slice(url.pathname.lastIndexOf("/") + 1);
+      return (
+        token.length > 0 &&
+        token.length <= 4096 &&
+        url.searchParams.size === 1 &&
+        url.searchParams.getAll("callbackURL").length === 1 &&
+        callbackURLSchema.safeParse(url.searchParams.get("callbackURL")).success
+      );
+    }
     if (url.pathname === "/api/v1/auth/get-session") {
       return url.searchParams.size === 0;
     }
@@ -286,8 +336,13 @@ async function callbackURLFrom(request: Request): Promise<unknown> {
   }
   try {
     const body: unknown = await request.clone().json();
-    if (typeof body === "object" && body !== null && "callbackURL" in body) {
-      return (body as { readonly callbackURL?: unknown }).callbackURL;
+    if (typeof body === "object" && body !== null) {
+      if ("callbackURL" in body) {
+        return (body as { readonly callbackURL?: unknown }).callbackURL;
+      }
+      if ("redirectTo" in body) {
+        return (body as { readonly redirectTo?: unknown }).redirectTo;
+      }
     }
   } catch {
     // Better Auth returns its normal safe malformed-request response.
