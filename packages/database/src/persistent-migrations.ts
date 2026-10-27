@@ -34,6 +34,7 @@ const tablePrivileges = [
   "TRUNCATE",
   "REFERENCES",
   "TRIGGER",
+  "MAINTAIN",
 ] as const;
 const columnPrivileges = ["SELECT", "INSERT", "UPDATE", "REFERENCES"] as const;
 const sequencePrivileges = ["USAGE", "SELECT", "UPDATE"] as const;
@@ -250,10 +251,10 @@ async function reconcileRuntimeGrants(
       `REVOKE ALL ON ALL SEQUENCES IN SCHEMA "public" FROM ${role}`,
     );
     await client.query(
-      `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA "public" FROM PUBLIC`,
+      `REVOKE ALL ON ALL ROUTINES IN SCHEMA "public" FROM PUBLIC`,
     );
     await client.query(
-      `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA "public" FROM ${role}`,
+      `REVOKE ALL ON ALL ROUTINES IN SCHEMA "public" FROM ${role}`,
     );
     await client.query(
       `REVOKE ALL ON ALL TABLES IN SCHEMA "${journalSchema}" FROM PUBLIC`,
@@ -274,7 +275,7 @@ async function reconcileRuntimeGrants(
       'ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON SEQUENCES FROM PUBLIC',
     );
     await client.query(
-      'ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM PUBLIC',
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON ROUTINES FROM PUBLIC',
     );
     await client.query(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON TABLES FROM ${role}`,
@@ -283,7 +284,7 @@ async function reconcileRuntimeGrants(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON SEQUENCES FROM ${role}`,
     );
     await client.query(
-      `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON FUNCTIONS FROM ${role}`,
+      `ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON ROUTINES FROM ${role}`,
     );
     await client.query("COMMIT");
   } catch (error) {

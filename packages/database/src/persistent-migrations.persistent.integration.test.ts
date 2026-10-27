@@ -262,7 +262,14 @@ describe("persistent migration workflow", () => {
          LANGUAGE sql AS 'SELECT 1'`,
       );
       await admin.query(
+        `CREATE OR REPLACE PROCEDURE future_runtime_procedure()
+         LANGUAGE sql AS 'SELECT 1'`,
+      );
+      await admin.query(
         `REVOKE ALL ON FUNCTION future_runtime_function() FROM PUBLIC`,
+      );
+      await admin.query(
+        `REVOKE ALL ON PROCEDURE future_runtime_procedure() FROM PUBLIC`,
       );
     } finally {
       await admin.end();
@@ -281,11 +288,19 @@ describe("persistent migration workflow", () => {
         reason: "runtime column privileges mismatch",
       },
       {
+        grant: `GRANT MAINTAIN ON future_runtime_table TO "${runtimeRole}"`,
+        reason: "runtime table privileges mismatch",
+      },
+      {
         grant: `GRANT USAGE ON SEQUENCE future_runtime_sequence TO "${runtimeRole}"`,
         reason: "runtime sequence privileges mismatch",
       },
       {
         grant: `GRANT EXECUTE ON FUNCTION future_runtime_function() TO "${runtimeRole}"`,
+        reason: "runtime routine privileges mismatch",
+      },
+      {
+        grant: `GRANT EXECUTE ON PROCEDURE future_runtime_procedure() TO "${runtimeRole}"`,
         reason: "runtime routine privileges mismatch",
       },
       {
