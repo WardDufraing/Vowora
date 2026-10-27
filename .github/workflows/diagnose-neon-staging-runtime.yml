@@ -56,10 +56,10 @@ jobs:
             statement_timeout: 15000,
             query_timeout: 15000,
             application_name: "vowora_runtime_preflight_staging",
-            options: "-c search_path=public,pg_catalog",
           });
           try {
             await client.connect();
+            await client.query("SET search_path TO public, pg_catalog");
             const result = await client.query("SELECT current_user, current_database()");
             console.log("Node runtime connection successful:", result.rows[0]);
           } catch (error) {
