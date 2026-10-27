@@ -160,21 +160,17 @@ async function verifyRuntimeConnection(
 export async function readDatabaseEnvironmentMarker(
   client: InstanceType<typeof Client>,
 ): Promise<string | undefined> {
-  const environment = await client.query<{ markers: string[] | null }>(
-    `SELECT array_agg(
-              substring(setting FROM position('=' IN setting) + 1)
-              ORDER BY setting
-            ) AS markers
-       FROM pg_db_role_setting role_setting
-       JOIN pg_database database
-         ON database.oid = role_setting.setdatabase
-      CROSS JOIN LATERAL unnest(role_setting.setconfig) setting
-      WHERE database.datname = current_database()
-        AND role_setting.setrole = 0
-        AND split_part(setting, '=', 1) = 'vowora.environment'`,
+  // Neon restricts custom database GUCs, including ALTER DATABASE SET.
+  // Store the environment identity in the database's owner-controlled comment.
+  // An uninitialized database deliberately fails closed.
+  const result = await client.query<{ marker: string | null }>(
+    `SELECT shobj_description(oid, 'pg_database') AS marker
+       FROM pg_database
+      WHERE datname = current_database()`,
   );
-  const markers = environment.rows[0]?.markers;
-  return markers?.length === 1 ? markers[0] : undefined;
+  const marker = result.rows[0]?.marker;
+  return marker === "vowora:staging" ? "staging" :
+    marker === "vowora:production" ? "production" : undefined;
 }
 
 async function assertRuntimeRoleIsRestricted(
