@@ -269,6 +269,24 @@ async function reconcileRuntimeGrants(
     );
     await client.query(`GRANT INSERT ON TABLE ${appendOnly} TO ${role}`);
     await client.query(
+      "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
+    );
+    await client.query(
+      "ALTER DEFAULT PRIVILEGES REVOKE ALL ON SEQUENCES FROM PUBLIC",
+    );
+    await client.query(
+      "ALTER DEFAULT PRIVILEGES REVOKE ALL ON ROUTINES FROM PUBLIC",
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM ${role}`,
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES REVOKE ALL ON SEQUENCES FROM ${role}`,
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES REVOKE ALL ON ROUTINES FROM ${role}`,
+    );
+    await client.query(
       'ALTER DEFAULT PRIVILEGES IN SCHEMA "public" REVOKE ALL ON TABLES FROM PUBLIC',
     );
     await client.query(

@@ -265,15 +265,12 @@ describe("persistent migration workflow", () => {
         `CREATE OR REPLACE PROCEDURE future_runtime_procedure()
          LANGUAGE sql AS 'SELECT 1'`,
       );
-      await admin.query(
-        `REVOKE ALL ON FUNCTION future_runtime_function() FROM PUBLIC`,
-      );
-      await admin.query(
-        `REVOKE ALL ON PROCEDURE future_runtime_procedure() FROM PUBLIC`,
-      );
     } finally {
       await admin.end();
     }
+    await expect(
+      runPersistentMigration(config("verify")),
+    ).resolves.toBeUndefined();
 
     const driftCases: ReadonlyArray<{
       readonly grant: string;
@@ -309,6 +306,14 @@ describe("persistent migration workflow", () => {
       },
       {
         grant: `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO "${runtimeRole}"`,
+        reason: "runtime default privileges mismatch",
+      },
+      {
+        grant: `ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO "${runtimeRole}"`,
+        reason: "runtime default privileges mismatch",
+      },
+      {
+        grant: `ALTER DEFAULT PRIVILEGES GRANT EXECUTE ON ROUTINES TO "${runtimeRole}"`,
         reason: "runtime default privileges mismatch",
       },
     ];
