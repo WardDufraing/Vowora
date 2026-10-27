@@ -39,7 +39,9 @@ const postgresUrlSchema = z
 
 const runtimeSchema = z.object({
   DATABASE_URL: postgresUrlSchema,
-  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(10).optional(),
+  // Credential/session issuance holds one connection while Better Auth uses a
+  // second connection. Keep both pools inside this shared deployment budget.
+  DATABASE_POOL_MAX: z.coerce.number().int().min(2).max(10).optional(),
   DATABASE_CONNECTION_TIMEOUT_MS: boundedInteger(250, 10_000, 5_000),
   DATABASE_IDLE_TIMEOUT_MS: boundedInteger(1_000, 60_000, 10_000),
   DATABASE_STATEMENT_TIMEOUT_MS: boundedInteger(100, 30_000, 5_000),

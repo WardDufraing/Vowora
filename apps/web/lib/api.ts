@@ -21,6 +21,16 @@ export function jsonResponse<T>(body: T, correlationId: string, status = 200) {
   });
 }
 
+export function emptyResponse(correlationId: string, status = 204) {
+  return new Response(null, {
+    status,
+    headers: {
+      "cache-control": "no-store",
+      "x-correlation-id": correlationId,
+    },
+  });
+}
+
 export function problemResponse(
   request: Request,
   input: Pick<ProblemDetails, "status" | "title" | "detail" | "code">,

@@ -117,6 +117,12 @@ describe("database configuration", () => {
     expect(() =>
       parseRuntimeDatabaseConfig({
         DATABASE_URL: testPostgresUrl({ username: "runtime", tls: false }),
+        DATABASE_POOL_MAX: "1",
+      }),
+    ).toThrow(DatabaseConfigurationError);
+    expect(() =>
+      parseRuntimeDatabaseConfig({
+        DATABASE_URL: testPostgresUrl({ username: "runtime", tls: false }),
         DATABASE_POOL_MAX: "1000",
         DATABASE_STATEMENT_TIMEOUT_MS: "0",
       }),

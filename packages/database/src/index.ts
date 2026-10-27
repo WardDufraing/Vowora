@@ -3,6 +3,11 @@ export {
   parseRuntimeDatabaseConfig,
 } from "./config.js";
 export { createRuntimeDatabase } from "./client.js";
+export { createAuthCredentialLock } from "./auth-credential-lock.js";
+export type {
+  AuthCredentialLock,
+  AuthCredentialLockTarget,
+} from "./auth-credential-lock.js";
 export { account, session, user, verification } from "./schema.js";
 export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";

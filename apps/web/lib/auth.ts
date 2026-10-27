@@ -1,5 +1,6 @@
 import {
   account,
+  type AuthCredentialLock,
   createRuntimeDatabase,
   createUuidV7,
   session,
@@ -21,6 +22,15 @@ import {
 import { correlationIdFor, problemResponse } from "./api";
 
 type AuthDatabase = Parameters<typeof drizzleAdapter>[0];
+type PasswordImplementation = {
+  readonly hash?: (password: string) => Promise<string>;
+  readonly verify?: (input: {
+    readonly hash: string;
+    readonly password: string;
+  }) => Promise<boolean>;
+};
+
+const credentialLocks = new WeakMap<object, AuthCredentialLock>();
 
 export function createVoworaAuth(options: {
   readonly baseURL: string;
@@ -31,8 +41,10 @@ export function createVoworaAuth(options: {
   readonly secret: string;
   readonly sendVerificationEmail: SendVerificationEmail;
   readonly sendPasswordResetEmail: SendPasswordResetEmail;
+  readonly withCredentialLock: AuthCredentialLock;
+  readonly password?: PasswordImplementation;
 }) {
-  return betterAuth({
+  const auth = betterAuth({
     appName: "Vowora",
     logger: { disabled: true },
     telemetry: { enabled: false },
@@ -58,6 +70,7 @@ export function createVoworaAuth(options: {
       autoSignIn: false,
       minPasswordLength: 12,
       maxPasswordLength: 128,
+      ...(options.password ? { password: options.password } : {}),
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user: recipient, url }) => {
@@ -117,6 +130,8 @@ export function createVoworaAuth(options: {
       "/update-user",
     ],
   });
+  credentialLocks.set(auth, options.withCredentialLock);
+  return auth;
 }
 
 let runtimeAuth: ReturnType<typeof createVoworaAuth> | undefined;
@@ -124,7 +139,9 @@ let runtimeAuth: ReturnType<typeof createVoworaAuth> | undefined;
 export function getAuth() {
   if (runtimeAuth) return runtimeAuth;
   const environment = readAuthEnvironment();
-  const { database } = createRuntimeDatabase(process.env);
+  const { database, withAuthCredentialLock } = createRuntimeDatabase(
+    process.env,
+  );
   runtimeAuth = createVoworaAuth({
     baseURL: environment.NEXT_PUBLIC_APP_URL,
     backgroundTaskHandler: (promise) => after(() => promise),
@@ -139,6 +156,7 @@ export function getAuth() {
       apiKey: environment.RESEND_API_KEY,
       from: environment.AUTH_EMAIL_FROM,
     }),
+    withCredentialLock: withAuthCredentialLock,
   });
   return runtimeAuth;
 }
@@ -176,7 +194,22 @@ export async function handleAuthRequest(
       code: "AUTHENTICATION_FAILED",
     });
   }
-  const response = await auth.handler(request);
+  const credentialTarget = await credentialLockTarget(request);
+  const lock = credentialLocks.get(auth);
+  if (!lock) throw new Error("Credential lock is not configured");
+  let response: Response;
+  try {
+    response = credentialTarget
+      ? await lock(credentialTarget, () => auth.handler(request))
+      : await auth.handler(request);
+  } catch {
+    return problemResponse(request, {
+      status: 500,
+      title: "Authentication service unavailable",
+      detail: "The authentication request could not be completed.",
+      code: "AUTHENTICATION_SERVICE_FAILURE",
+    });
+  }
   if (
     response.status >= 400 &&
     response.headers.get("content-type")?.includes("application/json")
@@ -199,6 +232,24 @@ export async function handleAuthRequest(
     statusText: response.statusText,
     headers,
   });
+}
+
+async function credentialLockTarget(
+  request: Request,
+): Promise<Parameters<AuthCredentialLock>[0] | undefined> {
+  const pathname = new URL(request.url).pathname;
+  if (
+    request.method !== "POST" ||
+    (pathname !== "/api/v1/auth/sign-in/email" &&
+      pathname !== "/api/v1/auth/reset-password")
+  ) {
+    return undefined;
+  }
+  const body = (await request.clone().json()) as Record<string, unknown>;
+  if (pathname === "/api/v1/auth/sign-in/email") {
+    return { email: String(body.email) };
+  }
+  return { resetToken: String(body.token) };
 }
 
 const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([

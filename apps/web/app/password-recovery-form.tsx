@@ -13,39 +13,47 @@ export function PasswordRecoveryForm({ token }: { token?: string }) {
     setBusy(true);
     const data = new FormData(event.currentTarget);
     const reset = typeof token === "string" && token.length > 0;
-    const response = await fetch(
-      `/api/v1/auth/${reset ? "reset-password" : "request-password-reset"}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
+    try {
+      const response = await fetch(
+        `/api/v1/auth/${reset ? "reset-password" : "request-password-reset"}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            reset
+              ? { token, newPassword: String(data.get("password") ?? "") }
+              : {
+                  email: String(data.get("email") ?? ""),
+                  redirectTo: `${window.location.origin}/reset-password`,
+                },
+          ),
+        },
+      );
+      if (!response.ok) {
+        setMessage(
           reset
-            ? { token, newPassword: String(data.get("password") ?? "") }
-            : {
-                email: String(data.get("email") ?? ""),
-                redirectTo: `${window.location.origin}/reset-password`,
-              },
-        ),
-      },
-    );
-    if (!response.ok) {
+            ? "This reset link is invalid or expired. Request a new one."
+            : "The request could not be completed. Please try again.",
+        );
+        return;
+      }
+      if (reset) {
+        setMessage("Password updated. Sign in again on every device.");
+        setTimeout(() => router.push("/sign-in"), 800);
+      } else {
+        setMessage(
+          "If an account exists for that email, a reset link will arrive shortly.",
+        );
+      }
+    } catch {
       setMessage(
         reset
           ? "This reset link is invalid or expired. Request a new one."
           : "The request could not be completed. Please try again.",
       );
+    } finally {
       setBusy(false);
-      return;
     }
-    if (reset) {
-      setMessage("Password updated. Sign in again on every device.");
-      setTimeout(() => router.push("/sign-in"), 800);
-    } else {
-      setMessage(
-        "If an account exists for that email, a reset link will arrive shortly.",
-      );
-    }
-    setBusy(false);
   }
 
   return (

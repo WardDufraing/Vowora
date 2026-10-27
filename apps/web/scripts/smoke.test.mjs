@@ -170,6 +170,7 @@ test(
         "/api/v1/auth/get-session",
         "/api/v1/auth/request-password-reset",
         "/api/v1/auth/reset-password",
+        "/api/v1/auth/reset-password/{token}",
         "/api/v1/account/sessions",
         "/api/v1/account/sessions/{sessionId}",
         "/api/v1/{path}",

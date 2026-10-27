@@ -48,4 +48,21 @@ describe("password recovery form", () => {
       "Password updated. Sign in again on every device.",
     );
   });
+
+  it("recovers from a rejected request without leaving the form disabled", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockRejectedValue(new TypeError("network failed")),
+    );
+    const user = userEvent.setup();
+    render(<PasswordRecoveryForm />);
+    await user.type(screen.getByLabelText("Email"), "partner@example.test");
+    await user.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "The request could not be completed. Please try again.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Send reset link" }),
+    ).toBeEnabled();
+  });
 });
