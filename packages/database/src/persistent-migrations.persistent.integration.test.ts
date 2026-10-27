@@ -76,7 +76,7 @@ describe("persistent migration workflow", () => {
       await client.query("DROP TABLE IF EXISTS future_runtime_table");
       const database = new URL(migrationUrl!).pathname.replace(/^\/+/, "");
       await client.query(
-        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'production'`,
+        `COMMENT ON DATABASE "${database.replaceAll('"', '""')}" IS 'vowora:production'`,
       );
     } finally {
       await client.end();
@@ -135,7 +135,7 @@ describe("persistent migration workflow", () => {
       expect(journal.rows[0]?.journal).toBeNull();
       const database = new URL(migrationUrl!).pathname.replace(/^\/+/, "");
       await client.query(
-        `ALTER DATABASE "${database.replaceAll('"', '""')}" SET "vowora.environment" TO 'staging'`,
+        `COMMENT ON DATABASE "${database.replaceAll('"', '""')}" IS 'vowora:staging'`,
       );
     } finally {
       await client.end();

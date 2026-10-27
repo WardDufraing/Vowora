@@ -114,7 +114,6 @@ function clientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_migrate_${config.target}`,
-
   });
 }
 
@@ -125,7 +124,6 @@ function runtimeClientFor(config: PersistentMigrationConfig) {
     statement_timeout: config.statementTimeoutMs,
     query_timeout: config.statementTimeoutMs,
     application_name: `vowora_runtime_preflight_${config.target}`,
-
   });
 }
 
@@ -170,8 +168,11 @@ export async function readDatabaseEnvironmentMarker(
       WHERE datname = current_database()`,
   );
   const marker = result.rows[0]?.marker;
-  return marker === "vowora:staging" ? "staging" :
-    marker === "vowora:production" ? "production" : undefined;
+  return marker === "vowora:staging"
+    ? "staging"
+    : marker === "vowora:production"
+      ? "production"
+      : undefined;
 }
 
 async function assertRuntimeRoleIsRestricted(
