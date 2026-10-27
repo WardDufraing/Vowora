@@ -21,7 +21,7 @@ jobs:
 
       - name: Check database identity and permissions
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
 
@@ -46,7 +46,7 @@ jobs:
 
       - name: Set staging environment marker
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
 
@@ -56,7 +56,7 @@ jobs:
 
       - name: Verify marker on new connection
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
         run: |
           set -euo pipefail
 
