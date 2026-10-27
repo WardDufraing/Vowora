@@ -22,7 +22,9 @@
     "test:unit:watch": "vitest",
     "test:e2e": "pnpm --filter @vowora/web test:e2e && pnpm --filter @vowora/marketing test",
     "test:tooling": "node --test scripts/quality.test.mjs",
-    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && turbo run test:integration --filter=@vowora/database --filter=@vowora/web"
+    "test:database": "pnpm --filter @vowora/database db:check && pnpm --filter @vowora/database db:drift && pnpm --filter @vowora/database db:safety && turbo run test:integration --filter=@vowora/database --filter=@vowora/web",
+    "test:persistent-migrations": "pnpm exec turbo run build --filter=@vowora/database && pnpm --filter @vowora/database test:persistent-migrations",
+    "db:migrate:persistent": "pnpm exec turbo run build --filter=@vowora/database && node packages/database/dist/persistent-migrate-cli.js"
   },
   "devDependencies": {
     "turbo": "2.11.10",

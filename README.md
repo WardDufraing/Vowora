@@ -36,3 +36,5 @@ From the repository root run `pnpm format:check`, `pnpm lint`, `pnpm typecheck`,
 ## Database development
 
 Database schema and migration tooling lives in `packages/database` and builds without credentials. Run `pnpm test:database` only with a dedicated synthetic PostgreSQL test database through `DATABASE_MIGRATION_URL` and `DATABASE_MIGRATION_TARGET=test`; see the [02-a database handoff](docs/implementation/02-a-database.md). Never use runtime or production credentials for migration tests.
+
+Persistent staging/production migrations use the separately reviewed manual workflow and CLI documented in [the persistent migration handoff](docs/implementation/03-a-persistent-migrations.md). They require an explicit target, direct migration identity, distinct runtime identity and extra production confirmation. They never run during builds. Do not use `pnpm test:database` or `pnpm test:persistent-migrations` with persistent Neon credentials.

@@ -1,0 +1,66 @@
+name: Persistent database migration
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Database environment
+        type: choice
+        options:
+          - staging
+          - production
+        required: true
+      mode:
+        description: Verify current state or apply committed migrations
+        type: choice
+        options:
+          - verify
+          - apply
+        required: true
+      production_confirmation:
+        description: For production apply, type APPLY_VOWORA_PRODUCTION_MIGRATIONS
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: persistent-migration-${{ inputs.target }}
+  cancel-in-progress: false
+jobs:
+  migrate:
+    name: ${{ inputs.mode }} ${{ inputs.target }} database
+    if: >-
+      (inputs.target == 'staging' && github.ref == 'refs/heads/main') ||
+      (inputs.target == 'production' && github.ref == 'refs/heads/production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.target == 'production' && 'production' || 'main' }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate reviewed migrations
+        run: |
+          pnpm --filter @vowora/database db:check
+          pnpm --filter @vowora/database db:drift
+          pnpm --filter @vowora/database db:safety
+      - name: Build reviewed migration CLI without database secrets
+        run: pnpm exec turbo run build --filter=@vowora/database
+      - name: Run controlled persistent migration
+        shell: bash
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MIGRATION_TARGET: ${{ inputs.target }}
+          MIGRATION_MODE: ${{ inputs.mode }}
+          PRODUCTION_CONFIRMATION: ${{ inputs.production_confirmation }}
+        run: >-
+          node packages/database/dist/persistent-migrate-cli.js
+          --target "$MIGRATION_TARGET"
+          --mode "$MIGRATION_MODE"
+          --confirm-production "$PRODUCTION_CONFIRMATION"
