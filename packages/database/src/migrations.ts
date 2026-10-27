@@ -7,6 +7,10 @@ import pg from "pg";
 
 import type { TestMigrationConfig } from "./config.js";
 import * as schema from "./schema.js";
+import {
+  createAuthCredentialLock,
+  type AuthCredentialLock,
+} from "./auth-credential-lock.js";
 
 const { Client } = pg;
 const schemaPattern = /^vowora_test_[a-f0-9]{20}$/;
@@ -57,6 +61,23 @@ export async function applyMigrations(
 
 export function createTestDatabase(client: InstanceType<typeof Client>) {
   return drizzle(client, { casing: "snake_case", schema });
+}
+
+export async function withTestAuthCredentialLock<T>(
+  config: TestMigrationConfig,
+  schemaName: string,
+  callback: (lock: AuthCredentialLock) => Promise<T>,
+): Promise<T> {
+  quotedSchema(schemaName);
+  const pool = new pg.Pool({
+    ...clientConfig(config, schemaName),
+    max: 3,
+  });
+  try {
+    return await callback(createAuthCredentialLock(pool));
+  } finally {
+    await pool.end();
+  }
 }
 
 export async function withIsolatedTestSchema<T>(

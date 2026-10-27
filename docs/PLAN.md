@@ -33,7 +33,7 @@
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Done | [Brief](steps/02-b.md) |
 | 02-c | Audit events and transactional outbox | 02-b | In review | [Brief](steps/02-c.md) |
 | 03-a | Authentication integration | 02-c | In review | [Brief](steps/03-a.md) |
-| 03-b | Session management and account recovery | 03-a | Not started | [Brief](steps/03-b.md) |
+| 03-b | Session management and account recovery | 03-a | In review | [Brief](steps/03-b.md) |
 | 03-c | Authentication abuse protections and tests | 03-b | Not started | [Brief](steps/03-c.md) |
 | 04-a | Permission vocabulary and role model | 03-c | Not started | [Brief](steps/04-a.md) |
 | 04-b | Server authorization enforcement | 04-a | Not started | [Brief](steps/04-b.md) |
@@ -96,6 +96,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-27 — Owner verified merged 03-a authentication end to end on the isolated staging environment and kept production disabled. Fresh implementer `/root/implement_03_b` started session management and password recovery from integrated main `f47058d`; continuation `/root/continue_03_b` preserved the same branch after usage exhaustion. Review found an old-password sign-in/reset race and four API/UI contract gaps; all are fixed with deterministic PostgreSQL and focused regressions. Final fresh reviewer `/root/continue_03_b/final_review_03_b` found no remaining issues on `ae622a6`. [PR #30](https://github.com/WardDufraing/Vowora/pull/30) awaits owner merge; evidence is in [the 03-b handoff](implementation/03-b-session-recovery.md). No persistent migration or external configuration was performed.
 
 - 2026-10-26 — Owner requested a controlled persistent Neon migration workflow after merging 03-a. Fresh implementer `/root/implement_persistent_migrations` started the operational follow-up from merged main `5e0d2f3`; scope and evidence are recorded in [the persistent migration handoff](implementation/03-a-persistent-migrations.md). Review found target binding, workflow secret/ref, runtime authentication, session-marker override, connection-parameter, complete privilege-verification, procedure/`MAINTAIN`, and global default-ACL gaps. All are fixed with disposable PostgreSQL regressions. Final fresh reviewer `/root/finalize_persistent_migrations/global_defaults_final_review` found no remaining issues on `4c45379`; owner merge of PR #26 remains required before any execution. No Neon, Vercel, staging or production migration was performed.
 

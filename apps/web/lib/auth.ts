@@ -1,5 +1,6 @@
 import {
   account,
+  type AuthCredentialLock,
   createRuntimeDatabase,
   createUuidV7,
   session,
@@ -13,12 +14,23 @@ import { z } from "zod";
 
 import { readAuthEnvironment } from "./env";
 import {
+  createResendPasswordResetEmailSender,
   createResendVerificationEmailSender,
+  type SendPasswordResetEmail,
   type SendVerificationEmail,
 } from "./verification-email";
 import { correlationIdFor, problemResponse } from "./api";
 
 type AuthDatabase = Parameters<typeof drizzleAdapter>[0];
+type PasswordImplementation = {
+  readonly hash?: (password: string) => Promise<string>;
+  readonly verify?: (input: {
+    readonly hash: string;
+    readonly password: string;
+  }) => Promise<boolean>;
+};
+
+const credentialLocks = new WeakMap<object, AuthCredentialLock>();
 
 export function createVoworaAuth(options: {
   readonly baseURL: string;
@@ -28,8 +40,11 @@ export function createVoworaAuth(options: {
   readonly scheduleBackgroundTask: (task: () => Promise<void>) => void;
   readonly secret: string;
   readonly sendVerificationEmail: SendVerificationEmail;
+  readonly sendPasswordResetEmail: SendPasswordResetEmail;
+  readonly withCredentialLock: AuthCredentialLock;
+  readonly password?: PasswordImplementation;
 }) {
-  return betterAuth({
+  const auth = betterAuth({
     appName: "Vowora",
     logger: { disabled: true },
     telemetry: { enabled: false },
@@ -55,6 +70,26 @@ export function createVoworaAuth(options: {
       autoSignIn: false,
       minPasswordLength: 12,
       maxPasswordLength: 128,
+      ...(options.password ? { password: options.password } : {}),
+      resetPasswordTokenExpiresIn: 60 * 60,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user: recipient, url }) => {
+        options.scheduleBackgroundTask(async () => {
+          try {
+            await options.sendPasswordResetEmail({
+              recipient: recipient.email,
+              resetUrl: url,
+            });
+          } catch {
+            // The single-use token expires and a new request can be made safely.
+          }
+        });
+      },
+    },
+    session: {
+      expiresIn: 60 * 60 * 24 * 30,
+      updateAge: 60 * 60 * 24,
+      freshAge: 60 * 15,
     },
     emailVerification: {
       expiresIn: 60 * 60,
@@ -86,13 +121,7 @@ export function createVoworaAuth(options: {
       "/get-access-token",
       "/link-social",
       "/list-accounts",
-      "/list-sessions",
       "/refresh-token",
-      "/request-password-reset",
-      "/reset-password",
-      "/reset-password/:token",
-      "/revoke-other-sessions",
-      "/revoke-session",
       "/revoke-sessions",
       "/set-password",
       "/sign-in/social",
@@ -101,6 +130,8 @@ export function createVoworaAuth(options: {
       "/update-user",
     ],
   });
+  credentialLocks.set(auth, options.withCredentialLock);
+  return auth;
 }
 
 let runtimeAuth: ReturnType<typeof createVoworaAuth> | undefined;
@@ -108,7 +139,9 @@ let runtimeAuth: ReturnType<typeof createVoworaAuth> | undefined;
 export function getAuth() {
   if (runtimeAuth) return runtimeAuth;
   const environment = readAuthEnvironment();
-  const { database } = createRuntimeDatabase(process.env);
+  const { database, withAuthCredentialLock } = createRuntimeDatabase(
+    process.env,
+  );
   runtimeAuth = createVoworaAuth({
     baseURL: environment.NEXT_PUBLIC_APP_URL,
     backgroundTaskHandler: (promise) => after(() => promise),
@@ -119,6 +152,11 @@ export function getAuth() {
       apiKey: environment.RESEND_API_KEY,
       from: environment.AUTH_EMAIL_FROM,
     }),
+    sendPasswordResetEmail: createResendPasswordResetEmailSender({
+      apiKey: environment.RESEND_API_KEY,
+      from: environment.AUTH_EMAIL_FROM,
+    }),
+    withCredentialLock: withAuthCredentialLock,
   });
   return runtimeAuth;
 }
@@ -156,7 +194,22 @@ export async function handleAuthRequest(
       code: "AUTHENTICATION_FAILED",
     });
   }
-  const response = await auth.handler(request);
+  const credentialTarget = await credentialLockTarget(request);
+  const lock = credentialLocks.get(auth);
+  if (!lock) throw new Error("Credential lock is not configured");
+  let response: Response;
+  try {
+    response = credentialTarget
+      ? await lock(credentialTarget, () => auth.handler(request))
+      : await auth.handler(request);
+  } catch {
+    return problemResponse(request, {
+      status: 500,
+      title: "Authentication service unavailable",
+      detail: "The authentication request could not be completed.",
+      code: "AUTHENTICATION_SERVICE_FAILURE",
+    });
+  }
   if (
     response.status >= 400 &&
     response.headers.get("content-type")?.includes("application/json")
@@ -181,18 +234,51 @@ export async function handleAuthRequest(
   });
 }
 
+async function credentialLockTarget(
+  request: Request,
+): Promise<Parameters<AuthCredentialLock>[0] | undefined> {
+  const pathname = new URL(request.url).pathname;
+  if (
+    request.method !== "POST" ||
+    (pathname !== "/api/v1/auth/sign-in/email" &&
+      pathname !== "/api/v1/auth/reset-password")
+  ) {
+    return undefined;
+  }
+  const body = (await request.clone().json()) as Record<string, unknown>;
+  if (pathname === "/api/v1/auth/sign-in/email") {
+    return { email: String(body.email) };
+  }
+  return { resetToken: String(body.token) };
+}
+
 const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([
   ["/api/v1/auth/get-session", new Set(["GET"])],
   ["/api/v1/auth/send-verification-email", new Set(["POST"])],
   ["/api/v1/auth/sign-in/email", new Set(["POST"])],
   ["/api/v1/auth/sign-up/email", new Set(["POST"])],
   ["/api/v1/auth/verify-email", new Set(["GET"])],
+  ["/api/v1/auth/request-password-reset", new Set(["POST"])],
+  ["/api/v1/auth/reset-password", new Set(["POST"])],
 ]);
 
 const callbackURLSchema = z.string().min(1).max(2048);
 const emailSchema = z.email().max(320);
 const passwordSchema = z.string().min(12).max(128);
 const authBodySchemas = new Map<string, z.ZodType>([
+  [
+    "/api/v1/auth/request-password-reset",
+    z.object({ email: emailSchema, redirectTo: callbackURLSchema }).strict(),
+  ],
+  [
+    "/api/v1/auth/reset-password",
+    z
+      .object({
+        newPassword: passwordSchema,
+        token: z.string().min(1).max(4096),
+      })
+      .strict(),
+  ],
   [
     "/api/v1/auth/send-verification-email",
     z.object({ email: emailSchema, callbackURL: callbackURLSchema }).strict(),
@@ -225,14 +311,29 @@ const authBodySchemas = new Map<string, z.ZodType>([
 ]);
 
 function isAllowedAuthRoute(request: Request): boolean {
-  return Boolean(
-    allowedAuthRoutes.get(new URL(request.url).pathname)?.has(request.method),
-  );
+  const pathname = new URL(request.url).pathname;
+  if (
+    request.method === "GET" &&
+    /^\/api\/v1\/auth\/reset-password\/[^/]+$/.test(pathname)
+  ) {
+    return true;
+  }
+  return Boolean(allowedAuthRoutes.get(pathname)?.has(request.method));
 }
 
 async function hasValidAuthContract(request: Request): Promise<boolean> {
   const url = new URL(request.url);
   if (request.method === "GET") {
+    if (/^\/api\/v1\/auth\/reset-password\/[^/]+$/.test(url.pathname)) {
+      const token = url.pathname.slice(url.pathname.lastIndexOf("/") + 1);
+      return (
+        token.length > 0 &&
+        token.length <= 4096 &&
+        url.searchParams.size === 1 &&
+        url.searchParams.getAll("callbackURL").length === 1 &&
+        callbackURLSchema.safeParse(url.searchParams.get("callbackURL")).success
+      );
+    }
     if (url.pathname === "/api/v1/auth/get-session") {
       return url.searchParams.size === 0;
     }
@@ -286,8 +387,13 @@ async function callbackURLFrom(request: Request): Promise<unknown> {
   }
   try {
     const body: unknown = await request.clone().json();
-    if (typeof body === "object" && body !== null && "callbackURL" in body) {
-      return (body as { readonly callbackURL?: unknown }).callbackURL;
+    if (typeof body === "object" && body !== null) {
+      if ("callbackURL" in body) {
+        return (body as { readonly callbackURL?: unknown }).callbackURL;
+      }
+      if ("redirectTo" in body) {
+        return (body as { readonly redirectTo?: unknown }).redirectTo;
+      }
     }
   } catch {
     // Better Auth returns its normal safe malformed-request response.

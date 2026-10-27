@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createResendPasswordResetEmailSender,
   createResendVerificationEmailSender,
+  PasswordResetEmailDeliveryError,
   VerificationEmailDeliveryError,
 } from "./verification-email";
 
@@ -97,5 +99,47 @@ describe("verification email delivery", () => {
         verificationUrl: "https://app.vowora.app/verify",
       }),
     ).rejects.toBeInstanceOf(VerificationEmailDeliveryError);
+  });
+});
+
+describe("password reset email delivery", () => {
+  it("sends a bounded single-use reset message without leaking credentials", async () => {
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 202 }));
+    const sender = createResendPasswordResetEmailSender({
+      apiKey: "private-reset-key",
+      from: "accounts@vowora.app",
+      fetch: request,
+    });
+    await sender({
+      recipient: "partner@example.test",
+      resetUrl:
+        "https://app.vowora.app/reset-password?token=secret&next=%3Cbad%3E",
+    });
+    const [, init] = request.mock.calls[0]!;
+    const body = JSON.parse(String(init?.body));
+    expect(body.subject).toBe("Reset your Vowora password");
+    expect(body.html).toContain("token=secret&amp;next=%3Cbad%3E");
+    expect(body.html).not.toContain("private-reset-key");
+    expect(
+      (init?.headers as Record<string, string>)["Idempotency-Key"],
+    ).toMatch(/^vowora-password-reset-/);
+  });
+
+  it("uses a fixed safe error for password-reset delivery failures", async () => {
+    const sender = createResendPasswordResetEmailSender({
+      apiKey: "private-reset-key",
+      from: "accounts@vowora.app",
+      fetch: vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response("private", { status: 500 })),
+    });
+    await expect(
+      sender({
+        recipient: "partner@example.test",
+        resetUrl: "https://app.vowora.app/reset-password?token=secret",
+      }),
+    ).rejects.toBeInstanceOf(PasswordResetEmailDeliveryError);
   });
 });

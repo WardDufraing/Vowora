@@ -59,6 +59,36 @@ test("verification page offers an enumeration-safe resend form", async ({
   ).toBeVisible();
 });
 
+test("password recovery renders safe accessible request and reset states", async ({
+  page,
+}) => {
+  await page.goto("/forgot-password");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Reset your password",
+  );
+  await expect(page.getByLabel("Email")).toHaveAttribute(
+    "autocomplete",
+    "email",
+  );
+  await expect(
+    page.getByRole("button", { name: "Send reset link" }),
+  ).toBeVisible();
+
+  await page.goto("/reset-password?token=synthetic-token");
+  await expect(page.getByLabel("New password")).toHaveAttribute(
+    "autocomplete",
+    "new-password",
+  );
+  await expect(
+    page.getByRole("button", { name: "Set new password" }),
+  ).toBeVisible();
+
+  await page.goto("/reset-password?error=INVALID_TOKEN");
+  await expect(
+    page.getByText("This reset link is invalid or expired.", { exact: true }),
+  ).toBeVisible();
+});
+
 test("product foundation fits narrow mobile viewports", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/");
