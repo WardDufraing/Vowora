@@ -1,0 +1,72 @@
+
+name: Set Neon Staging Environment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure-staging:
+    name: Configure Neon staging
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Check database identity and permissions
+        env:
+          DATABASE_URL: ${{ secrets.NEON_OWNER_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::NEON_OWNER_DATABASE_URL is missing"
+            exit 1
+          fi
+
+          psql "$DATABASE_URL" \
+            -X -v ON_ERROR_STOP=1 \
+            -c "
+              SELECT current_database() AS database,
+                     current_user AS connected_role,
+                     pg_get_userbyid(d.datdba) AS owner,
+                     (SELECT rolname
+                      FROM pg_roles
+                      WHERE oid = d.datdba) = current_user
+                       AS is_owner
+              FROM pg_database d
+              WHERE d.datname = current_database();
+            "
+
+      - name: Set staging environment marker
+        env:
+          DATABASE_URL: ${{ secrets.NEON_OWNER_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+
+          psql "$DATABASE_URL" \
+            -X -v ON_ERROR_STOP=1 \
+            -c 'ALTER DATABASE vowora SET "vowora.environment" TO '\''staging'\'';'
+
+      - name: Verify marker on new connection
+        env:
+          DATABASE_URL: ${{ secrets.NEON_OWNER_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+
+          RESULT=$(psql "$DATABASE_URL" \
+            -X -t -A -v ON_ERROR_STOP=1 \
+            -c "SELECT current_setting('vowora.environment', true);")
+
+          if [ "$RESULT" != "staging" ]; then
+            echo "::error::Staging marker verification failed"
+            exit 1
+          fi
+
+          echo "Neon staging environment marker verified"
