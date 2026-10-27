@@ -11,10 +11,6 @@ export function createRuntimeDatabase(environment: NodeJS.ProcessEnv) {
     max: config.poolMax,
     connectionTimeoutMillis: config.connectionTimeoutMs,
     idleTimeoutMillis: config.idleTimeoutMs,
-    options: [
-      `-c statement_timeout=${config.statementTimeoutMs}`,
-      `-c idle_in_transaction_session_timeout=${config.transactionIdleTimeoutMs}`,
-    ].join(" "),
   });
   return {
     database: drizzle(pool, { casing: "snake_case", schema }),
