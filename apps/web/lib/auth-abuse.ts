@@ -23,7 +23,7 @@ export interface AuthAbuseProtection {
   evaluate(input: AuthAbuseInput): Promise<AuthAbuseDecision>;
 }
 
-const progressiveCounterScript = `
+export const authAbuseCounterScript = `
 local now = tonumber(redis.call('TIME')[1])
 local values = redis.call('HMGET', KEYS[1], 'count', 'window_started', 'strikes', 'blocked_until', 'last_seen')
 local count = tonumber(values[1]) or 0
@@ -33,6 +33,11 @@ local blocked_until = tonumber(values[4]) or 0
 local last_seen = tonumber(values[5]) or 0
 local window = tonumber(ARGV[1])
 local maximum = tonumber(ARGV[2])
+local dimension = ARGV[3]
+if dimension == 'identity' then
+  blocked_until = 0
+  strikes = 0
+end
 if blocked_until > now then
   return {'block', blocked_until - now, strikes}
 end
@@ -46,7 +51,10 @@ end
 count = count + 1
 local outcome = 'allow'
 local retry_after = 0
-if count > maximum + 2 then
+if dimension == 'identity' and count > maximum then
+  count = maximum
+  outcome = 'challenge'
+elseif count > maximum + 2 then
   strikes = math.min(6, strikes + 1)
   retry_after = math.min(900, window * (2 ^ (strikes - 1)))
   blocked_until = now + retry_after
@@ -140,11 +148,12 @@ export function createUpstashAuthAbuseProtection(config: {
       },
       body: JSON.stringify([
         "EVAL",
-        progressiveCounterScript,
+        authAbuseCounterScript,
         "1",
         `vowora:auth:v1:${digest}`,
         String(input.rule.windowSeconds),
         String(input.rule.maximumAttempts),
+        dimension,
       ]),
       signal: AbortSignal.timeout(timeoutMs),
     });

@@ -32,6 +32,7 @@
       "cache": false,
       "outputs": [],
       "env": [
+        "AUTH_ABUSE_REDIS_URL",
         "DATABASE_MIGRATION_URL",
         "DATABASE_MIGRATION_TARGET",
         "DATABASE_MIGRATION_USERNAME",
