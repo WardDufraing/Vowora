@@ -1,0 +1,555 @@
+import { z } from "zod";
+
+export const weddingPermissionAreas = [
+  "tasks",
+  "schedule",
+  "guests",
+  "contacts",
+  "vendors",
+  "budget",
+  "documents",
+  "notes",
+  "decisions",
+] as const;
+
+export const weddingPermissionActions = [
+  "view",
+  "edit",
+  "download_export",
+] as const;
+
+export const weddingRolePresets = [
+  "partner",
+  "planner",
+  "coordinator",
+  "helper",
+  "read_only_guest",
+] as const;
+
+export const recordRelationships = [
+  "workspace",
+  "assigned",
+  "explicitly_shared",
+  "essential_contact",
+  "new_record",
+] as const;
+
+export type WeddingPermissionArea = (typeof weddingPermissionAreas)[number];
+export type WeddingPermissionAction = (typeof weddingPermissionActions)[number];
+export type WeddingRolePreset = (typeof weddingRolePresets)[number];
+export type RecordRelationship = (typeof recordRelationships)[number];
+
+const permissionScopeSchema = z.enum([
+  "workspace",
+  "assigned",
+  "explicitly_shared",
+  "assigned_or_shared",
+  "essential_contact",
+]);
+
+export type PermissionScope = z.output<typeof permissionScopeSchema>;
+
+const permissionOverrideSchema = z.strictObject({
+  area: z.enum(weddingPermissionAreas),
+  action: z.enum(weddingPermissionActions),
+  effect: z.enum(["allow", "deny"]),
+  scope: permissionScopeSchema.optional(),
+});
+
+export type PermissionOverride = Readonly<
+  z.output<typeof permissionOverrideSchema>
+>;
+
+const weddingMembershipSchema = z.strictObject({
+  actorId: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  role: z.enum(weddingRolePresets),
+  status: z.enum(["active", "revoked"]),
+  accessExpiresAt: z.iso.datetime({ offset: true }).nullable(),
+  permissionOverrides: z.array(permissionOverrideSchema).max(128).default([]),
+});
+
+const organizationMembershipSchema = z.strictObject({
+  actorId: z.uuidv7(),
+  organizationId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
+  permissionOverrides: z.array(permissionOverrideSchema).max(128).default([]),
+});
+
+const independentPlannerIdentitySchema = z.strictObject({
+  actorId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
+});
+
+type ParsedWeddingMembership = z.output<typeof weddingMembershipSchema>;
+type ParsedOrganizationMembership = z.output<
+  typeof organizationMembershipSchema
+>;
+
+export type WeddingMembership = Readonly<
+  Omit<ParsedWeddingMembership, "permissionOverrides"> & {
+    readonly permissionOverrides: readonly PermissionOverride[];
+  }
+>;
+export type OrganizationMembership = Readonly<
+  Omit<ParsedOrganizationMembership, "permissionOverrides"> & {
+    readonly permissionOverrides: readonly PermissionOverride[];
+  }
+>;
+export type IndependentPlannerIdentity = Readonly<
+  z.output<typeof independentPlannerIdentitySchema>
+>;
+
+export type PermissionDecisionReason =
+  | "allowed"
+  | "actor_mismatch"
+  | "cross_tenant"
+  | "private_record"
+  | "membership_inactive"
+  | "record_out_of_scope"
+  | "permission_denied";
+
+export interface PermissionDecision {
+  readonly allowed: boolean;
+  readonly reason: PermissionDecisionReason;
+}
+
+export interface WeddingRecordPermissionRequest {
+  readonly actorId: string;
+  readonly weddingId: string;
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly relationship: RecordRelationship;
+  readonly visibility: "wedding_shared";
+}
+
+export interface OrganizationPrivateRecordPermissionRequest {
+  readonly actorId: string;
+  readonly organizationId: string;
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly relationship: RecordRelationship;
+  readonly visibility: "organization_private";
+}
+
+export interface IndependentPlannerPrivateRecordPermissionRequest {
+  readonly actorId: string;
+  readonly ownerActorId: string;
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly relationship: RecordRelationship;
+  readonly visibility: "independent_planner_private";
+}
+
+export class PermissionModelValidationError extends Error {
+  readonly fields: readonly string[];
+
+  constructor(fields: readonly string[]) {
+    super(`Invalid permission model: ${fields.join(", ")}`);
+    this.name = "PermissionModelValidationError";
+    this.fields = fields;
+  }
+}
+
+function parseMembership(
+  schema: typeof weddingMembershipSchema,
+  input: unknown,
+): WeddingMembership;
+function parseMembership(
+  schema: typeof organizationMembershipSchema,
+  input: unknown,
+): OrganizationMembership;
+function parseMembership(
+  schema: typeof weddingMembershipSchema | typeof organizationMembershipSchema,
+  input: unknown,
+): WeddingMembership | OrganizationMembership {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    throw new PermissionModelValidationError(
+      [
+        ...new Set(
+          parsed.error.issues.map(
+            (issue) => issue.path.join(".") || "membership",
+          ),
+        ),
+      ].sort(),
+    );
+  }
+
+  const duplicateKeys = new Set<string>();
+  for (const override of parsed.data.permissionOverrides) {
+    const key = `${override.area}:${override.action}`;
+    if (duplicateKeys.has(key)) {
+      throw new PermissionModelValidationError(["permissionOverrides"]);
+    }
+    duplicateKeys.add(key);
+    if (override.effect === "allow" && override.scope === undefined) {
+      throw new PermissionModelValidationError(["permissionOverrides.scope"]);
+    }
+    if (override.effect === "deny" && override.scope !== undefined) {
+      throw new PermissionModelValidationError(["permissionOverrides.scope"]);
+    }
+  }
+  if (
+    "role" in parsed.data &&
+    (parsed.data.role === "partner" || parsed.data.role === "planner") &&
+    parsed.data.accessExpiresAt !== null
+  ) {
+    throw new PermissionModelValidationError(["accessExpiresAt"]);
+  }
+  if (
+    "role" in parsed.data &&
+    parsed.data.role !== "partner" &&
+    parsed.data.role !== "planner" &&
+    parsed.data.permissionOverrides.some(
+      (override) =>
+        override.action === "edit" &&
+        override.effect === "allow" &&
+        override.scope !== "assigned" &&
+        override.scope !== "explicitly_shared" &&
+        override.scope !== "assigned_or_shared",
+    )
+  ) {
+    throw new PermissionModelValidationError(["permissionOverrides.scope"]);
+  }
+
+  return Object.freeze({
+    ...parsed.data,
+    permissionOverrides: Object.freeze(
+      parsed.data.permissionOverrides.map((override) =>
+        Object.freeze({ ...override }),
+      ),
+    ),
+  });
+}
+
+/** Parses an authoritative wedding-membership projection before policy use. */
+export function parseWeddingMembership(input: unknown): WeddingMembership {
+  return parseMembership(weddingMembershipSchema, input);
+}
+
+/** Parses an authoritative organization-membership projection before policy use. */
+export function parseOrganizationMembership(
+  input: unknown,
+): OrganizationMembership {
+  return parseMembership(organizationMembershipSchema, input);
+}
+
+/** Parses the authoritative identity that owns independent-planner records. */
+export function parseIndependentPlannerIdentity(
+  input: unknown,
+): IndependentPlannerIdentity {
+  const parsed = independentPlannerIdentitySchema.safeParse(input);
+  if (!parsed.success) {
+    throw new PermissionModelValidationError(
+      [
+        ...new Set(
+          parsed.error.issues.map(
+            (issue) => issue.path.join(".") || "membership",
+          ),
+        ),
+      ].sort(),
+    );
+  }
+  return Object.freeze(parsed.data);
+}
+
+const everyArea = weddingPermissionAreas;
+
+function grant(
+  area: WeddingPermissionArea,
+  action: WeddingPermissionAction,
+  scope: PermissionScope,
+): PermissionOverride {
+  return Object.freeze({ area, action, effect: "allow", scope });
+}
+
+const partnerPreset = Object.freeze(
+  everyArea.flatMap((area) =>
+    weddingPermissionActions.map((action) => grant(area, action, "workspace")),
+  ),
+);
+
+const plannerPreset = Object.freeze([] as PermissionOverride[]);
+
+const coordinatorPreset = Object.freeze([
+  grant("schedule", "view", "workspace"),
+  grant("contacts", "view", "essential_contact"),
+  grant("tasks", "view", "assigned"),
+]);
+
+const helperPreset = Object.freeze([
+  grant("tasks", "view", "assigned_or_shared"),
+  ...everyArea
+    .filter((area) => area !== "tasks")
+    .map((area) => grant(area, "view", "explicitly_shared")),
+]);
+
+const readOnlyGuestPreset = Object.freeze(
+  everyArea.map((area) => grant(area, "view", "explicitly_shared")),
+);
+
+const rolePresets: Readonly<
+  Record<WeddingRolePreset, readonly PermissionOverride[]>
+> = Object.freeze({
+  partner: partnerPreset,
+  planner: plannerPreset,
+  coordinator: coordinatorPreset,
+  helper: helperPreset,
+  read_only_guest: readOnlyGuestPreset,
+});
+
+function findGrant(
+  grants: readonly PermissionOverride[],
+  area: WeddingPermissionArea,
+  action: WeddingPermissionAction,
+): PermissionOverride | undefined {
+  return grants.find(
+    (candidate) => candidate.area === area && candidate.action === action,
+  );
+}
+
+function scopeAllows(
+  scope: PermissionScope,
+  relationship: RecordRelationship,
+): boolean {
+  if (scope === "workspace") return true;
+  if (scope === "assigned_or_shared") {
+    return relationship === "assigned" || relationship === "explicitly_shared";
+  }
+  return scope === relationship;
+}
+
+function weddingMembershipIsActive(
+  membership: WeddingMembership,
+  evaluatedAt: Date,
+): boolean {
+  if (membership.status !== "active") return false;
+  return (
+    membership.accessExpiresAt === null ||
+    Date.parse(membership.accessExpiresAt) > evaluatedAt.getTime()
+  );
+}
+
+function effectiveGrant(
+  preset: readonly PermissionOverride[],
+  overrides: readonly PermissionOverride[],
+  area: WeddingPermissionArea,
+  action: WeddingPermissionAction,
+): PermissionOverride | undefined {
+  return findGrant(overrides, area, action) ?? findGrant(preset, area, action);
+}
+
+function actionAllowed(
+  preset: readonly PermissionOverride[],
+  overrides: readonly PermissionOverride[],
+  area: WeddingPermissionArea,
+  action: WeddingPermissionAction,
+  relationship: RecordRelationship,
+): boolean {
+  const actionGrant = effectiveGrant(preset, overrides, area, action);
+  if (actionGrant?.effect !== "allow" || actionGrant.scope === undefined) {
+    return false;
+  }
+
+  if (relationship === "new_record") {
+    if (action !== "edit") return false;
+    const viewGrant = effectiveGrant(preset, overrides, area, "view");
+    return viewGrant?.effect === "allow" && viewGrant.scope !== undefined;
+  }
+  if (!scopeAllows(actionGrant.scope, relationship)) return false;
+
+  if (action === "view") return true;
+  const viewGrant = effectiveGrant(preset, overrides, area, "view");
+  return (
+    viewGrant?.effect === "allow" &&
+    viewGrant.scope !== undefined &&
+    scopeAllows(viewGrant.scope, relationship)
+  );
+}
+
+function denialReason(
+  preset: readonly PermissionOverride[],
+  overrides: readonly PermissionOverride[],
+  area: WeddingPermissionArea,
+  action: WeddingPermissionAction,
+  relationship: RecordRelationship,
+): PermissionDecisionReason {
+  const actionGrant = effectiveGrant(preset, overrides, area, action);
+  if (actionGrant?.effect !== "allow" || actionGrant.scope === undefined) {
+    return "permission_denied";
+  }
+  if (relationship === "new_record") {
+    if (action !== "edit") return "record_out_of_scope";
+    return "permission_denied";
+  }
+  if (!scopeAllows(actionGrant.scope, relationship)) {
+    return "record_out_of_scope";
+  }
+  if (action === "view") return "permission_denied";
+
+  const viewGrant = effectiveGrant(preset, overrides, area, "view");
+  if (viewGrant?.effect !== "allow" || viewGrant.scope === undefined) {
+    return "permission_denied";
+  }
+  return scopeAllows(viewGrant.scope, relationship)
+    ? "permission_denied"
+    : "record_out_of_scope";
+}
+
+/**
+ * Evaluates shared wedding-record access. Partner equality is structural:
+ * partner overrides cannot narrow one partner relative to the other. Other
+ * roles start from their preset and use explicit per-area overrides.
+ */
+export function evaluateWeddingRecordPermission(
+  membership: WeddingMembership,
+  request: WeddingRecordPermissionRequest,
+  evaluatedAt = new Date(),
+): PermissionDecision {
+  if (request.visibility !== "wedding_shared") {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (membership.actorId !== request.actorId) {
+    return { allowed: false, reason: "actor_mismatch" };
+  }
+  if (membership.weddingId !== request.weddingId) {
+    return { allowed: false, reason: "cross_tenant" };
+  }
+  if (!weddingMembershipIsActive(membership, evaluatedAt)) {
+    return { allowed: false, reason: "membership_inactive" };
+  }
+  if (
+    membership.role !== "partner" &&
+    membership.role !== "planner" &&
+    request.action === "edit" &&
+    request.relationship !== "assigned" &&
+    request.relationship !== "explicitly_shared" &&
+    request.relationship !== "new_record"
+  ) {
+    return { allowed: false, reason: "record_out_of_scope" };
+  }
+
+  const preset = rolePresets[membership.role];
+  const overrides =
+    membership.role === "partner" ? [] : membership.permissionOverrides;
+  if (
+    !actionAllowed(
+      preset,
+      overrides,
+      request.area,
+      request.action,
+      request.relationship,
+    )
+  ) {
+    return {
+      allowed: false,
+      reason: denialReason(
+        preset,
+        overrides,
+        request.area,
+        request.action,
+        request.relationship,
+      ),
+    };
+  }
+  return { allowed: true, reason: "allowed" };
+}
+
+/**
+ * Evaluates planner-private business data solely through an organization
+ * membership. Wedding membership, including partner status, is intentionally
+ * insufficient for private organization records.
+ */
+export function evaluateOrganizationPrivateRecordPermission(
+  membership: OrganizationMembership | undefined,
+  request: OrganizationPrivateRecordPermissionRequest,
+): PermissionDecision {
+  if (request.visibility !== "organization_private") {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (membership === undefined) {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (membership.actorId !== request.actorId) {
+    return { allowed: false, reason: "actor_mismatch" };
+  }
+  if (membership.organizationId !== request.organizationId) {
+    return { allowed: false, reason: "cross_tenant" };
+  }
+  if (membership.status !== "active") {
+    return { allowed: false, reason: "membership_inactive" };
+  }
+  if (
+    !actionAllowed(
+      plannerPreset,
+      membership.permissionOverrides,
+      request.area,
+      request.action,
+      request.relationship,
+    )
+  ) {
+    return {
+      allowed: false,
+      reason: denialReason(
+        plannerPreset,
+        membership.permissionOverrides,
+        request.area,
+        request.action,
+        request.relationship,
+      ),
+    };
+  }
+  return { allowed: true, reason: "allowed" };
+}
+
+/**
+ * Independent planners retain their own business records regardless of any
+ * wedding relationship. Exact record ownership is the private-data boundary.
+ */
+export function evaluateIndependentPlannerPrivateRecordPermission(
+  identity: IndependentPlannerIdentity | undefined,
+  request: IndependentPlannerPrivateRecordPermissionRequest,
+): PermissionDecision {
+  if (request.visibility !== "independent_planner_private") {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (identity === undefined) {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (
+    identity.actorId !== request.actorId ||
+    identity.actorId !== request.ownerActorId
+  ) {
+    return { allowed: false, reason: "actor_mismatch" };
+  }
+  if (identity.status !== "active") {
+    return { allowed: false, reason: "membership_inactive" };
+  }
+  if (
+    !actionAllowed(
+      partnerPreset,
+      [],
+      request.area,
+      request.action,
+      request.relationship,
+    )
+  ) {
+    return { allowed: false, reason: "record_out_of_scope" };
+  }
+  return { allowed: true, reason: "allowed" };
+}
+
+/** Partner memberships are protected from unilateral removal by any member. */
+export function canRemoveWeddingMembership(
+  actor: WeddingMembership,
+  target: WeddingMembership,
+  evaluatedAt = new Date(),
+): boolean {
+  return (
+    actor.weddingId === target.weddingId &&
+    weddingMembershipIsActive(actor, evaluatedAt) &&
+    actor.role === "partner" &&
+    target.role !== "partner"
+  );
+}
