@@ -197,6 +197,21 @@ function parseMembership(
   ) {
     throw new PermissionModelValidationError(["accessExpiresAt"]);
   }
+  if (
+    "role" in parsed.data &&
+    parsed.data.role !== "partner" &&
+    parsed.data.role !== "planner" &&
+    parsed.data.permissionOverrides.some(
+      (override) =>
+        override.action === "edit" &&
+        override.effect === "allow" &&
+        override.scope !== "assigned" &&
+        override.scope !== "explicitly_shared" &&
+        override.scope !== "assigned_or_shared",
+    )
+  ) {
+    throw new PermissionModelValidationError(["permissionOverrides.scope"]);
+  }
 
   return Object.freeze({
     ...parsed.data,
@@ -403,6 +418,16 @@ export function evaluateWeddingRecordPermission(
   }
   if (!weddingMembershipIsActive(membership, evaluatedAt)) {
     return { allowed: false, reason: "membership_inactive" };
+  }
+  if (
+    membership.role !== "partner" &&
+    membership.role !== "planner" &&
+    request.action === "edit" &&
+    request.relationship !== "assigned" &&
+    request.relationship !== "explicitly_shared" &&
+    request.relationship !== "new_record"
+  ) {
+    return { allowed: false, reason: "record_out_of_scope" };
   }
 
   const preset = rolePresets[membership.role];

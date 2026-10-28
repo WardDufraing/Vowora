@@ -120,6 +120,24 @@ describe("permission membership parsing", () => {
         permissionOverrides: [],
       }),
     ).toThrow(PermissionModelValidationError);
+
+    expect(() =>
+      parseWeddingMembership({
+        actorId: actorA,
+        weddingId: weddingA,
+        role: "helper",
+        status: "active",
+        accessExpiresAt: null,
+        permissionOverrides: [
+          {
+            area: "tasks",
+            action: "edit",
+            effect: "allow",
+            scope: "workspace",
+          },
+        ],
+      }),
+    ).toThrow(PermissionModelValidationError);
   });
 
   it("does not reflect private malformed values in validation errors", () => {
@@ -364,6 +382,34 @@ describe("wedding role presets and grants", () => {
         }),
       ),
     ).toEqual({ allowed: false, reason: "record_out_of_scope" });
+  });
+
+  it("clamps collaborator Edit even if a forged projection contains workspace scope", () => {
+    const helper = weddingMembership(actorA, "helper");
+    const forged = {
+      ...helper,
+      permissionOverrides: [
+        {
+          area: "tasks",
+          action: "edit",
+          effect: "allow",
+          scope: "workspace",
+        },
+      ],
+    } as unknown as typeof helper;
+
+    expect(
+      evaluateWeddingRecordPermission(
+        forged,
+        sharedRequest(actorA, "edit", { relationship: "workspace" }),
+      ),
+    ).toEqual({ allowed: false, reason: "record_out_of_scope" });
+    expect(
+      evaluateWeddingRecordPermission(
+        forged,
+        sharedRequest(actorA, "edit", { relationship: "new_record" }),
+      ),
+    ).toEqual({ allowed: true, reason: "allowed" });
   });
 
   it("lets explicit deny overrides remove preset access without removing membership", () => {
