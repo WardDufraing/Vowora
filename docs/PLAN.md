@@ -35,7 +35,7 @@
 | 03-a | Authentication integration | 02-c | In review | [Brief](steps/03-a.md) |
 | 03-b | Session management and account recovery | 03-a | In review | [Brief](steps/03-b.md) |
 | 03-c | Authentication abuse protections and tests | 03-b | In review | [Brief](steps/03-c.md) |
-| 04-a | Permission vocabulary and role model | 03-c | Not started | [Brief](steps/04-a.md) |
+| 04-a | Permission vocabulary and role model | 03-c | In review | [Brief](steps/04-a.md) |
 | 04-b | Server authorization enforcement | 04-a | Not started | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Not started | [Brief](steps/04-c.md) |
 | 05-a | Semantic tokens and themes | 04-c | Not started | [Brief](steps/05-a.md) |
@@ -96,6 +96,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-28 — Fresh implementer `/root/implement_04_a` started 04-a from owner-merged 03-c main `214dc1d` with no competing open PR. The framework-independent permission model covers exact wedding/organization membership scope, equal partners, delegated planner access, coordinator/helper/read-only presets, per-area grants, record relationships, separate Download/Export and planner-private organization data. Focused 12-test policy coverage and the full 149-test unit/component suite pass with formatting, lint, types and both builds. [Implementation evidence](implementation/04-a-permission-model.md). Fresh independent review and hosted checks remain pending; no schema, migration, external configuration or deployment changed.
 
 - 2026-10-28 — Task 03-c [PR #31](https://github.com/WardDufraing/Vowora/pull/31) implements exact-origin CSRF defenses and managed distributed authentication abuse protection from merged 03-b main `69af5c4`. The inherited draft PostgreSQL counter was removed because frozen ARCH-046/102 require a managed Redis-compatible limiter; no schema, migration or grant change remains. Initial review found a high targeted-email lockout because unsolved identity challenges advanced into a block. Corrected head `dfe57c8` caps identity dimensions at a solvable challenge, reserves progressive blocks for the trusted Vercel network dimension, and adds exact-Lua sequential/concurrent Redis regressions. New fresh reviewer `/root/continue_03_c/rereview_03_c` passed the complete corrected diff with no findings; all hosted workspace/database/security checks and both automatic Vercel previews passed. Evidence and owner setup are in [the 03-c handoff](implementation/03-c-auth-abuse.md). No provider setting, persistent database, production deployment or migration was changed; 04-a awaits owner merge.
 

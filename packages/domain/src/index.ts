@@ -141,3 +141,29 @@ export type {
   OutboxEventEnvelope,
   OutboxEventInput,
 } from "./events.js";
+export {
+  canRemoveWeddingMembership,
+  evaluateOrganizationPrivateRecordPermission,
+  evaluateWeddingRecordPermission,
+  parseOrganizationMembership,
+  parseWeddingMembership,
+  PermissionModelValidationError,
+  recordRelationships,
+  weddingPermissionActions,
+  weddingPermissionAreas,
+  weddingRolePresets,
+} from "./permissions.js";
+export type {
+  OrganizationMembership,
+  OrganizationPrivateRecordPermissionRequest,
+  PermissionDecision,
+  PermissionDecisionReason,
+  PermissionOverride,
+  PermissionScope,
+  RecordRelationship,
+  WeddingMembership,
+  WeddingPermissionAction,
+  WeddingPermissionArea,
+  WeddingRecordPermissionRequest,
+  WeddingRolePreset,
+} from "./permissions.js";
