@@ -32,4 +32,4 @@ Browser/accessibility checks are not applicable because this task adds no route,
 
 ## Review, configuration and rollback
 
-Branch `feat/04-b-server-authorization`, based on owner-merged main `99626c8c63001093b6b2aec70ae48102494a33f3`. Draft PR, implementation commit and independent review evidence are pending. Rollback is a reviewed code revert; there is no data rollback. No Neon, Vercel, Cloudflare, Upstash, DNS, environment, staging or production resource changed. Task 04-c remains blocked until owner merge.
+Branch `feat/04-b-server-authorization`, based on owner-merged main `99626c8c63001093b6b2aec70ae48102494a33f3`. Initial implementation `dd12810`; [draft PR #33](https://github.com/WardDufraing/Vowora/pull/33). Independent review is pending. Rollback is a reviewed code revert; there is no data rollback. No Neon, Vercel, Cloudflare, Upstash, DNS, environment, staging or production resource changed. Task 04-c remains blocked until owner merge.
