@@ -33,4 +33,4 @@ Database and persistent-migration suites are not applicable because the diff has
 
 ## Review and external-action record
 
-Branch: `feat/04-a-permission-role-model`, based on merged main `214dc1d2f90ac2ae802b1db7cf73dffed0e6c2b2`. Pull request, reviewed commit and reviewer outcome are pending. No persistent database, Neon, Vercel, Cloudflare, Upstash, DNS, staging or production resource was contacted or changed.
+Branch: `feat/04-a-permission-role-model`, based on merged main `214dc1d2f90ac2ae802b1db7cf73dffed0e6c2b2`. [Draft PR #32](https://github.com/WardDufraing/Vowora/pull/32), initial implementation `00ffe27`; reviewed commit and reviewer outcome are pending. No persistent database, Neon, Vercel, Cloudflare, Upstash, DNS, staging or production resource was contacted or changed.
