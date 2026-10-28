@@ -30,6 +30,7 @@ export const recordRelationships = [
   "workspace",
   "assigned",
   "explicitly_shared",
+  "essential_contact",
   "new_record",
 ] as const;
 
@@ -43,6 +44,7 @@ const permissionScopeSchema = z.enum([
   "assigned",
   "explicitly_shared",
   "assigned_or_shared",
+  "essential_contact",
 ]);
 
 export type PermissionScope = z.output<typeof permissionScopeSchema>;
@@ -62,13 +64,21 @@ const weddingMembershipSchema = z.strictObject({
   actorId: z.uuidv7(),
   weddingId: z.uuidv7(),
   role: z.enum(weddingRolePresets),
+  status: z.enum(["active", "revoked"]),
+  accessExpiresAt: z.iso.datetime({ offset: true }).nullable(),
   permissionOverrides: z.array(permissionOverrideSchema).max(128).default([]),
 });
 
 const organizationMembershipSchema = z.strictObject({
   actorId: z.uuidv7(),
   organizationId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
   permissionOverrides: z.array(permissionOverrideSchema).max(128).default([]),
+});
+
+const independentPlannerIdentitySchema = z.strictObject({
+  actorId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
 });
 
 type ParsedWeddingMembership = z.output<typeof weddingMembershipSchema>;
@@ -86,12 +96,16 @@ export type OrganizationMembership = Readonly<
     readonly permissionOverrides: readonly PermissionOverride[];
   }
 >;
+export type IndependentPlannerIdentity = Readonly<
+  z.output<typeof independentPlannerIdentitySchema>
+>;
 
 export type PermissionDecisionReason =
   | "allowed"
   | "actor_mismatch"
   | "cross_tenant"
   | "private_record"
+  | "membership_inactive"
   | "record_out_of_scope"
   | "permission_denied";
 
@@ -116,6 +130,15 @@ export interface OrganizationPrivateRecordPermissionRequest {
   readonly action: WeddingPermissionAction;
   readonly relationship: RecordRelationship;
   readonly visibility: "organization_private";
+}
+
+export interface IndependentPlannerPrivateRecordPermissionRequest {
+  readonly actorId: string;
+  readonly ownerActorId: string;
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly relationship: RecordRelationship;
+  readonly visibility: "independent_planner_private";
 }
 
 export class PermissionModelValidationError extends Error {
@@ -167,6 +190,13 @@ function parseMembership(
       throw new PermissionModelValidationError(["permissionOverrides.scope"]);
     }
   }
+  if (
+    "role" in parsed.data &&
+    (parsed.data.role === "partner" || parsed.data.role === "planner") &&
+    parsed.data.accessExpiresAt !== null
+  ) {
+    throw new PermissionModelValidationError(["accessExpiresAt"]);
+  }
 
   return Object.freeze({
     ...parsed.data,
@@ -190,6 +220,25 @@ export function parseOrganizationMembership(
   return parseMembership(organizationMembershipSchema, input);
 }
 
+/** Parses the authoritative identity that owns independent-planner records. */
+export function parseIndependentPlannerIdentity(
+  input: unknown,
+): IndependentPlannerIdentity {
+  const parsed = independentPlannerIdentitySchema.safeParse(input);
+  if (!parsed.success) {
+    throw new PermissionModelValidationError(
+      [
+        ...new Set(
+          parsed.error.issues.map(
+            (issue) => issue.path.join(".") || "membership",
+          ),
+        ),
+      ].sort(),
+    );
+  }
+  return Object.freeze(parsed.data);
+}
+
 const everyArea = weddingPermissionAreas;
 
 function grant(
@@ -210,7 +259,7 @@ const plannerPreset = Object.freeze([] as PermissionOverride[]);
 
 const coordinatorPreset = Object.freeze([
   grant("schedule", "view", "workspace"),
-  grant("contacts", "view", "explicitly_shared"),
+  grant("contacts", "view", "essential_contact"),
   grant("tasks", "view", "assigned"),
 ]);
 
@@ -254,6 +303,17 @@ function scopeAllows(
     return relationship === "assigned" || relationship === "explicitly_shared";
   }
   return scope === relationship;
+}
+
+function weddingMembershipIsActive(
+  membership: WeddingMembership,
+  evaluatedAt: Date,
+): boolean {
+  if (membership.status !== "active") return false;
+  return (
+    membership.accessExpiresAt === null ||
+    Date.parse(membership.accessExpiresAt) > evaluatedAt.getTime()
+  );
 }
 
 function effectiveGrant(
@@ -330,12 +390,19 @@ function denialReason(
 export function evaluateWeddingRecordPermission(
   membership: WeddingMembership,
   request: WeddingRecordPermissionRequest,
+  evaluatedAt = new Date(),
 ): PermissionDecision {
+  if (request.visibility !== "wedding_shared") {
+    return { allowed: false, reason: "private_record" };
+  }
   if (membership.actorId !== request.actorId) {
     return { allowed: false, reason: "actor_mismatch" };
   }
   if (membership.weddingId !== request.weddingId) {
     return { allowed: false, reason: "cross_tenant" };
+  }
+  if (!weddingMembershipIsActive(membership, evaluatedAt)) {
+    return { allowed: false, reason: "membership_inactive" };
   }
 
   const preset = rolePresets[membership.role];
@@ -373,6 +440,9 @@ export function evaluateOrganizationPrivateRecordPermission(
   membership: OrganizationMembership | undefined,
   request: OrganizationPrivateRecordPermissionRequest,
 ): PermissionDecision {
+  if (request.visibility !== "organization_private") {
+    return { allowed: false, reason: "private_record" };
+  }
   if (membership === undefined) {
     return { allowed: false, reason: "private_record" };
   }
@@ -381,6 +451,9 @@ export function evaluateOrganizationPrivateRecordPermission(
   }
   if (membership.organizationId !== request.organizationId) {
     return { allowed: false, reason: "cross_tenant" };
+  }
+  if (membership.status !== "active") {
+    return { allowed: false, reason: "membership_inactive" };
   }
   if (
     !actionAllowed(
@@ -405,13 +478,52 @@ export function evaluateOrganizationPrivateRecordPermission(
   return { allowed: true, reason: "allowed" };
 }
 
+/**
+ * Independent planners retain their own business records regardless of any
+ * wedding relationship. Exact record ownership is the private-data boundary.
+ */
+export function evaluateIndependentPlannerPrivateRecordPermission(
+  identity: IndependentPlannerIdentity | undefined,
+  request: IndependentPlannerPrivateRecordPermissionRequest,
+): PermissionDecision {
+  if (request.visibility !== "independent_planner_private") {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (identity === undefined) {
+    return { allowed: false, reason: "private_record" };
+  }
+  if (
+    identity.actorId !== request.actorId ||
+    identity.actorId !== request.ownerActorId
+  ) {
+    return { allowed: false, reason: "actor_mismatch" };
+  }
+  if (identity.status !== "active") {
+    return { allowed: false, reason: "membership_inactive" };
+  }
+  if (
+    !actionAllowed(
+      partnerPreset,
+      [],
+      request.area,
+      request.action,
+      request.relationship,
+    )
+  ) {
+    return { allowed: false, reason: "record_out_of_scope" };
+  }
+  return { allowed: true, reason: "allowed" };
+}
+
 /** Partner memberships are protected from unilateral removal by any member. */
 export function canRemoveWeddingMembership(
   actor: WeddingMembership,
   target: WeddingMembership,
+  evaluatedAt = new Date(),
 ): boolean {
   return (
     actor.weddingId === target.weddingId &&
+    weddingMembershipIsActive(actor, evaluatedAt) &&
     actor.role === "partner" &&
     target.role !== "partner"
   );

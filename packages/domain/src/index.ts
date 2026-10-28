@@ -143,8 +143,10 @@ export type {
 } from "./events.js";
 export {
   canRemoveWeddingMembership,
+  evaluateIndependentPlannerPrivateRecordPermission,
   evaluateOrganizationPrivateRecordPermission,
   evaluateWeddingRecordPermission,
+  parseIndependentPlannerIdentity,
   parseOrganizationMembership,
   parseWeddingMembership,
   PermissionModelValidationError,
@@ -154,6 +156,8 @@ export {
   weddingRolePresets,
 } from "./permissions.js";
 export type {
+  IndependentPlannerIdentity,
+  IndependentPlannerPrivateRecordPermissionRequest,
   OrganizationMembership,
   OrganizationPrivateRecordPermissionRequest,
   PermissionDecision,

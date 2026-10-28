@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   canRemoveWeddingMembership,
+  evaluateIndependentPlannerPrivateRecordPermission,
   evaluateOrganizationPrivateRecordPermission,
   evaluateWeddingRecordPermission,
+  parseIndependentPlannerIdentity,
   parseOrganizationMembership,
   parseWeddingMembership,
   PermissionModelValidationError,
@@ -30,6 +32,8 @@ function weddingMembership(
     actorId,
     weddingId,
     role,
+    status: "active",
+    accessExpiresAt: null,
     permissionOverrides,
   });
 }
@@ -99,10 +103,23 @@ describe("permission membership parsing", () => {
           actorId: actorA,
           weddingId: weddingA,
           role: "helper",
+          status: "active",
+          accessExpiresAt: null,
           permissionOverrides,
         }),
       ).toThrow(PermissionModelValidationError);
     }
+
+    expect(() =>
+      parseWeddingMembership({
+        actorId: actorA,
+        weddingId: weddingA,
+        role: "partner",
+        status: "active",
+        accessExpiresAt: "2026-10-28T12:00:00.000Z",
+        permissionOverrides: [],
+      }),
+    ).toThrow(PermissionModelValidationError);
   });
 
   it("does not reflect private malformed values in validation errors", () => {
@@ -113,6 +130,8 @@ describe("permission membership parsing", () => {
         actorId: privateValue,
         weddingId: weddingA,
         role: "partner",
+        status: "active",
+        accessExpiresAt: null,
         permissionOverrides: [],
       });
     } catch (error) {
@@ -167,9 +186,15 @@ describe("wedding role presets and grants", () => {
     expect(canRemoveWeddingMembership(partnerA, otherWeddingHelper)).toBe(
       false,
     );
+    expect(
+      canRemoveWeddingMembership(
+        parseWeddingMembership({ ...partnerA, status: "revoked" }),
+        helper,
+      ),
+    ).toBe(false);
   });
 
-  it("limits coordinator defaults to the schedule, shared essential contacts and assigned tasks", () => {
+  it("limits coordinator defaults to the schedule, essential contacts and assigned tasks", () => {
     const coordinator = weddingMembership(actorA, "coordinator");
 
     expect(
@@ -186,7 +211,7 @@ describe("wedding role presets and grants", () => {
         coordinator,
         sharedRequest(actorA, "view", {
           area: "contacts",
-          relationship: "explicitly_shared",
+          relationship: "essential_contact",
         }),
       ),
     ).toEqual({ allowed: true, reason: "allowed" });
@@ -203,6 +228,10 @@ describe("wedding role presets and grants", () => {
       sharedRequest(actorA, "view", {
         area: "contacts",
         relationship: "workspace",
+      }),
+      sharedRequest(actorA, "view", {
+        area: "contacts",
+        relationship: "explicitly_shared",
       }),
       sharedRequest(actorA, "view"),
       sharedRequest(actorA, "edit", { relationship: "assigned" }),
@@ -363,6 +392,46 @@ describe("wedding role presets and grants", () => {
       ),
     ).toEqual({ allowed: false, reason: "cross_tenant" });
   });
+
+  it("checks runtime visibility and immediately denies revoked or expired memberships", () => {
+    const partner = weddingMembership(actorA, "partner");
+    expect(
+      evaluateWeddingRecordPermission(partner, {
+        ...sharedRequest(actorA, "view"),
+        visibility: "organization_private",
+      } as unknown as WeddingRecordPermissionRequest),
+    ).toEqual({ allowed: false, reason: "private_record" });
+
+    const revoked = parseWeddingMembership({
+      ...partner,
+      status: "revoked",
+    });
+    expect(
+      evaluateWeddingRecordPermission(revoked, sharedRequest(actorA, "view")),
+    ).toEqual({ allowed: false, reason: "membership_inactive" });
+
+    const expiring = parseWeddingMembership({
+      ...weddingMembership(actorA, "coordinator"),
+      accessExpiresAt: "2026-10-28T12:00:00.000Z",
+    });
+    const scheduleRequest = sharedRequest(actorA, "view", {
+      area: "schedule",
+    });
+    expect(
+      evaluateWeddingRecordPermission(
+        expiring,
+        scheduleRequest,
+        new Date("2026-10-28T12:00:00.000Z"),
+      ),
+    ).toEqual({ allowed: false, reason: "membership_inactive" });
+    expect(
+      evaluateWeddingRecordPermission(
+        expiring,
+        scheduleRequest,
+        new Date("2026-10-28T11:59:59.999Z"),
+      ),
+    ).toEqual({ allowed: true, reason: "allowed" });
+  });
 });
 
 describe("planner-private record visibility", () => {
@@ -387,6 +456,7 @@ describe("planner-private record visibility", () => {
     const membership = parseOrganizationMembership({
       actorId: actorA,
       organizationId: organizationA,
+      status: "active",
       permissionOverrides: [
         {
           area: "notes",
@@ -417,5 +487,46 @@ describe("planner-private record visibility", () => {
         action: "edit",
       }),
     ).toEqual({ allowed: false, reason: "permission_denied" });
+
+    expect(
+      evaluateOrganizationPrivateRecordPermission(
+        parseOrganizationMembership({ ...membership, status: "revoked" }),
+        privateRequest,
+      ),
+    ).toEqual({ allowed: false, reason: "membership_inactive" });
+  });
+
+  it("keeps independent-planner records with their exact owner after wedding access ends", () => {
+    const identity = parseIndependentPlannerIdentity({
+      actorId: actorA,
+      status: "active",
+    });
+    const request = {
+      actorId: actorA,
+      ownerActorId: actorA,
+      area: "notes",
+      action: "edit",
+      relationship: "workspace",
+      visibility: "independent_planner_private",
+    } as const;
+
+    expect(
+      evaluateIndependentPlannerPrivateRecordPermission(identity, request),
+    ).toEqual({ allowed: true, reason: "allowed" });
+    expect(
+      evaluateIndependentPlannerPrivateRecordPermission(identity, {
+        ...request,
+        ownerActorId: actorB,
+      }),
+    ).toEqual({ allowed: false, reason: "actor_mismatch" });
+    expect(
+      evaluateIndependentPlannerPrivateRecordPermission(
+        parseIndependentPlannerIdentity({
+          actorId: actorA,
+          status: "revoked",
+        }),
+        request,
+      ),
+    ).toEqual({ allowed: false, reason: "membership_inactive" });
   });
 });
