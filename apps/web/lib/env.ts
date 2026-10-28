@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 const publicEnvironmentSchema = z
-  .object({ NEXT_PUBLIC_APP_URL: z.url().optional() })
+  .object({
+    NEXT_PUBLIC_APP_URL: z.url().optional(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).max(256).optional(),
+  })
   .strict();
 
 const serverEnvironmentSchema = z
@@ -14,7 +17,12 @@ const authEnvironmentSchema = z
   .object({
     AUTH_SECRET: z.string().min(32).max(512),
     AUTH_EMAIL_FROM: z.email().max(320),
+    AUTH_ABUSE_HASH_SECRET: z.string().min(32).max(512),
     RESEND_API_KEY: z.string().min(16).max(512),
+    UPSTASH_REDIS_REST_URL: z.url(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().min(16).max(2048),
+    TURNSTILE_SECRET_KEY: z.string().min(16).max(2048),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).max(256),
     NEXT_PUBLIC_APP_URL: z.url(),
     VOWORA_ENV: z.enum(["local", "preview", "production"]).default("local"),
   })
@@ -53,6 +61,8 @@ export function readPublicEnvironment(
 ): PublicEnvironment {
   return parseEnvironment(publicEnvironmentSchema, {
     NEXT_PUBLIC_APP_URL: environment.NEXT_PUBLIC_APP_URL || undefined,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY:
+      environment.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
   });
 }
 
@@ -85,7 +95,12 @@ export function readAuthEnvironment(
   const result = parseEnvironment(authEnvironmentSchema, {
     AUTH_SECRET: environment.AUTH_SECRET,
     AUTH_EMAIL_FROM: environment.AUTH_EMAIL_FROM,
+    AUTH_ABUSE_HASH_SECRET: environment.AUTH_ABUSE_HASH_SECRET,
     RESEND_API_KEY: environment.RESEND_API_KEY,
+    UPSTASH_REDIS_REST_URL: environment.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: environment.UPSTASH_REDIS_REST_TOKEN,
+    TURNSTILE_SECRET_KEY: environment.TURNSTILE_SECRET_KEY,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: environment.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
     NEXT_PUBLIC_APP_URL: environment.NEXT_PUBLIC_APP_URL,
     VOWORA_ENV: environment.VOWORA_ENV || undefined,
   });

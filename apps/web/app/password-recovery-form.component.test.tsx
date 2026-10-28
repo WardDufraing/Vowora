@@ -65,4 +65,30 @@ describe("password recovery form", () => {
       screen.getByRole("button", { name: "Send reset link" }),
     ).toBeEnabled();
   });
+
+  it("reveals the accessible risk challenge for recovery without changing its acknowledgement", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          Response.json(
+            { code: "AUTHENTICATION_CHALLENGE_REQUIRED" },
+            { status: 403 },
+          ),
+        ),
+    );
+    const user = userEvent.setup();
+    render(<PasswordRecoveryForm />);
+    await user.type(screen.getByLabelText("Email"), "partner@example.test");
+    await user.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(
+      await screen.findByText(
+        "Additional verification is temporarily unavailable. Try again later.",
+      ),
+    ).toHaveAttribute("role", "alert");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Complete the verification challenge and try again.",
+    );
+  });
 });

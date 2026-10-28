@@ -59,4 +59,38 @@ describe("account forms", () => {
     );
     expect(screen.queryByText(/private-auth-detail/)).not.toBeInTheDocument();
   });
+
+  it("reveals and submits a risk challenge without exposing provider details", async () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "synthetic-site-key";
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json(
+          { code: "AUTHENTICATION_CHALLENGE_REQUIRED" },
+          { status: 403 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", request);
+    const user = userEvent.setup();
+    const { container } = render(<AuthForm mode="sign-in" />);
+    await user.type(screen.getByLabelText("Email"), "partner@example.test");
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-passphrase-123",
+    );
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(
+      await screen.findByLabelText("Additional verification"),
+    ).toBeInTheDocument();
+    const token = document.createElement("input");
+    token.name = "cf-turnstile-response";
+    token.value = "synthetic-challenge-token";
+    container.querySelector("form")?.append(token);
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(request.mock.calls[1]?.[1]?.headers).toMatchObject({
+      "x-vowora-challenge-token": "synthetic-challenge-token",
+    });
+    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  });
 });

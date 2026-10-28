@@ -99,3 +99,28 @@ test("product foundation fits narrow mobile viewports", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("sign-in exposes an accessible fallback when elevated risk requires a challenge", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/auth/sign-in/email", async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ code: "AUTHENTICATION_CHALLENGE_REQUIRED" }),
+    });
+  });
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("partner@example.test");
+  await page.getByLabel("Password").fill("synthetic-passphrase-123");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Complete the verification challenge and try again.",
+  );
+  await expect(
+    page.getByText(
+      "Additional verification is temporarily unavailable. Try again later.",
+      { exact: true },
+    ),
+  ).toHaveAttribute("role", "alert");
+});

@@ -4,12 +4,22 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["MARKETING_SITE_URL", "NEXT_PUBLIC_APP_URL", "VOWORA_ENV"]
+      "env": [
+        "MARKETING_SITE_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+        "VOWORA_ENV"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["MARKETING_SITE_URL", "NEXT_PUBLIC_APP_URL", "VOWORA_ENV"],
+      "env": [
+        "MARKETING_SITE_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+        "VOWORA_ENV"
+      ],
       "dependsOn": ["^build"]
     },
     "lint": {},

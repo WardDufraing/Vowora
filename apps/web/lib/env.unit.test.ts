@@ -72,25 +72,40 @@ describe("environment validation", () => {
     const privateValue = "too-short-private-value";
     expect(() =>
       readAuthEnvironment({
+        AUTH_ABUSE_HASH_SECRET: privateValue,
         AUTH_SECRET: privateValue,
         AUTH_EMAIL_FROM: "invalid-private-from",
         RESEND_API_KEY: privateValue,
+        UPSTASH_REDIS_REST_URL: "not-a-url",
+        UPSTASH_REDIS_REST_TOKEN: privateValue,
+        TURNSTILE_SECRET_KEY: privateValue,
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "",
         NEXT_PUBLIC_APP_URL: "http://app.vowora.app",
         VOWORA_ENV: "production",
       }),
     ).toThrow(EnvironmentConfigurationError);
     try {
       readAuthEnvironment({
+        AUTH_ABUSE_HASH_SECRET: privateValue,
         AUTH_SECRET: privateValue,
         AUTH_EMAIL_FROM: "invalid-private-from",
         RESEND_API_KEY: privateValue,
+        UPSTASH_REDIS_REST_URL: "not-a-url",
+        UPSTASH_REDIS_REST_TOKEN: privateValue,
+        TURNSTILE_SECRET_KEY: privateValue,
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "",
         NEXT_PUBLIC_APP_URL: "http://app.vowora.app",
         VOWORA_ENV: "production",
       });
     } catch (error) {
       expect(String(error)).not.toContain(privateValue);
       expect(error).toMatchObject({
-        variables: expect.arrayContaining(["AUTH_SECRET", "AUTH_EMAIL_FROM"]),
+        variables: expect.arrayContaining([
+          "AUTH_SECRET",
+          "AUTH_EMAIL_FROM",
+          "AUTH_ABUSE_HASH_SECRET",
+          "UPSTASH_REDIS_REST_URL",
+        ]),
       });
     }
   });
@@ -98,9 +113,15 @@ describe("environment validation", () => {
   it("accepts an HTTPS production auth configuration", () => {
     expect(
       readAuthEnvironment({
+        AUTH_ABUSE_HASH_SECRET:
+          "synthetic-abuse-hash-secret-with-more-than-32-characters",
         AUTH_SECRET: "synthetic-auth-secret-with-more-than-32-characters",
         AUTH_EMAIL_FROM: "accounts@vowora.app",
         RESEND_API_KEY: "synthetic-resend-key",
+        UPSTASH_REDIS_REST_URL: "https://synthetic-redis.example",
+        UPSTASH_REDIS_REST_TOKEN: "synthetic-redis-token",
+        TURNSTILE_SECRET_KEY: "synthetic-turnstile-secret",
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "synthetic-site-key",
         NEXT_PUBLIC_APP_URL: "https://app.vowora.app",
         VOWORA_ENV: "production",
       }),

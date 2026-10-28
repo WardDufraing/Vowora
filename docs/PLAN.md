@@ -34,7 +34,7 @@
 | 02-c | Audit events and transactional outbox | 02-b | In review | [Brief](steps/02-c.md) |
 | 03-a | Authentication integration | 02-c | In review | [Brief](steps/03-a.md) |
 | 03-b | Session management and account recovery | 03-a | In review | [Brief](steps/03-b.md) |
-| 03-c | Authentication abuse protections and tests | 03-b | Not started | [Brief](steps/03-c.md) |
+| 03-c | Authentication abuse protections and tests | 03-b | In review | [Brief](steps/03-c.md) |
 | 04-a | Permission vocabulary and role model | 03-c | Not started | [Brief](steps/04-a.md) |
 | 04-b | Server authorization enforcement | 04-a | Not started | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Not started | [Brief](steps/04-c.md) |
@@ -96,6 +96,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-28 — Task 03-c implements exact-origin CSRF defenses and managed distributed authentication abuse protection from merged 03-b main `69af5c4`. The inherited draft PostgreSQL counter was removed because frozen ARCH-046/102 require a managed Redis-compatible limiter; no schema, migration or grant change remains. Atomic HMAC-keyed counters, progressive bounded blocks, Turnstile step-up, safe provider failures, accessible client states and negative/disposable-PostgreSQL regressions are documented in [the 03-c handoff](implementation/03-c-auth-abuse.md). Draft PR, final checks and independent review remain pending. No external provider, persistent database, Vercel setting or deployment was contacted or changed.
 
 - 2026-10-27 — Owner verified merged 03-a authentication end to end on the isolated staging environment and kept production disabled. Fresh implementer `/root/implement_03_b` started session management and password recovery from integrated main `f47058d`; continuation `/root/continue_03_b` preserved the same branch after usage exhaustion. Review found an old-password sign-in/reset race and four API/UI contract gaps; all are fixed with deterministic PostgreSQL and focused regressions. Final fresh reviewer `/root/continue_03_b/final_review_03_b` found no remaining issues on `ae622a6`. [PR #30](https://github.com/WardDufraing/Vowora/pull/30) awaits owner merge; evidence is in [the 03-b handoff](implementation/03-b-session-recovery.md). No persistent migration or external configuration was performed.
 

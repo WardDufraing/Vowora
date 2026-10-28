@@ -123,6 +123,25 @@ describe("API contracts", () => {
       $ref: "#/components/responses/AuthenticationServiceFailure",
     });
     expect(
+      openApiDocument.paths["/api/v1/auth/sign-in/email"].post.responses["429"],
+    ).toEqual({
+      $ref: "#/components/responses/AuthenticationRateLimited",
+    });
+    expect(
+      openApiDocument.components.responses.AuthenticationRateLimited.headers[
+        "Retry-After"
+      ].schema,
+    ).toEqual({ type: "integer", minimum: 1, maximum: 900 });
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-in/email"].post.parameters,
+    ).toEqual([
+      expect.objectContaining({
+        name: "x-vowora-challenge-token",
+        in: "header",
+        required: false,
+      }),
+    ]);
+    expect(
       openApiDocument.paths["/api/v1/auth/request-password-reset"].post
         .responses["403"],
     ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
@@ -135,6 +154,13 @@ describe("API contracts", () => {
     expect(
       openApiDocument.paths["/api/v1/auth/reset-password"].post.responses[
         "500"
+      ],
+    ).toEqual({
+      $ref: "#/components/responses/AuthenticationServiceFailure",
+    });
+    expect(
+      openApiDocument.paths["/api/v1/auth/reset-password"].post.responses[
+        "503"
       ],
     ).toEqual({
       $ref: "#/components/responses/AuthenticationServiceFailure",
