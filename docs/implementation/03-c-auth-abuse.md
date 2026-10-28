@@ -65,4 +65,4 @@ PR/head, hosted checks and independent review are appended before the PR is mark
 
 ## Review and external-action record
 
-Branch: `feat/03-c-auth-abuse-protection`, based on merged main `69af5c48957eca4302489634ea53d8f4e639727a`. Draft PR and reviewed head: pending. No Upstash, Cloudflare, Neon, Vercel, Resend, DNS, staging or production resource was created, contacted or changed, and no persistent migration or deployment was run.
+Branch: `feat/03-c-auth-abuse-protection`, based on merged main `69af5c48957eca4302489634ea53d8f4e639727a`. Initial implementation commit: `a30f913`. Draft [PR #31](https://github.com/WardDufraing/Vowora/pull/31); independently reviewed head remains pending. No Upstash, Cloudflare, Neon, Vercel, Resend, DNS, staging or production resource was created, contacted or changed, and no persistent migration or deployment was run.
