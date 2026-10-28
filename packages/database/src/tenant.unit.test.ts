@@ -35,6 +35,7 @@ function authorization() {
 const scopedRecord = pgTable("scoped_record", {
   weddingId: uuid("wedding_id"),
   organizationId: uuid("organization_id"),
+  privateOwnerActorId: uuid("private_owner_actor_id"),
 });
 const bothScopes = {
   weddingId: scopedRecord.weddingId,
@@ -63,6 +64,36 @@ describe("tenant primitives", () => {
         TenantScopeViolationError,
       );
     }
+  });
+
+  it("enforces exact actor ownership for independent-planner private writes", async () => {
+    const context = await resolveAuthorizationContext(
+      {
+        actorId: contextInput.actorId,
+        activePrivateOwnerActorId: contextInput.actorId,
+        permissionScopeVersion: "private:1",
+        correlationId: contextInput.correlationId,
+      },
+      verifier,
+    );
+    const ownerScope = {
+      privateOwnerActorId: scopedRecord.privateOwnerActorId,
+    };
+
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        { privateOwnerActorId: contextInput.actorId },
+        ownerScope,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        { privateOwnerActorId: "019a1f5e-70a0-7000-8000-000000000099" },
+        ownerScope,
+      ),
+    ).toThrow(TenantScopeViolationError);
   });
 
   it("validates once and supplies one transaction session to the callback", async () => {

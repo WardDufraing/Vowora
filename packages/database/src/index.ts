@@ -16,6 +16,7 @@ export {
   assertTenantWriteScope,
   tenantScopePredicate,
   TenantScopeViolationError,
+  withAuthorizedTenantTransaction,
   withTenantTransaction,
 } from "./tenant.js";
 export type {

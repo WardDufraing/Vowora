@@ -2,7 +2,9 @@ import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
+  assertAuthorizedServerOperation,
   assertAuthorizationContext,
+  type AuthorizedServerOperation,
   type AuthorizationContext,
   type TenantRepositoryCall,
 } from "@vowora/domain";
@@ -10,11 +12,13 @@ import {
 export interface TenantScopeColumns {
   readonly weddingId?: AnyPgColumn;
   readonly organizationId?: AnyPgColumn;
+  readonly privateOwnerActorId?: AnyPgColumn;
 }
 
 export interface TenantScopeValues {
   readonly weddingId?: string | null;
   readonly organizationId?: string | null;
+  readonly privateOwnerActorId?: string | null;
 }
 
 export class TenantScopeViolationError extends Error {
@@ -27,15 +31,22 @@ export class TenantScopeViolationError extends Error {
 const scopeDimensions = [
   ["activeWeddingId", "weddingId"],
   ["activeOrganizationId", "organizationId"],
+  ["activePrivateOwnerActorId", "privateOwnerActorId"],
 ] as const;
 
 function scopeEntries<T>(values: {
   readonly weddingId?: T;
   readonly organizationId?: T;
+  readonly privateOwnerActorId?: T;
 }) {
   return [
     ["activeWeddingId", "weddingId", values.weddingId],
     ["activeOrganizationId", "organizationId", values.organizationId],
+    [
+      "activePrivateOwnerActorId",
+      "privateOwnerActorId",
+      values.privateOwnerActorId,
+    ],
   ] as const;
 }
 
@@ -102,4 +113,20 @@ export function withTenantTransaction<Session, Result>(
   return host.transaction((session) =>
     callback(Object.freeze({ authorization, session })),
   );
+}
+
+/**
+ * Domain-operation transaction boundary. The opaque operation proves that an
+ * authenticated actor, authoritative membership, record visibility and action
+ * were evaluated before the transaction opens. Feature services should use
+ * this boundary; the lower-level helper remains for infrastructure writers and
+ * compatibility with the pre-04 authorization foundation.
+ */
+export function withAuthorizedTenantTransaction<Session, Result>(
+  host: TransactionHost<Session>,
+  operation: AuthorizedServerOperation,
+  callback: (context: TenantTransaction<Session>) => Promise<Result>,
+): Promise<Result> {
+  assertAuthorizedServerOperation(operation);
+  return withTenantTransaction(host, operation.authorization, callback);
 }
