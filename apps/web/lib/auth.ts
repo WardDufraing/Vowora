@@ -20,6 +20,11 @@ import {
   type SendVerificationEmail,
 } from "./verification-email";
 import { correlationIdFor, problemResponse } from "./api";
+import {
+  type AuthAbuseProtection,
+  createUpstashAuthAbuseProtection,
+  trustedVercelClientAddress,
+} from "./auth-abuse";
 
 type AuthDatabase = Parameters<typeof drizzleAdapter>[0];
 type PasswordImplementation = {
@@ -31,6 +36,7 @@ type PasswordImplementation = {
 };
 
 const credentialLocks = new WeakMap<object, AuthCredentialLock>();
+const abuseProtections = new WeakMap<object, AuthAbuseProtection>();
 
 export function createVoworaAuth(options: {
   readonly baseURL: string;
@@ -43,7 +49,20 @@ export function createVoworaAuth(options: {
   readonly sendPasswordResetEmail: SendPasswordResetEmail;
   readonly withCredentialLock: AuthCredentialLock;
   readonly password?: PasswordImplementation;
+  readonly abuseProtection?: AuthAbuseProtection;
 }) {
+  const abuseProtection =
+    options.abuseProtection ??
+    (options.rateLimitEnabled === false
+      ? {
+          async evaluate() {
+            return { outcome: "allow" as const };
+          },
+        }
+      : undefined);
+  if (!abuseProtection) {
+    throw new Error("Authentication abuse protection is required");
+  }
   const auth = betterAuth({
     appName: "Vowora",
     logger: { disabled: true },
@@ -109,9 +128,10 @@ export function createVoworaAuth(options: {
         });
       },
     },
-    // Distributed abuse controls are task 03-c. Keep the framework's bounded
-    // local protection enabled until that shared store is introduced.
-    rateLimit: { enabled: options.rateLimitEnabled ?? true, storage: "memory" },
+    // The wrapper below uses a managed Redis-compatible atomic store. Better
+    // Auth's process-local fallback is disabled so serverless instances cannot
+    // independently admit the same attack burst.
+    rateLimit: { enabled: false },
     disabledPaths: [
       "/account-info",
       "/change-email",
@@ -131,6 +151,7 @@ export function createVoworaAuth(options: {
     ],
   });
   credentialLocks.set(auth, options.withCredentialLock);
+  abuseProtections.set(auth, abuseProtection);
   return auth;
 }
 
@@ -157,6 +178,13 @@ export function getAuth() {
       from: environment.AUTH_EMAIL_FROM,
     }),
     withCredentialLock: withAuthCredentialLock,
+    abuseProtection: createUpstashAuthAbuseProtection({
+      redisUrl: environment.UPSTASH_REDIS_REST_URL,
+      redisToken: environment.UPSTASH_REDIS_REST_TOKEN,
+      hashSecret: environment.AUTH_ABUSE_HASH_SECRET,
+      turnstileSecret: environment.TURNSTILE_SECRET_KEY,
+      expectedHostname: new URL(environment.NEXT_PUBLIC_APP_URL).hostname,
+    }),
   });
   return runtimeAuth;
 }
@@ -166,6 +194,14 @@ export async function handleAuthRequest(
   request: Request,
   baseURL: string,
 ): Promise<Response> {
+  if (!isSafeStateChangingRequest(request, baseURL)) {
+    return problemResponse(request, {
+      status: 403,
+      title: "Authentication request failed",
+      detail: "The authentication request could not be completed.",
+      code: "CSRF_VALIDATION_FAILED",
+    });
+  }
   if (!isAllowedAuthRoute(request)) {
     return problemResponse(request, {
       status: 404,
@@ -193,6 +229,20 @@ export async function handleAuthRequest(
       detail: "The authentication request could not be completed.",
       code: "AUTHENTICATION_FAILED",
     });
+  }
+  const abuseProtection = abuseProtections.get(auth);
+  if (!abuseProtection) {
+    throw new Error("Authentication abuse protection is not configured");
+  }
+  const abuseKey = await abuseIdentityKey(request);
+  if (abuseKey) {
+    const blocked = await protectAuthAbuseRequest(
+      auth,
+      request,
+      abuseKey.key,
+      abuseKey.rule,
+    );
+    if (blocked) return blocked;
   }
   const credentialTarget = await credentialLockTarget(request);
   const lock = credentialLocks.get(auth);
@@ -232,6 +282,140 @@ export async function handleAuthRequest(
     statusText: response.statusText,
     headers,
   });
+}
+
+export function isSafeStateChangingRequest(
+  request: Request,
+  baseURL: string,
+): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return true;
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    if (new URL(origin).origin !== new URL(baseURL).origin) return false;
+  } catch {
+    return false;
+  }
+  const fetchSite = request.headers.get("sec-fetch-site");
+  return fetchSite === null || fetchSite === "same-origin";
+}
+
+export function csrfFailure(request: Request): Response {
+  return problemResponse(request, {
+    status: 403,
+    title: "Request origin rejected",
+    detail: "The request could not be completed.",
+    code: "CSRF_VALIDATION_FAILED",
+  });
+}
+
+export function authSessionIdentity(request: Request): string {
+  const cookies = request.headers.get("cookie")?.split(";") ?? [];
+  for (const cookie of cookies) {
+    const [rawName, ...rawValue] = cookie.trim().split("=");
+    if (
+      rawName === "vowora.session_token" ||
+      rawName === "__Secure-vowora.session_token"
+    ) {
+      const value = rawValue.join("=");
+      if (value.length > 0 && value.length <= 4096) {
+        return `session:${value}`;
+      }
+    }
+  }
+  return "session:anonymous";
+}
+
+const identityRules = new Map<
+  string,
+  { windowSeconds: number; maximumAttempts: number }
+>([
+  ["/api/v1/auth/sign-in/email", { windowSeconds: 60, maximumAttempts: 5 }],
+  ["/api/v1/auth/sign-up/email", { windowSeconds: 60, maximumAttempts: 4 }],
+  [
+    "/api/v1/auth/request-password-reset",
+    { windowSeconds: 60, maximumAttempts: 3 },
+  ],
+  [
+    "/api/v1/auth/send-verification-email",
+    { windowSeconds: 60, maximumAttempts: 3 },
+  ],
+  ["/api/v1/auth/reset-password", { windowSeconds: 60, maximumAttempts: 5 }],
+]);
+
+async function abuseIdentityKey(request: Request) {
+  if (request.method !== "POST") return undefined;
+  const path = new URL(request.url).pathname;
+  const rule = identityRules.get(path);
+  if (!rule) return undefined;
+  const body = (await request.clone().json()) as Record<string, unknown>;
+  const identity =
+    typeof body.email === "string"
+      ? body.email.trim().toLowerCase()
+      : typeof body.token === "string"
+        ? body.token
+        : "anonymous";
+  return { key: `identity:${path}:${identity}`, rule };
+}
+
+export async function protectAuthAbuseRequest(
+  auth: ReturnType<typeof createVoworaAuth>,
+  request: Request,
+  identity: string,
+  rule: { readonly windowSeconds: number; readonly maximumAttempts: number },
+  challengeSupported = true,
+): Promise<Response | undefined> {
+  const protection = abuseProtections.get(auth);
+  if (!protection) {
+    throw new Error("Authentication abuse protection is not configured");
+  }
+  try {
+    const decision = await protection.evaluate({
+      route: new URL(request.url).pathname,
+      identity,
+      clientAddress: trustedVercelClientAddress(
+        request,
+        process.env.VERCEL === "1",
+      ),
+      challengeToken:
+        request.headers.get("x-vowora-challenge-token") ?? undefined,
+      rule,
+    });
+    if (decision.outcome === "allow") return undefined;
+    if (decision.outcome === "challenge") {
+      if (!challengeSupported) {
+        const response = problemResponse(request, {
+          status: 429,
+          title: "Authentication request delayed",
+          detail: "Too many attempts. Please try again later.",
+          code: "AUTHENTICATION_RATE_LIMITED",
+        });
+        response.headers.set("retry-after", String(rule.windowSeconds));
+        return response;
+      }
+      return problemResponse(request, {
+        status: 403,
+        title: "Additional verification required",
+        detail: "Complete the verification challenge and try again.",
+        code: "AUTHENTICATION_CHALLENGE_REQUIRED",
+      });
+    }
+    const response = problemResponse(request, {
+      status: 429,
+      title: "Authentication request delayed",
+      detail: "Too many attempts. Please try again later.",
+      code: "AUTHENTICATION_RATE_LIMITED",
+    });
+    response.headers.set("retry-after", String(decision.retryAfter));
+    return response;
+  } catch {
+    return problemResponse(request, {
+      status: 503,
+      title: "Authentication service unavailable",
+      detail: "The authentication request could not be completed.",
+      code: "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+    });
+  }
 }
 
 async function credentialLockTarget(
@@ -364,7 +548,11 @@ async function hasValidAuthContract(request: Request): Promise<boolean> {
   const schema = authBodySchemas.get(url.pathname);
   if (
     !schema ||
-    !request.headers.get("content-type")?.includes("application/json")
+    request.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase() !== "application/json"
   ) {
     return false;
   }
@@ -381,7 +569,11 @@ async function callbackURLFrom(request: Request): Promise<unknown> {
   if (
     request.method === "GET" ||
     request.method === "HEAD" ||
-    !request.headers.get("content-type")?.includes("application/json")
+    request.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase() !== "application/json"
   ) {
     return undefined;
   }

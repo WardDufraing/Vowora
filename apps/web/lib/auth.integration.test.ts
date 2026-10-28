@@ -14,7 +14,12 @@ import {
 } from "@vowora/contracts";
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 
-import { createVoworaAuth, handleAuthRequest } from "./auth";
+import {
+  createVoworaAuth,
+  handleAuthRequest,
+  protectAuthAbuseRequest,
+} from "./auth";
+import type { AuthAbuseDecision } from "./auth-abuse";
 import {
   listAccountSessions,
   requireSensitiveSession,
@@ -110,11 +115,20 @@ describe("Better Auth PostgreSQL integration", () => {
             let deliveryGate = new Promise<void>((resolve) => {
               releaseDelivery = resolve;
             });
+            let abuseDecision: AuthAbuseDecision = { outcome: "allow" };
+            let abuseFailure = false;
             const auth = createVoworaAuth({
               baseURL,
               backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
               database: createTestDatabase(client),
               rateLimitEnabled: false,
+              abuseProtection: {
+                async evaluate() {
+                  if (abuseFailure)
+                    throw new Error("synthetic provider failure");
+                  return abuseDecision;
+                },
+              },
               scheduleBackgroundTask: (task) => scheduledTasks.push(task),
               secret,
               sendPasswordResetEmail: async (message) => {
@@ -127,6 +141,94 @@ describe("Better Auth PostgreSQL integration", () => {
               withCredentialLock: credentialLock,
             });
             const validCredentials = credentials();
+
+            const missingOrigin = await handleAuthRequest(
+              auth,
+              new Request(`${baseURL}/api/v1/auth/sign-in/email`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(signInBody(validCredentials)),
+              }),
+              baseURL,
+            );
+            expect(missingOrigin.status).toBe(403);
+            expect((await missingOrigin.json()).code).toBe(
+              "CSRF_VALIDATION_FAILED",
+            );
+
+            abuseDecision = { outcome: "challenge" };
+            const challenged = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(challenged.status).toBe(403);
+            expect((await challenged.json()).code).toBe(
+              "AUTHENTICATION_CHALLENGE_REQUIRED",
+            );
+            for (const [path, body] of [
+              ["/sign-up/email", validCredentials],
+              [
+                "/request-password-reset",
+                {
+                  email: validCredentials.email,
+                  redirectTo: `${baseURL}/reset-password`,
+                },
+              ],
+              [
+                "/send-verification-email",
+                {
+                  email: validCredentials.email,
+                  callbackURL: validCredentials.callbackURL,
+                },
+              ],
+              [
+                "/reset-password",
+                {
+                  token: "synthetic-reset-token",
+                  newPassword: "replacement-passphrase-456",
+                },
+              ],
+            ] as const) {
+              const protectedResponse = await handleAuthRequest(
+                auth,
+                post(path, body),
+                baseURL,
+              );
+              expect(protectedResponse.status).toBe(403);
+              expect((await protectedResponse.json()).code).toBe(
+                "AUTHENTICATION_CHALLENGE_REQUIRED",
+              );
+            }
+            const sessionChallenge = await protectAuthAbuseRequest(
+              auth,
+              request("/../account/sessions", { method: "DELETE" }),
+              "synthetic-session",
+              { windowSeconds: 60, maximumAttempts: 10 },
+              false,
+            );
+            expect(sessionChallenge?.status).toBe(429);
+            expect(sessionChallenge?.headers.get("retry-after")).toBe("60");
+            abuseDecision = { outcome: "block", retryAfter: 120 };
+            const throttled = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(throttled.status).toBe(429);
+            expect(throttled.headers.get("retry-after")).toBe("120");
+            abuseFailure = true;
+            const unavailableProtection = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(unavailableProtection.status).toBe(503);
+            expect((await unavailableProtection.json()).code).toBe(
+              "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+            );
+            abuseFailure = false;
+            abuseDecision = { outcome: "allow" };
 
             const anonymousSession = await auth.handler(
               request("/get-session"),

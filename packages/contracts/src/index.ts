@@ -124,8 +124,20 @@ const authenticationFailure = {
 const authenticationServiceFailure = {
   $ref: "#/components/responses/AuthenticationServiceFailure",
 } as const;
+const authenticationRateLimited = {
+  $ref: "#/components/responses/AuthenticationRateLimited",
+} as const;
 const sessionServiceFailure = {
   $ref: "#/components/responses/SessionServiceFailure",
+} as const;
+
+const authChallengeParameter = {
+  name: "x-vowora-challenge-token",
+  in: "header",
+  required: false,
+  description:
+    "Single-use challenge token supplied only after an additional-verification response.",
+  schema: { type: "string", minLength: 1, maxLength: 4096 },
 } as const;
 
 const emailPasswordRequest = (includeName: boolean) => ({
@@ -222,6 +234,7 @@ export const openApiDocument = {
     "/api/v1/auth/sign-up/email": {
       post: {
         operationId: "signUpWithEmail",
+        parameters: [authChallengeParameter],
         requestBody: emailPasswordRequest(true),
         responses: {
           "200": {
@@ -231,14 +244,16 @@ export const openApiDocument = {
           },
           "400": authenticationFailure,
           "403": authenticationFailure,
-          "429": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": authenticationServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
     "/api/v1/auth/sign-in/email": {
       post: {
         operationId: "signInWithEmail",
+        parameters: [authChallengeParameter],
         requestBody: emailPasswordRequest(false),
         responses: {
           "200": {
@@ -254,14 +269,16 @@ export const openApiDocument = {
           "400": authenticationFailure,
           "401": authenticationFailure,
           "403": authenticationFailure,
-          "429": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": authenticationServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
     "/api/v1/auth/send-verification-email": {
       post: {
         operationId: "sendVerificationEmail",
+        parameters: [authChallengeParameter],
         requestBody: {
           required: true,
           content: {
@@ -290,8 +307,9 @@ export const openApiDocument = {
           },
           "400": authenticationFailure,
           "403": authenticationFailure,
-          "429": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": authenticationServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
@@ -339,6 +357,7 @@ export const openApiDocument = {
     "/api/v1/auth/request-password-reset": {
       post: {
         operationId: "requestPasswordReset",
+        parameters: [authChallengeParameter],
         requestBody: {
           required: true,
           content: {
@@ -372,14 +391,16 @@ export const openApiDocument = {
           },
           "400": authenticationFailure,
           "403": authenticationFailure,
-          "429": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": authenticationServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
     "/api/v1/auth/reset-password": {
       post: {
         operationId: "resetPassword",
+        parameters: [authChallengeParameter],
         requestBody: {
           required: true,
           content: {
@@ -410,7 +431,10 @@ export const openApiDocument = {
             },
           },
           "400": authenticationFailure,
+          "403": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": authenticationServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
@@ -475,7 +499,9 @@ export const openApiDocument = {
           "204": { description: "Other sessions revoked." },
           "401": authenticationFailure,
           "403": authenticationFailure,
+          "429": authenticationRateLimited,
           "500": sessionServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
@@ -495,7 +521,9 @@ export const openApiDocument = {
           "401": authenticationFailure,
           "403": authenticationFailure,
           "404": { $ref: "#/components/responses/ResourceNotFound" },
+          "429": authenticationRateLimited,
           "500": sessionServiceFailure,
+          "503": authenticationServiceFailure,
         },
       },
     },
@@ -536,6 +564,15 @@ export const openApiDocument = {
       AuthenticationFailed: problemResponse(
         "The authentication request could not be completed.",
       ),
+      AuthenticationRateLimited: {
+        ...problemResponse("Too many authentication attempts were made."),
+        headers: {
+          "Retry-After": {
+            description: "Seconds before another attempt should be made.",
+            schema: { type: "integer", minimum: 1, maximum: 900 },
+          },
+        },
+      },
       AuthenticationServiceFailure: problemResponse(
         "The authentication service is temporarily unavailable.",
       ),

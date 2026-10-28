@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TurnstileChallenge } from "./turnstile-challenge";
 
 const genericFailure =
   "We could not complete that request. Check your details and try again.";
@@ -12,6 +13,7 @@ export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
     "idle",
   );
   const [message, setMessage] = useState("");
+  const [challengeRequired, setChallengeRequired] = useState(false);
   const isSignUp = mode === "sign-up";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -25,16 +27,40 @@ export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
       password: String(data.get("password") ?? ""),
       callbackURL: `${window.location.origin}/account`,
     };
+    const challengeToken = String(data.get("cf-turnstile-response") ?? "");
+    setChallengeRequired(false);
     try {
       const response = await fetch(
         `/api/v1/auth/${isSignUp ? "sign-up" : "sign-in"}/email`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(challengeToken
+              ? { "x-vowora-challenge-token": challengeToken }
+              : {}),
+          },
           body: JSON.stringify(body),
         },
       );
       if (!response.ok) {
+        if (response.status === 403) {
+          const problem: unknown = await response
+            .clone()
+            .json()
+            .catch(() => null);
+          if (
+            typeof problem === "object" &&
+            problem !== null &&
+            "code" in problem &&
+            problem.code === "AUTHENTICATION_CHALLENGE_REQUIRED"
+          ) {
+            setChallengeRequired(true);
+            setMessage("Complete the verification challenge and try again.");
+            setStatus("idle");
+            return;
+          }
+        }
         setMessage(genericFailure);
         setStatus("idle");
         return;
@@ -82,6 +108,7 @@ export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
           required
         />
       </label>
+      {challengeRequired ? <TurnstileChallenge /> : null}
       <button disabled={status !== "idle"} type="submit">
         {status === "submitting"
           ? "Please wait…"
