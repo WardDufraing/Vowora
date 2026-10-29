@@ -162,7 +162,10 @@ function restoreCommand() {
   return {
     correlationId: randomUUID(),
     membershipId,
-    mutation: { kind: "access_restored" as const },
+    mutation: {
+      kind: "access_restored" as const,
+      accessExpiresAt: "2026-11-05T09:00:00.000Z",
+    },
     weddingId,
   };
 }
@@ -175,12 +178,15 @@ function eventIdentity(auditIndex: number, outboxIndex: number) {
   };
 }
 
-async function seed(database: Database) {
+async function seed(
+  database: Database,
+  membership: WeddingMembership = helperMembership(),
+) {
   await database.insert(permissionScopeStates).values({
     membershipId,
     weddingId,
     version: "membership:1",
-    membership: helperMembership(),
+    membership,
   });
 }
 
@@ -304,6 +310,64 @@ describe("mandatory audited permission change transaction", () => {
       );
       expect(await database.select().from(auditEvents)).toHaveLength(1);
       expect(await database.select().from(outboxEvents)).toHaveLength(1);
+    });
+  });
+
+  it("restores an expired helper only with a new future expiry and records expansion", async () => {
+    await withDatabase("permission-change-restore", async (database) => {
+      await seed(database, {
+        ...helperMembership("revoked"),
+        accessExpiresAt: "2026-10-20T09:00:00.000Z",
+      });
+      await expect(
+        authorizeWeddingPermissionChange(
+          { actorId },
+          {
+            ...restoreCommand(),
+            mutation: {
+              kind: "access_restored",
+              accessExpiresAt: "2026-10-28T09:00:00.000Z",
+            },
+          },
+          state(database),
+          new Date("2026-10-29T09:00:00.000Z"),
+        ),
+      ).rejects.toMatchObject({ failure: "access_denied" });
+      expect(await database.select().from(auditEvents)).toEqual([]);
+      expect(await database.select().from(outboxEvents)).toEqual([]);
+
+      const operation = await authorizeWeddingPermissionChange(
+        { actorId },
+        restoreCommand(),
+        state(database),
+        new Date("2026-10-29T09:00:00.000Z"),
+      );
+      await withAuditedWeddingPermissionChange(
+        host(database),
+        operation,
+        new PermissionRepository("membership:2"),
+        eventIdentity(250, 251),
+      );
+
+      expect(await database.select().from(permissionScopeStates)).toMatchObject(
+        [
+          {
+            version: "membership:2",
+            membership: {
+              status: "active",
+              accessExpiresAt: "2026-11-05T09:00:00.000Z",
+            },
+          },
+        ],
+      );
+      expect(await database.select().from(auditEvents)).toMatchObject([
+        {
+          metadata: { change: "access_restored", effectiveAccess: "expanded" },
+        },
+      ]);
+      expect(await database.select().from(outboxEvents)).toMatchObject([
+        { payload: { change: "access_restored", effectiveAccess: "expanded" } },
+      ]);
     });
   });
 

@@ -7,6 +7,7 @@ import {
   PermissionScopeChangeError,
   type WeddingPermissionChangeAuthorizationState,
 } from "./permission-changes.js";
+import { weddingPermissionAreas } from "./permissions.js";
 
 const actorId = "019a1f5e-70a0-7000-8000-000000000001";
 const targetActorId = "019a1f5e-70a0-7000-8000-000000000002";
@@ -238,7 +239,10 @@ describe("wedding access-management capability", () => {
   it("computes effective direction from before/after state, including expiry notification semantics", async () => {
     const restore = await authorizeWeddingPermissionChange(
       { actorId },
-      command({ kind: "access_restored" }),
+      command({
+        kind: "access_restored",
+        accessExpiresAt: "2026-11-05T09:00:00.000Z",
+      }),
       mutableState({ targetStatus: "revoked" }).state,
       evaluatedAt,
     );
@@ -254,6 +258,56 @@ describe("wedding access-management capability", () => {
       evaluatedAt,
     );
     expect(expiry.effectiveAccess).toBe("unchanged");
+  });
+
+  it("rejects restoration with a past expiry, an unapproved role, or no effective access", async () => {
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command({
+          kind: "access_restored",
+          accessExpiresAt: "2026-10-28T09:00:00.000Z",
+        }),
+        mutableState({ targetStatus: "revoked" }).state,
+        evaluatedAt,
+      ),
+    ).rejects.toMatchObject({ failure: "access_denied" });
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command({
+          kind: "access_restored",
+          accessExpiresAt: "2026-11-05T09:00:00.000Z",
+        }),
+        mutableState({
+          targetRole: "planner",
+          targetStatus: "revoked",
+        }).state,
+        evaluatedAt,
+      ),
+    ).rejects.toMatchObject({ failure: "access_denied" });
+    const noAccess = mutableState({ targetStatus: "revoked" });
+    noAccess.setTarget(
+      membership(targetActorId, "helper", {
+        status: "revoked",
+        permissionOverrides: weddingPermissionAreas.map((area) => ({
+          area,
+          action: "view",
+          effect: "deny",
+        })),
+      }),
+    );
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command({
+          kind: "access_restored",
+          accessExpiresAt: "2026-11-05T09:00:00.000Z",
+        }),
+        noAccess.state,
+        evaluatedAt,
+      ),
+    ).rejects.toMatchObject({ failure: "access_denied" });
   });
 
   it("rejects stale, forged, mismatched and reused mutation results", async () => {

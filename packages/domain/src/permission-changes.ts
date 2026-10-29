@@ -63,7 +63,10 @@ const mutationSchema = z.discriminatedUnion("kind", [
     role: z.enum(["coordinator", "helper", "read_only_guest"]),
   }),
   z.strictObject({ kind: z.literal("access_revoked") }),
-  z.strictObject({ kind: z.literal("access_restored") }),
+  z.strictObject({
+    kind: z.literal("access_restored"),
+    accessExpiresAt: z.iso.datetime({ offset: true }),
+  }),
   z.strictObject({
     kind: z.literal("expiry_changed"),
     accessExpiresAt: z.iso.datetime({ offset: true }).nullable(),
@@ -204,6 +207,7 @@ function deriveMembership(
       if (before.status !== "revoked")
         throw new PermissionScopeChangeError("access_denied");
       candidate.status = "active";
+      candidate.accessExpiresAt = mutation.accessExpiresAt;
       break;
     case "expiry_changed":
       if (before.role !== "coordinator" && before.role !== "helper") {
@@ -353,6 +357,23 @@ async function evaluateChange(
     membership,
     evaluatedAt,
   );
+  if (
+    command.data.mutation.kind === "access_revoked" &&
+    !isActive(targetMembership, evaluatedAt)
+  ) {
+    throw new PermissionScopeChangeError("access_denied");
+  }
+  if (command.data.mutation.kind === "access_restored") {
+    if (
+      (targetMembership.role !== "coordinator" &&
+        targetMembership.role !== "helper") ||
+      Date.parse(command.data.mutation.accessExpiresAt) <=
+        evaluatedAt.getTime() ||
+      effectiveAccess !== "expanded"
+    ) {
+      throw new PermissionScopeChangeError("access_denied");
+    }
+  }
   return {
     actorId: actor.data.actorId,
     actorPermissionScopeVersion: actorVersion.data,
@@ -362,9 +383,7 @@ async function evaluateChange(
     effectiveAccess:
       command.data.mutation.kind === "access_revoked"
         ? "reduced"
-        : command.data.mutation.kind === "access_restored"
-          ? "expanded"
-          : effectiveAccess,
+        : effectiveAccess,
     expectedPermissionScopeVersion: targetVersion.data,
     membership,
     membershipId: command.data.membershipId,
