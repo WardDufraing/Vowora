@@ -21,6 +21,18 @@ export type {
   OutboxEventInput,
 } from "./events.js";
 export {
+  createPermissionScopeChangeCapture,
+  effectiveAccessChanges,
+  permissionChangeKinds,
+  PermissionScopeChangeValidationError,
+} from "./permission-changes.js";
+export type {
+  EffectiveAccessChange,
+  PermissionChangeKind,
+  PermissionScopeChangeCapture,
+  PermissionScopeChangeInput,
+} from "./permission-changes.js";
+export {
   canRemoveWeddingMembership,
   evaluateIndependentPlannerPrivateRecordPermission,
   evaluateOrganizationPrivateRecordPermission,
