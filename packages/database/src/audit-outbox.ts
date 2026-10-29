@@ -7,12 +7,14 @@ import {
   type AuditEventEnvelope,
   type AuthorizationContext,
   type OutboxEventEnvelope,
-  type TenantRepositoryCall,
-  type TenantScopedRepository,
 } from "@vowora/domain";
 
 import { auditEvents, outboxEvents } from "./schema.js";
-import { TenantScopeViolationError } from "./tenant.js";
+import {
+  assertActiveAuthorizedRepositoryCall,
+  type AuthorizedTenantTransaction,
+  TenantScopeViolationError,
+} from "./tenant.js";
 
 type AuditOutboxSchema = {
   auditEvents: typeof auditEvents;
@@ -39,23 +41,15 @@ function assertEnvelopeScope(
   }
 }
 
-interface AuditEventOperations {
-  append(
-    call: TenantRepositoryCall<AuditOutboxSession>,
-    event: AuditEventEnvelope,
-  ): Promise<void>;
-}
-
 /** The sole application write interface for audit events. It intentionally
  * exposes no update/delete methods. */
-export class AuditEventWriter implements TenantScopedRepository<
-  AuditOutboxSession,
-  AuditEventOperations
-> {
+export class AuditEventWriter {
   async append(
-    { authorization, session }: TenantRepositoryCall<AuditOutboxSession>,
+    call: AuthorizedTenantTransaction<AuditOutboxSession>,
     event: AuditEventEnvelope,
   ): Promise<void> {
+    assertActiveAuthorizedRepositoryCall(call);
+    const { authorization, session } = call;
     assertAuditEventEnvelope(event);
     assertEnvelopeScope(authorization, event);
     await session.insert(auditEvents).values({
@@ -65,23 +59,15 @@ export class AuditEventWriter implements TenantScopedRepository<
   }
 }
 
-interface OutboxEventOperations {
-  enqueue(
-    call: TenantRepositoryCall<AuditOutboxSession>,
-    event: OutboxEventEnvelope,
-  ): Promise<void>;
-}
-
 /** Captures an event on the caller-owned business transaction. Dispatch and
  * delivery state are deliberately deferred to task 16-a. */
-export class OutboxEventWriter implements TenantScopedRepository<
-  AuditOutboxSession,
-  OutboxEventOperations
-> {
+export class OutboxEventWriter {
   async enqueue(
-    { authorization, session }: TenantRepositoryCall<AuditOutboxSession>,
+    call: AuthorizedTenantTransaction<AuditOutboxSession>,
     event: OutboxEventEnvelope,
   ): Promise<void> {
+    assertActiveAuthorizedRepositoryCall(call);
+    const { authorization, session } = call;
     assertOutboxEventEnvelope(event);
     assertEnvelopeScope(authorization, event);
     await session.insert(outboxEvents).values({

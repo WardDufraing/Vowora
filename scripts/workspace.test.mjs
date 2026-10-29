@@ -152,6 +152,16 @@ test("domain/contracts expose only their public compiled entrypoint", async () =
     );
     assert.equal(output, "");
   }
+  const domainOutput = execFileSync(
+    "node",
+    [
+      "--input-type=module",
+      "-e",
+      "const runtime = await import('@vowora/domain'); if ('resolveAuthorizationContext' in runtime || 'parseAuthorizationContextInput' in runtime) process.exit(1);",
+    ],
+    { cwd: new URL("apps/web/", root), encoding: "utf8" },
+  );
+  assert.equal(domainOutput, "");
 });
 test("database keeps migration helpers behind its explicit testing entrypoint", async () => {
   const manifest = JSON.parse(
@@ -167,7 +177,7 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
     [
       "--input-type=module",
       "-e",
-      "const runtime = await import('@vowora/database'); if ('applyMigrations' in runtime || 'parseTestMigrationConfig' in runtime || 'withIsolatedTestSchema' in runtime) process.exit(1); const testing = await import('@vowora/database/testing'); if (typeof testing.applyMigrations !== 'function' || typeof testing.parseTestMigrationConfig !== 'function') process.exit(1);",
+      "const runtime = await import('@vowora/database'); if ('applyMigrations' in runtime || 'parseTestMigrationConfig' in runtime || 'withIsolatedTestSchema' in runtime || 'withTenantTransaction' in runtime) process.exit(1); const testing = await import('@vowora/database/testing'); if (typeof testing.applyMigrations !== 'function' || typeof testing.parseTestMigrationConfig !== 'function') process.exit(1);",
     ],
     { cwd: new URL("packages/database/", root), encoding: "utf8" },
   );

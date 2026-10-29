@@ -1,17 +1,8 @@
 export {
   assertAuthorizationContext,
   AuthorizationContextError,
-  parseAuthorizationContextInput,
-  resolveAuthorizationContext,
 } from "./authorization.js";
-export type {
-  AuthorizationContext,
-  AuthorizationContextCandidate,
-  AuthorizationContextInput,
-  AuthorizationContextVerifier,
-  TenantRepositoryCall,
-  TenantScopedRepository,
-} from "./authorization.js";
+export type { AuthorizationContext } from "./authorization.js";
 
 export {
   assertAuditEventEnvelope,
@@ -60,15 +51,18 @@ export type {
   WeddingRolePreset,
 } from "./permissions.js";
 export {
+  assertAuthorizedOperationRequirement,
   assertAuthorizedServerOperation,
   authorizeIndependentPlannerServerOperation,
   authorizeOrganizationServerOperation,
   authorizeWeddingServerOperation,
+  consumeAuthorizedServerOperation,
   ServerAuthorizationError,
 } from "./server-authorization.js";
 export type {
   AuthenticatedActor,
   AuthorizedServerOperation,
+  AuthorizedOperationRequirement,
   IndependentPlannerRecordAuthorizationProjection,
   IndependentPlannerServerOperation,
   OrganizationRecordAuthorizationProjection,

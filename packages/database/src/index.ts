@@ -13,15 +13,15 @@ export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";
 export { createUuidV7, isUuidV7 } from "./uuid.js";
 export {
+  assertAuthorizedRepositoryCall,
   assertTenantWriteScope,
   tenantScopePredicate,
   TenantScopeViolationError,
   withAuthorizedTenantTransaction,
-  withTenantTransaction,
 } from "./tenant.js";
 export type {
+  AuthorizedTenantTransaction,
   TenantScopeColumns,
   TenantScopeValues,
-  TenantTransaction,
   TransactionHost,
 } from "./tenant.js";

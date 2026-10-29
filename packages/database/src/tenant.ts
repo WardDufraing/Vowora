@@ -2,11 +2,13 @@ import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import {
+  assertAuthorizedOperationRequirement,
   assertAuthorizedServerOperation,
   assertAuthorizationContext,
+  consumeAuthorizedServerOperation,
+  type AuthorizedOperationRequirement,
   type AuthorizedServerOperation,
   type AuthorizationContext,
-  type TenantRepositoryCall,
 } from "@vowora/domain";
 
 export interface TenantScopeColumns {
@@ -98,7 +100,56 @@ export interface TransactionHost<Session> {
   ): Promise<Result>;
 }
 
+/** Package-internal compatibility contract for pre-04 infrastructure tests.
+ * Feature repositories use AuthorizedTenantTransaction. */
+export interface TenantRepositoryCall<Session> {
+  readonly authorization: AuthorizationContext;
+  readonly session: Session;
+}
+
+export type TenantScopedRepository<Session, Operations> = {
+  [Operation in keyof Operations]: Operations[Operation] extends (
+    ...arguments_: infer Arguments
+  ) => infer Result
+    ? Arguments extends [TenantRepositoryCall<Session>, ...unknown[]]
+      ? (...arguments_: Arguments) => Result
+      : never
+    : never;
+};
+
 export type TenantTransaction<Session> = TenantRepositoryCall<Session>;
+
+export interface AuthorizedTenantTransaction<
+  Session,
+> extends TenantRepositoryCall<Session> {
+  readonly operation: AuthorizedServerOperation;
+}
+
+const activeAuthorizedRepositoryCalls = new WeakSet<object>();
+
+export function assertActiveAuthorizedRepositoryCall<Session>(
+  call: AuthorizedTenantTransaction<Session>,
+): void {
+  if (!activeAuthorizedRepositoryCalls.has(call)) {
+    throw new TenantScopeViolationError();
+  }
+  assertAuthorizationContext(call.authorization);
+  assertAuthorizedServerOperation(call.operation);
+  if (call.authorization !== call.operation.authorization) {
+    throw new TenantScopeViolationError();
+  }
+}
+
+/** Repository methods call this with their static contract before issuing SQL.
+ * It prevents a capability for one action, area, visibility or record from
+ * being reused for a different repository operation. */
+export function assertAuthorizedRepositoryCall<Session>(
+  call: AuthorizedTenantTransaction<Session>,
+  requirement: AuthorizedOperationRequirement,
+): void {
+  assertActiveAuthorizedRepositoryCall(call);
+  assertAuthorizedOperationRequirement(call.operation, requirement);
+}
 
 /** Application-service transaction boundary for bounded database work only.
  * Repositories receive the same caller-owned session and validated context;
@@ -125,8 +176,21 @@ export function withTenantTransaction<Session, Result>(
 export function withAuthorizedTenantTransaction<Session, Result>(
   host: TransactionHost<Session>,
   operation: AuthorizedServerOperation,
-  callback: (context: TenantTransaction<Session>) => Promise<Result>,
+  callback: (context: AuthorizedTenantTransaction<Session>) => Promise<Result>,
 ): Promise<Result> {
   assertAuthorizedServerOperation(operation);
-  return withTenantTransaction(host, operation.authorization, callback);
+  return host.transaction(async (session) => {
+    const consumed = await consumeAuthorizedServerOperation(operation, session);
+    const call = Object.freeze({
+      authorization: consumed.authorization,
+      operation: consumed,
+      session,
+    });
+    activeAuthorizedRepositoryCalls.add(call);
+    try {
+      return await callback(call);
+    } finally {
+      activeAuthorizedRepositoryCalls.delete(call);
+    }
+  });
 }

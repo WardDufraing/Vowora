@@ -131,25 +131,31 @@ export interface IndependentPlannerRecordAuthorizationProjection {
 export interface ServerAuthorizationState {
   loadWeddingMembership(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
     readonly weddingId: string;
   }): Promise<VersionedMembership | undefined>;
   loadWeddingRecord(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
     readonly recordId: string;
   }): Promise<WeddingRecordAuthorizationProjection | undefined>;
   loadOrganizationMembership(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
     readonly organizationId: string;
   }): Promise<VersionedMembership | undefined>;
   loadOrganizationRecord(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
     readonly recordId: string;
   }): Promise<OrganizationRecordAuthorizationProjection | undefined>;
   loadIndependentPlannerIdentity(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
   }): Promise<VersionedMembership | undefined>;
   loadIndependentPlannerRecord(input: {
     readonly actorId: string;
+    readonly authorizationSession?: unknown;
     readonly recordId: string;
   }): Promise<IndependentPlannerRecordAuthorizationProjection | undefined>;
 }
@@ -177,6 +183,11 @@ export interface AuthorizedServerOperation {
 }
 
 const issuedOperations = new WeakSet<object>();
+const availableOperations = new WeakSet<object>();
+const operationRevalidators = new WeakMap<
+  object,
+  (authorizationSession: unknown) => Promise<boolean>
+>();
 
 export function assertAuthorizedServerOperation(
   value: unknown,
@@ -185,6 +196,91 @@ export function assertAuthorizedServerOperation(
     (typeof value !== "object" && typeof value !== "function") ||
     value === null ||
     !issuedOperations.has(value)
+  ) {
+    throw new ServerAuthorizationError("access_denied");
+  }
+}
+
+interface AuthorizedOperationDescriptor {
+  readonly actorId: string;
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly correlationId: string;
+  readonly permissionScopeVersion: string;
+  readonly resourceId?: string;
+  readonly visibility: AuthorizedServerOperation["visibility"];
+  readonly weddingId?: string;
+  readonly organizationId?: string;
+  readonly privateOwnerActorId?: string;
+}
+
+function operationMatchesDescriptor(
+  expected: AuthorizedServerOperation,
+  actual: AuthorizedOperationDescriptor,
+): boolean {
+  return (
+    expected.area === actual.area &&
+    expected.action === actual.action &&
+    expected.resourceId === actual.resourceId &&
+    expected.visibility === actual.visibility &&
+    expected.authorization.actorId === actual.actorId &&
+    expected.authorization.activeWeddingId === actual.weddingId &&
+    expected.authorization.activeOrganizationId === actual.organizationId &&
+    expected.authorization.activePrivateOwnerActorId ===
+      actual.privateOwnerActorId &&
+    expected.authorization.permissionScopeVersion ===
+      actual.permissionScopeVersion
+  );
+}
+
+/** Consumes the operation once and rechecks authoritative state inside the
+ * caller's transaction/snapshot before protected repository work can run. */
+export async function consumeAuthorizedServerOperation(
+  value: unknown,
+  authorizationSession: unknown,
+): Promise<AuthorizedServerOperation> {
+  assertAuthorizedServerOperation(value);
+  if (!availableOperations.has(value)) {
+    throw new ServerAuthorizationError("access_denied");
+  }
+  availableOperations.delete(value);
+  const revalidate = operationRevalidators.get(value);
+  operationRevalidators.delete(value);
+  if (!revalidate) throw new ServerAuthorizationError("access_denied");
+  let valid = false;
+  try {
+    valid = await revalidate(authorizationSession);
+  } catch (error) {
+    if (error instanceof ServerAuthorizationError) throw error;
+    throw new ServerAuthorizationError("authorization_unavailable");
+  }
+  if (!valid) throw new ServerAuthorizationError("access_denied");
+  return value;
+}
+
+export interface AuthorizedOperationRequirement {
+  readonly area: WeddingPermissionArea;
+  readonly action: WeddingPermissionAction;
+  readonly resource:
+    | { readonly kind: "existing"; readonly id: string }
+    | { readonly kind: "new" };
+  readonly visibility: AuthorizedServerOperation["visibility"];
+}
+
+export function assertAuthorizedOperationRequirement(
+  operation: AuthorizedServerOperation,
+  requirement: AuthorizedOperationRequirement,
+): void {
+  assertAuthorizedServerOperation(operation);
+  const resourceMatches =
+    requirement.resource.kind === "new"
+      ? operation.resourceId === undefined
+      : operation.resourceId === requirement.resource.id;
+  if (
+    operation.area !== requirement.area ||
+    operation.action !== requirement.action ||
+    operation.visibility !== requirement.visibility ||
+    !resourceMatches
   ) {
     throw new ServerAuthorizationError("access_denied");
   }
@@ -206,18 +302,11 @@ function unavailable(): never {
   throw new ServerAuthorizationError("authorization_unavailable");
 }
 
-async function mintOperation(input: {
-  actorId: string;
-  area: WeddingPermissionArea;
-  action: WeddingPermissionAction;
-  correlationId: string;
-  permissionScopeVersion: string;
-  resourceId?: string;
-  visibility: AuthorizedServerOperation["visibility"];
-  weddingId?: string;
-  organizationId?: string;
-  privateOwnerActorId?: string;
-}): Promise<AuthorizedServerOperation> {
+async function mintOperation(
+  input: AuthorizedOperationDescriptor & {
+    revalidate: (authorizationSession: unknown) => Promise<boolean>;
+  },
+): Promise<AuthorizedServerOperation> {
   const authorization = await resolveAuthorizationContext(
     {
       actorId: input.actorId,
@@ -241,15 +330,18 @@ async function mintOperation(input: {
     visibility: input.visibility,
   });
   issuedOperations.add(operation);
+  availableOperations.add(operation);
+  operationRevalidators.set(operation, input.revalidate);
   return operation;
 }
 
-export async function authorizeWeddingServerOperation(
+async function evaluateWeddingServerOperation(
   actorInput: unknown,
   operationInput: unknown,
   state: ServerAuthorizationState,
   evaluatedAt = new Date(),
-): Promise<AuthorizedServerOperation> {
+  authorizationSession?: unknown,
+): Promise<AuthorizedOperationDescriptor> {
   const actor = parseActor(actorInput);
   const operation = weddingOperationSchema.safeParse(operationInput);
   if (!operation.success) deny();
@@ -258,6 +350,7 @@ export async function authorizeWeddingServerOperation(
   try {
     membershipState = await state.loadWeddingMembership({
       actorId: actor.actorId,
+      ...(authorizationSession === undefined ? {} : { authorizationSession }),
       weddingId: operation.data.weddingId,
     });
   } catch {
@@ -287,6 +380,7 @@ export async function authorizeWeddingServerOperation(
     try {
       loaded = await state.loadWeddingRecord({
         actorId: actor.actorId,
+        ...(authorizationSession === undefined ? {} : { authorizationSession }),
         recordId: operation.data.recordId,
       });
     } catch {
@@ -315,7 +409,7 @@ export async function authorizeWeddingServerOperation(
   );
   if (!decision.allowed) deny();
 
-  return mintOperation({
+  return {
     actorId: actor.actorId,
     area,
     action: operation.data.action,
@@ -324,14 +418,46 @@ export async function authorizeWeddingServerOperation(
     ...(resourceId ? { resourceId } : {}),
     visibility: "wedding_shared",
     weddingId: operation.data.weddingId,
-  });
+  };
 }
 
-export async function authorizeOrganizationServerOperation(
+export async function authorizeWeddingServerOperation(
   actorInput: unknown,
   operationInput: unknown,
   state: ServerAuthorizationState,
+  evaluatedAt = new Date(),
 ): Promise<AuthorizedServerOperation> {
+  const actor = parseActor(actorInput);
+  const parsedOperation = weddingOperationSchema.safeParse(operationInput);
+  if (!parsedOperation.success) deny();
+  const descriptor = await evaluateWeddingServerOperation(
+    actor,
+    parsedOperation.data,
+    state,
+    evaluatedAt,
+  );
+  const issued = await mintOperation({
+    ...descriptor,
+    revalidate: async (authorizationSession) => {
+      const current = await evaluateWeddingServerOperation(
+        actor,
+        parsedOperation.data,
+        state,
+        new Date(),
+        authorizationSession,
+      );
+      return operationMatchesDescriptor(issued, current);
+    },
+  });
+  return issued;
+}
+
+async function evaluateOrganizationServerOperation(
+  actorInput: unknown,
+  operationInput: unknown,
+  state: ServerAuthorizationState,
+  authorizationSession?: unknown,
+): Promise<AuthorizedOperationDescriptor> {
   const actor = parseActor(actorInput);
   const operation = organizationOperationSchema.safeParse(operationInput);
   if (!operation.success) deny();
@@ -340,6 +466,7 @@ export async function authorizeOrganizationServerOperation(
   try {
     membershipState = await state.loadOrganizationMembership({
       actorId: actor.actorId,
+      ...(authorizationSession === undefined ? {} : { authorizationSession }),
       organizationId: operation.data.organizationId,
     });
   } catch {
@@ -369,6 +496,7 @@ export async function authorizeOrganizationServerOperation(
   try {
     loaded = await state.loadOrganizationRecord({
       actorId: actor.actorId,
+      ...(authorizationSession === undefined ? {} : { authorizationSession }),
       recordId: operation.data.recordId,
     });
   } catch {
@@ -389,7 +517,7 @@ export async function authorizeOrganizationServerOperation(
   });
   if (!decision.allowed) deny();
 
-  return mintOperation({
+  return {
     actorId: actor.actorId,
     area: record.data.area,
     action: operation.data.action,
@@ -398,14 +526,43 @@ export async function authorizeOrganizationServerOperation(
     permissionScopeVersion: version.data,
     resourceId: operation.data.recordId,
     visibility: "organization_private",
-  });
+  };
 }
 
-export async function authorizeIndependentPlannerServerOperation(
+export async function authorizeOrganizationServerOperation(
   actorInput: unknown,
   operationInput: unknown,
   state: ServerAuthorizationState,
 ): Promise<AuthorizedServerOperation> {
+  const actor = parseActor(actorInput);
+  const parsedOperation = organizationOperationSchema.safeParse(operationInput);
+  if (!parsedOperation.success) deny();
+  const descriptor = await evaluateOrganizationServerOperation(
+    actor,
+    parsedOperation.data,
+    state,
+  );
+  const issued = await mintOperation({
+    ...descriptor,
+    revalidate: async (authorizationSession) => {
+      const current = await evaluateOrganizationServerOperation(
+        actor,
+        parsedOperation.data,
+        state,
+        authorizationSession,
+      );
+      return operationMatchesDescriptor(issued, current);
+    },
+  });
+  return issued;
+}
+
+async function evaluateIndependentPlannerServerOperation(
+  actorInput: unknown,
+  operationInput: unknown,
+  state: ServerAuthorizationState,
+  authorizationSession?: unknown,
+): Promise<AuthorizedOperationDescriptor> {
   const actor = parseActor(actorInput);
   const operation = independentPlannerOperationSchema.safeParse(operationInput);
   if (!operation.success) deny();
@@ -414,6 +571,7 @@ export async function authorizeIndependentPlannerServerOperation(
   try {
     identityState = await state.loadIndependentPlannerIdentity({
       actorId: actor.actorId,
+      ...(authorizationSession === undefined ? {} : { authorizationSession }),
     });
   } catch {
     unavailable();
@@ -437,6 +595,7 @@ export async function authorizeIndependentPlannerServerOperation(
   try {
     loaded = await state.loadIndependentPlannerRecord({
       actorId: actor.actorId,
+      ...(authorizationSession === undefined ? {} : { authorizationSession }),
       recordId: operation.data.recordId,
     });
   } catch {
@@ -456,7 +615,7 @@ export async function authorizeIndependentPlannerServerOperation(
   });
   if (!decision.allowed) deny();
 
-  return mintOperation({
+  return {
     actorId: actor.actorId,
     area: record.data.area,
     action: operation.data.action,
@@ -465,5 +624,34 @@ export async function authorizeIndependentPlannerServerOperation(
     privateOwnerActorId: actor.actorId,
     resourceId: operation.data.recordId,
     visibility: "independent_planner_private",
+  };
+}
+
+export async function authorizeIndependentPlannerServerOperation(
+  actorInput: unknown,
+  operationInput: unknown,
+  state: ServerAuthorizationState,
+): Promise<AuthorizedServerOperation> {
+  const actor = parseActor(actorInput);
+  const parsedOperation =
+    independentPlannerOperationSchema.safeParse(operationInput);
+  if (!parsedOperation.success) deny();
+  const descriptor = await evaluateIndependentPlannerServerOperation(
+    actor,
+    parsedOperation.data,
+    state,
+  );
+  const issued = await mintOperation({
+    ...descriptor,
+    revalidate: async (authorizationSession) => {
+      const current = await evaluateIndependentPlannerServerOperation(
+        actor,
+        parsedOperation.data,
+        state,
+        authorizationSession,
+      );
+      return operationMatchesDescriptor(issued, current);
+    },
   });
+  return issued;
 }
