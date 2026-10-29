@@ -4,7 +4,7 @@ import type {} from "@vowora/contracts";
 import Link from "next/link";
 export default function Home() {
   return (
-    <main>
+    <main id="main-content">
       <p>Vowora</p>
       <h1>The application is in development.</h1>
       <p>Planning features are in development. Account access is available.</p>

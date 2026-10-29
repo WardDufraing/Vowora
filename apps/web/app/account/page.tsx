@@ -11,7 +11,7 @@ export default async function AccountPage() {
   if (!current) redirect("/sign-in");
   if (!current.user.emailVerified) redirect("/verify-email");
   return (
-    <main>
+    <main id="main-content">
       <p>Vowora</p>
       <h1>Account access confirmed</h1>
       <p>You are signed in with a verified email address.</p>
