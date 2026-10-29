@@ -38,7 +38,7 @@
 | 04-a | Permission vocabulary and role model | 03-c | Done | [Brief](steps/04-a.md) |
 | 04-b | Server authorization enforcement | 04-a | Done | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Done | [Brief](steps/04-c.md) |
-| 05-a | Semantic tokens and themes | 04-c | In progress | [Brief](steps/05-a.md) |
+| 05-a | Semantic tokens and themes | 04-c | In review | [Brief](steps/05-a.md) |
 | 05-b | Responsive app shell and navigation | 05-a | Not started | [Brief](steps/05-b.md) |
 | 05-c | Shared forms, tables and localization | 05-b | Not started | [Brief](steps/05-c.md) |
 | 06-a | Wedding creation and workspace settings | 05-c | Not started | [Brief](steps/06-a.md) |
