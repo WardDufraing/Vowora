@@ -135,6 +135,36 @@ test("web route handlers cannot bypass application services for database access"
   );
   assert.equal(service.errorCount, 0);
 });
+test("application services cannot import database internals", async () => {
+  for (const layer of ["web", "marketing"]) {
+    const lint = new ESLint({
+      cwd: new URL(`apps/${layer}/`, root).pathname,
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const source of [
+      "import '../../../packages/database/src/tenant';",
+      "import '../../../packages/database/src/test/authorization';",
+      "void import('../../../packages/database/dist/tenant.js');",
+      "export * from '@vowora/database/testing';",
+    ]) {
+      const [result] = await lint.lintText(source, {
+        filePath: "lib/feature-service.ts",
+      });
+      assert(
+        result.messages.some(
+          (message) => message.ruleId === "no-restricted-syntax",
+        ),
+        `${layer}: ${source}`,
+      );
+    }
+    const [publicRoot] = await lint.lintText(
+      "import type { TransactionHost } from '@vowora/database';",
+      { filePath: "lib/feature-service.ts" },
+    );
+    assert.equal(publicRoot.errorCount, 0, layer);
+  }
+});
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {
     const manifest = JSON.parse(

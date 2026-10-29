@@ -10,7 +10,7 @@ import { type AuthorizationContext } from "@vowora/domain";
 import {
   syntheticOrganizationAuthorization,
   syntheticWeddingAuthorization,
-} from "./authorization-test-helper.js";
+} from "./test/authorization.js";
 import { parseTestMigrationConfig } from "./config.js";
 import { withIsolatedTestSchema } from "./migrations.js";
 import {

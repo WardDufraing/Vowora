@@ -240,6 +240,27 @@ describe("authorized tenant transaction", () => {
     expect(callback).toHaveBeenCalledOnce();
   });
 
+  it("allows only one simultaneous consumer of a capability", async () => {
+    const callback = vi.fn(async () => "executed");
+    const host: TransactionHost<{ database: true }> = {
+      transaction: vi.fn(async (work) => work({ database: true })),
+    };
+    const operation = await viewOperation(mutableAuthorizationState().state);
+
+    const outcomes = await Promise.allSettled([
+      withAuthorizedTenantTransaction(host, operation, callback),
+      withAuthorizedTenantTransaction(host, operation, callback),
+    ]);
+
+    expect(
+      outcomes.filter(({ status }) => status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(outcomes.filter(({ status }) => status === "rejected")).toHaveLength(
+      1,
+    );
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
   it.each([
     [
       "revocation",

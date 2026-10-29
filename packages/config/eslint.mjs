@@ -15,6 +15,18 @@ const routeDatabaseRestrictions = [
   message:
     "Route handlers must call application services, never database repositories directly.",
 }));
+const applicationDatabaseInternalPattern =
+  "/(?:^@vowora\\/database\\/|\\/packages\\/database\\/(?:src|dist)(?:\\/|$))/";
+const applicationDatabaseInternalRestrictions = [
+  "ImportDeclaration",
+  "ExportNamedDeclaration",
+  "ExportAllDeclaration",
+  "ImportExpression",
+].map((nodeType) => ({
+  selector: `${nodeType}[source.value=${applicationDatabaseInternalPattern}]`,
+  message:
+    "Application services may import the public database package only; database source, dist and subpaths are internal.",
+}));
 
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
@@ -74,14 +86,41 @@ export function workspaceConfig(layer) {
             ],
           },
         ],
+        ...(isApplication
+          ? {
+              "no-restricted-syntax": [
+                "error",
+                ...applicationDatabaseInternalRestrictions,
+              ],
+            }
+          : {}),
       },
     },
+    ...(isApplication
+      ? [
+          {
+            files: [
+              "**/*.unit.test.{ts,tsx}",
+              "**/*.integration.test.{ts,tsx}",
+              "**/*.component.test.{ts,tsx}",
+              "**/tests/**/*.{ts,tsx}",
+            ],
+            rules: {
+              "no-restricted-syntax": "off",
+            },
+          },
+        ]
+      : []),
     ...(layer === "web"
       ? [
           {
             files: ["app/api/**/*.{ts,tsx}"],
             rules: {
-              "no-restricted-syntax": ["error", ...routeDatabaseRestrictions],
+              "no-restricted-syntax": [
+                "error",
+                ...applicationDatabaseInternalRestrictions,
+                ...routeDatabaseRestrictions,
+              ],
             },
           },
         ]

@@ -6,7 +6,7 @@ import { type AuthorizationContext } from "@vowora/domain";
 import {
   syntheticPrivateOwnerAuthorization,
   syntheticWeddingAuthorization,
-} from "./authorization-test-helper.js";
+} from "./test/authorization.js";
 
 import {
   assertTenantWriteScope,

@@ -14,7 +14,7 @@ import {
 import {
   syntheticOrganizationOperation,
   syntheticWeddingOperation,
-} from "./authorization-test-helper.js";
+} from "./test/authorization.js";
 import {
   AuditEventWriter,
   type AuditOutboxSession,
