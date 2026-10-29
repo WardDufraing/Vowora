@@ -603,8 +603,11 @@ tr[aria-selected="true"] {
   background: var(--selected);
   color: var(--selected-foreground);
 }
-.mobile-record {
+.mobile-records {
   display: none;
+  gap: var(--space-3);
+}
+.mobile-record {
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   padding: var(--space-4);
@@ -661,8 +664,8 @@ tr[aria-selected="true"] {
   .table-shell {
     display: none;
   }
-  .mobile-record {
-    display: block;
+  .mobile-records {
+    display: grid;
   }
   .representative-layout--login {
     grid-template-columns: 1fr;

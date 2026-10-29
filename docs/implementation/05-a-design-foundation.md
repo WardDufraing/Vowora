@@ -112,3 +112,10 @@ axe regressions correct the link issue. Shared navigation/notification
 primitives and explicit login/dashboard/list/marketing examples in the updated
 light/dark/wide/narrow evidence correct the foundation-package gap. Fresh
 independent re-review is pending.
+
+Fresh re-reviewer `/root/implement_05_a/rereview_05_a` confirmed both initial
+findings were resolved and found one material mobile-equivalence gap: the
+two-row desktop example had only one mobile card. Both representations now map
+the same shared synthetic records, preserve every displayed field, expose a
+named semantic mobile list and have a narrow-browser parity regression. The
+mobile screenshot is updated. Final fresh re-review is pending.

@@ -19,6 +19,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+const exampleRecords = [
+  {
+    title: "Review guest list",
+    owner: "Couple",
+    status: "In progress",
+    tone: "info",
+    selected: false,
+  },
+  {
+    title: "Confirm venue details",
+    owner: "Planner",
+    status: "Confirmed",
+    tone: "success",
+    selected: true,
+  },
+] as const;
+
 export default function DesignSystemPage() {
   if (readServerEnvironment().VOWORA_ENV === "production") notFound();
 
@@ -174,39 +191,52 @@ export default function DesignSystemPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <th scope="row">Review guest list</th>
-                <td>Couple</td>
-                <td>
-                  <StatusBadge tone="info">In progress</StatusBadge>
-                </td>
-              </tr>
-              <tr aria-selected="true">
-                <th scope="row">Confirm venue details</th>
-                <td>Planner</td>
-                <td>
-                  <StatusBadge tone="success">Confirmed</StatusBadge>
-                </td>
-              </tr>
+              {exampleRecords.map((record) => (
+                <tr
+                  aria-selected={record.selected ? true : undefined}
+                  key={record.title}
+                >
+                  <th scope="row">{record.title}</th>
+                  <td>{record.owner}</td>
+                  <td>
+                    <StatusBadge tone={record.tone}>
+                      {record.status}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        <article
-          className="mobile-record"
-          aria-labelledby="mobile-record-title"
+        <div
+          aria-label="Mobile task examples"
+          className="mobile-records"
+          role="list"
         >
-          <h3 id="mobile-record-title">Confirm venue details</h3>
-          <dl>
-            <div>
-              <dt>Owner</dt>
-              <dd>Planner</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>Confirmed</dd>
-            </div>
-          </dl>
-        </article>
+          {exampleRecords.map((record, index) => {
+            const headingId = `mobile-record-title-${index}`;
+            return (
+              <article
+                aria-labelledby={headingId}
+                className="mobile-record"
+                key={record.title}
+                role="listitem"
+              >
+                <h3 id={headingId}>{record.title}</h3>
+                <dl>
+                  <div>
+                    <dt>Owner</dt>
+                    <dd>{record.owner}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{record.status}</dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
       </section>
     </main>
   );

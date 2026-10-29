@@ -196,6 +196,14 @@ test.describe("semantic theme foundation", () => {
   }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.goto("/design-system");
+    const desktopRecords = await page
+      .locator('table tbody th[scope="row"]')
+      .allTextContents();
+    const mobileRecords = await page
+      .getByRole("list", { name: "Mobile task examples" })
+      .getByRole("heading")
+      .allTextContents();
+    expect(mobileRecords).toEqual(desktopRecords);
     await page
       .getByRole("button", { name: "Secondary action" })
       .evaluate((button) => {
