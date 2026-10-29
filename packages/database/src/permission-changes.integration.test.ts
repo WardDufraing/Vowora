@@ -2,30 +2,35 @@ import { randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 
 import {
-  createPermissionScopeChangeCapture,
-  type PermissionScopeChangeCapture,
+  authorizeWeddingPermissionChange,
+  PermissionScopeChangeError,
+  type WeddingMembership,
+  type WeddingPermissionChangeAuthorizationState,
 } from "@vowora/domain";
 
-import { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 import { parseTestMigrationConfig } from "./config.js";
 import { withIsolatedTestSchema } from "./migrations.js";
+import {
+  assertAuthorizedWeddingPermissionChangeCall,
+  type AuthorizedWeddingPermissionChangeCall,
+  type WeddingPermissionChangeRepository,
+  type WeddingPermissionMutationRequirement,
+  withAuditedWeddingPermissionChange,
+} from "./permission-changes.js";
 import { auditEvents, outboxEvents } from "./schema.js";
 import { syntheticWeddingOperation } from "./test/authorization.js";
-import {
-  type AuthorizedTenantTransaction,
-  type TransactionHost,
-  withAuthorizedTenantTransaction,
-} from "./tenant.js";
+import type { TransactionHost } from "./tenant.js";
 
 const permissionScopeStates = pgTable("permission_scope_states", {
   membershipId: uuid("membership_id").primaryKey(),
   weddingId: uuid("wedding_id").notNull(),
   version: text("version").notNull(),
+  membership: jsonb("membership").notNull().$type<WeddingMembership>(),
 });
 
 type Schema = {
@@ -38,11 +43,36 @@ type Session = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 const migrationConfig = parseTestMigrationConfig(process.env);
 const actorId = "019a1f5e-70a0-7000-8000-000000000001";
+const targetActorId = "019a1f5e-70a0-7000-8000-000000000002";
 const weddingId = "019a1f5e-70a0-7000-8000-000000000010";
 const membershipId = "019a1f5e-70a0-7000-8000-000000000030";
 
 function syntheticUuid(index: number): string {
   return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
+}
+
+function partnerMembership(): WeddingMembership {
+  return {
+    actorId,
+    weddingId,
+    role: "partner",
+    status: "active",
+    accessExpiresAt: null,
+    permissionOverrides: [],
+  };
+}
+
+function helperMembership(
+  status: "active" | "revoked" = "active",
+): WeddingMembership {
+  return {
+    actorId: targetActorId,
+    weddingId,
+    role: "helper",
+    status,
+    accessExpiresAt: null,
+    permissionOverrides: [],
+  };
 }
 
 function host(database: Database): TransactionHost<Session> {
@@ -52,50 +82,106 @@ function host(database: Database): TransactionHost<Session> {
   };
 }
 
-function capture(
-  operation: Awaited<ReturnType<typeof syntheticWeddingOperation>>,
-  input: {
-    auditEventId: string;
-    outboxEventId: string;
-    previousVersion: string;
-    version: string;
-  },
-): PermissionScopeChangeCapture {
-  return createPermissionScopeChangeCapture(operation.authorization, {
-    scope: "wedding",
-    weddingId,
-    membershipId,
-    change: "permissions_changed",
-    effectiveAccess: "reduced",
-    previousPermissionScopeVersion: input.previousVersion,
-    permissionScopeVersion: input.version,
-    auditEventId: input.auditEventId,
-    outboxEventId: input.outboxEventId,
-    occurredAt: "2026-10-29T09:00:00.000Z",
-  });
+function state(database: Database): WeddingPermissionChangeAuthorizationState {
+  return {
+    loadWeddingPermissionChange: async (input) => {
+      const source =
+        (input.authorizationSession as Session | undefined) ?? database;
+      const [row] = await source
+        .select()
+        .from(permissionScopeStates)
+        .where(
+          and(
+            eq(permissionScopeStates.membershipId, input.membershipId),
+            eq(permissionScopeStates.weddingId, input.weddingId),
+          ),
+        );
+      if (!row) return undefined;
+      return {
+        actorIsAssignedLeadPlanner: false,
+        actorPermissionScopeVersion: "actor:1",
+        coupleAllowsLeadPlannerAccessManagement: false,
+        actorMembership: partnerMembership(),
+        targetMembership: row.membership,
+        membershipId: row.membershipId,
+        targetPermissionScopeVersion: row.version,
+      };
+    },
+  };
 }
 
-async function applyCapture(
-  transaction: AuthorizedTenantTransaction<Session>,
-  event: PermissionScopeChangeCapture,
-  expectedVersion: string,
-  version: string,
-): Promise<void> {
-  const updated = await transaction.session
-    .update(permissionScopeStates)
-    .set({ version })
-    .where(
-      and(
-        eq(permissionScopeStates.membershipId, membershipId),
-        eq(permissionScopeStates.weddingId, weddingId),
-        eq(permissionScopeStates.version, expectedVersion),
-      ),
-    )
-    .returning({ membershipId: permissionScopeStates.membershipId });
-  if (updated.length !== 1) throw new Error("stale permission scope version");
+class PermissionRepository implements WeddingPermissionChangeRepository<Session> {
+  constructor(
+    private readonly nextVersion: string,
+    private readonly assertCapability = true,
+  ) {}
 
-  await new AuditEventWriter().append(transaction, event.audit);
-  await new OutboxEventWriter().enqueue(transaction, event.invalidation);
+  async compareAndSwap(
+    call: AuthorizedWeddingPermissionChangeCall<Session>,
+    requirement: WeddingPermissionMutationRequirement,
+  ) {
+    if (this.assertCapability) {
+      assertAuthorizedWeddingPermissionChangeCall(call, requirement);
+    }
+    const [row] = await call.session
+      .update(permissionScopeStates)
+      .set({ membership: requirement.membership, version: this.nextVersion })
+      .where(
+        and(
+          eq(permissionScopeStates.membershipId, requirement.membershipId),
+          eq(permissionScopeStates.weddingId, requirement.weddingId),
+          eq(
+            permissionScopeStates.version,
+            requirement.expectedPermissionScopeVersion,
+          ),
+        ),
+      )
+      .returning();
+    if (!row) return undefined;
+    return {
+      membership: row.membership,
+      membershipId: row.membershipId,
+      weddingId: row.weddingId,
+      previousPermissionScopeVersion:
+        requirement.expectedPermissionScopeVersion,
+      permissionScopeVersion: row.version,
+    };
+  }
+}
+
+function revokeCommand() {
+  return {
+    correlationId: randomUUID(),
+    membershipId,
+    mutation: { kind: "access_revoked" as const },
+    weddingId,
+  };
+}
+
+function restoreCommand() {
+  return {
+    correlationId: randomUUID(),
+    membershipId,
+    mutation: { kind: "access_restored" as const },
+    weddingId,
+  };
+}
+
+function eventIdentity(auditIndex: number, outboxIndex: number) {
+  return {
+    auditEventId: syntheticUuid(auditIndex),
+    outboxEventId: syntheticUuid(outboxIndex),
+    occurredAt: "2026-10-29T09:00:00.000Z",
+  };
+}
+
+async function seed(database: Database) {
+  await database.insert(permissionScopeStates).values({
+    membershipId,
+    weddingId,
+    version: "membership:1",
+    membership: helperMembership(),
+  });
 }
 
 async function withDatabase(
@@ -110,7 +196,8 @@ async function withDatabase(
         CREATE TABLE permission_scope_states (
           membership_id uuid PRIMARY KEY,
           wedding_id uuid NOT NULL,
-          version text NOT NULL
+          version text NOT NULL,
+          membership jsonb NOT NULL
         )
       `);
       const pool = new pg.Pool({
@@ -132,38 +219,31 @@ async function withDatabase(
   );
 }
 
-describe("transactional permission-scope invalidation", () => {
-  it("commits the version, audit and invalidation event atomically", async () => {
+describe("mandatory audited permission change transaction", () => {
+  it("commits the authoritative mutation, audit and invalidation atomically", async () => {
     await withDatabase("permission-change-commit", async (database) => {
-      await database.insert(permissionScopeStates).values({
-        membershipId,
-        weddingId,
-        version: "membership:1",
-      });
-      const operation = await syntheticWeddingOperation(actorId, weddingId);
-      const event = capture(operation, {
-        auditEventId: syntheticUuid(100),
-        outboxEventId: syntheticUuid(101),
-        previousVersion: "membership:1",
-        version: "membership:2",
-      });
+      await seed(database);
+      const operation = await authorizeWeddingPermissionChange(
+        { actorId },
+        revokeCommand(),
+        state(database),
+      );
 
-      await withAuthorizedTenantTransaction(
+      await withAuditedWeddingPermissionChange(
         host(database),
         operation,
-        (transaction) =>
-          applyCapture(transaction, event, "membership:1", "membership:2"),
+        new PermissionRepository("membership:2"),
+        eventIdentity(100, 101),
       );
 
       expect(await database.select().from(permissionScopeStates)).toMatchObject(
-        [{ membershipId, weddingId, version: "membership:2" }],
+        [{ version: "membership:2", membership: { status: "revoked" } }],
       );
       expect(await database.select().from(auditEvents)).toMatchObject([
         {
           subjectId: membershipId,
-          eventType: "authorization.permission_scope_changed",
           metadata: {
-            change: "permissions_changed",
+            change: "access_revoked",
             effectiveAccess: "reduced",
             previousPermissionScopeVersion: "membership:1",
             permissionScopeVersion: "membership:2",
@@ -172,106 +252,148 @@ describe("transactional permission-scope invalidation", () => {
       ]);
       expect(await database.select().from(outboxEvents)).toMatchObject([
         {
-          eventType: "authorization.permission_scope_invalidated",
           payload: {
             membershipId,
             permissionScopeVersion: "membership:2",
-            scope: "wedding",
-            scopeId: weddingId,
           },
         },
       ]);
     });
   });
 
-  it("rolls back the policy version and audit when invalidation capture fails", async () => {
+  it("rolls back mutation and audit when invalidation persistence fails", async () => {
     await withDatabase("permission-change-rollback", async (database) => {
-      await database.insert(permissionScopeStates).values({
-        membershipId,
-        weddingId,
-        version: "membership:1",
-      });
-      const firstOperation = await syntheticWeddingOperation(
-        actorId,
-        weddingId,
+      await seed(database);
+      const first = await authorizeWeddingPermissionChange(
+        { actorId },
+        revokeCommand(),
+        state(database),
       );
       const duplicateOutboxId = syntheticUuid(201);
-      const first = capture(firstOperation, {
-        auditEventId: syntheticUuid(200),
-        outboxEventId: duplicateOutboxId,
-        previousVersion: "membership:1",
-        version: "membership:2",
-      });
-      await withAuthorizedTenantTransaction(
+      await withAuditedWeddingPermissionChange(
         host(database),
-        firstOperation,
-        (transaction) =>
-          applyCapture(transaction, first, "membership:1", "membership:2"),
+        first,
+        new PermissionRepository("membership:2"),
+        {
+          auditEventId: syntheticUuid(200),
+          outboxEventId: duplicateOutboxId,
+          occurredAt: "2026-10-29T09:00:00.000Z",
+        },
       );
 
-      const secondOperation = await syntheticWeddingOperation(
-        actorId,
-        weddingId,
+      const second = await authorizeWeddingPermissionChange(
+        { actorId },
+        restoreCommand(),
+        state(database),
       );
-      const second = capture(secondOperation, {
-        auditEventId: syntheticUuid(202),
-        outboxEventId: duplicateOutboxId,
-        previousVersion: "membership:2",
-        version: "membership:3",
-      });
       await expect(
-        withAuthorizedTenantTransaction(
+        withAuditedWeddingPermissionChange(
           host(database),
-          secondOperation,
-          (transaction) =>
-            applyCapture(transaction, second, "membership:2", "membership:3"),
+          second,
+          new PermissionRepository("membership:3"),
+          {
+            auditEventId: syntheticUuid(202),
+            outboxEventId: duplicateOutboxId,
+            occurredAt: "2026-10-29T09:01:00.000Z",
+          },
         ),
       ).rejects.toThrow();
 
       expect(await database.select().from(permissionScopeStates)).toMatchObject(
-        [{ version: "membership:2" }],
+        [{ version: "membership:2", membership: { status: "revoked" } }],
       );
       expect(await database.select().from(auditEvents)).toHaveLength(1);
       expect(await database.select().from(outboxEvents)).toHaveLength(1);
     });
   });
 
-  it("allows only one stale-version competitor to capture a change", async () => {
-    await withDatabase("permission-change-cas", async (database) => {
-      await database.insert(permissionScopeStates).values({
-        membershipId,
-        weddingId,
-        version: "membership:1",
-      });
-      const attempts = await Promise.allSettled(
-        [
-          [syntheticUuid(300), syntheticUuid(301), "membership:2"],
-          [syntheticUuid(302), syntheticUuid(303), "membership:3"],
-        ].map(async ([auditEventId, outboxEventId, version]) => {
-          const operation = await syntheticWeddingOperation(actorId, weddingId);
-          const event = capture(operation, {
-            auditEventId: auditEventId!,
-            outboxEventId: outboxEventId!,
-            previousVersion: "membership:1",
-            version: version!,
-          });
-          return withAuthorizedTenantTransaction(
-            host(database),
-            operation,
-            (transaction) =>
-              applyCapture(transaction, event, "membership:1", version!),
-          );
-        }),
-      );
+  it("permits only one concurrent stale-version capability to commit", async () => {
+    await withDatabase("permission-change-concurrent", async (database) => {
+      await seed(database);
+      const [first, second] = await Promise.all([
+        authorizeWeddingPermissionChange(
+          { actorId },
+          revokeCommand(),
+          state(database),
+        ),
+        authorizeWeddingPermissionChange(
+          { actorId },
+          revokeCommand(),
+          state(database),
+        ),
+      ]);
+      const outcomes = await Promise.allSettled([
+        withAuditedWeddingPermissionChange(
+          host(database),
+          first,
+          new PermissionRepository("membership:2"),
+          eventIdentity(300, 301),
+        ),
+        withAuditedWeddingPermissionChange(
+          host(database),
+          second,
+          new PermissionRepository("membership:3"),
+          eventIdentity(302, 303),
+        ),
+      ]);
 
       expect(
-        attempts.filter(({ status }) => status === "fulfilled"),
+        outcomes.filter(({ status }) => status === "fulfilled"),
       ).toHaveLength(1);
       expect(
-        attempts.filter(({ status }) => status === "rejected"),
+        outcomes.filter(({ status }) => status === "rejected"),
       ).toHaveLength(1);
       expect(await database.select().from(auditEvents)).toHaveLength(1);
       expect(await database.select().from(outboxEvents)).toHaveLength(1);
     });
+  });
+
+  it("rejects repositories that omit the exact capability assertion", async () => {
+    await withDatabase("permission-change-assertion", async (database) => {
+      await seed(database);
+      const operation = await authorizeWeddingPermissionChange(
+        { actorId },
+        revokeCommand(),
+        state(database),
+      );
+      await expect(
+        withAuditedWeddingPermissionChange(
+          host(database),
+          operation,
+          new PermissionRepository("membership:2", false),
+          eventIdentity(400, 401),
+        ),
+      ).rejects.toBeInstanceOf(PermissionScopeChangeError);
+      expect(await database.select().from(permissionScopeStates)).toMatchObject(
+        [{ version: "membership:1", membership: { status: "active" } }],
+      );
+      expect(await database.select().from(auditEvents)).toEqual([]);
+      expect(await database.select().from(outboxEvents)).toEqual([]);
+    });
+  });
+
+  it("rejects an ordinary record capability before opening a transaction", async () => {
+    await withDatabase(
+      "permission-change-record-capability",
+      async (database) => {
+        await seed(database);
+        const ordinaryTaskEdit = await syntheticWeddingOperation(
+          actorId,
+          weddingId,
+        );
+        const transaction = host(database);
+        expect(() =>
+          withAuditedWeddingPermissionChange(
+            transaction,
+            ordinaryTaskEdit as never,
+            new PermissionRepository("membership:2"),
+            eventIdentity(500, 501),
+          ),
+        ).toThrow(PermissionScopeChangeError);
+        expect(
+          await database.select().from(permissionScopeStates),
+        ).toMatchObject([{ version: "membership:1" }]);
+      },
+    );
   });
 });

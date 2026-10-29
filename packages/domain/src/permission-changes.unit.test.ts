@@ -1,169 +1,320 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { resolveAuthorizationContext } from "./authorization.js";
 import {
-  createPermissionScopeChangeCapture,
-  PermissionScopeChangeValidationError,
+  authorizeWeddingPermissionChange,
+  completeAuthorizedWeddingPermissionChange,
+  consumeAuthorizedWeddingPermissionChange,
+  PermissionScopeChangeError,
+  type WeddingPermissionChangeAuthorizationState,
 } from "./permission-changes.js";
 
 const actorId = "019a1f5e-70a0-7000-8000-000000000001";
+const targetActorId = "019a1f5e-70a0-7000-8000-000000000002";
 const weddingA = "019a1f5e-70a0-7000-8000-000000000010";
 const weddingB = "019a1f5e-70a0-7000-8000-000000000011";
-const organizationA = "019a1f5e-70a0-7000-8000-000000000020";
 const membershipId = "019a1f5e-70a0-7000-8000-000000000030";
 const auditEventId = "019a1f5e-70a0-7000-8000-000000000040";
 const outboxEventId = "019a1f5e-70a0-7000-8000-000000000041";
-const occurredAt = "2026-10-29T09:00:00.000Z";
+const evaluatedAt = new Date("2026-10-29T09:00:00.000Z");
+const eventIdentity = {
+  auditEventId,
+  outboxEventId,
+  occurredAt: evaluatedAt.toISOString(),
+};
 
-async function context(scope: "wedding" | "organization") {
-  return resolveAuthorizationContext(
-    {
-      actorId,
-      ...(scope === "wedding"
-        ? { activeWeddingId: weddingA }
-        : { activeOrganizationId: organizationA }),
-      permissionScopeVersion: "actor:7",
-      correlationId: "d04002c3-1f13-4da5-87a0-000000000001",
-    },
-    { authorize: async () => true },
-  );
+type Role =
+  "partner" | "planner" | "coordinator" | "helper" | "read_only_guest";
+
+function membership(
+  actor: string,
+  role: Role,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    actorId: actor,
+    weddingId: weddingA,
+    role,
+    status: "active",
+    accessExpiresAt: null,
+    permissionOverrides: [],
+    ...overrides,
+  };
 }
 
-describe("permission scope change capture", () => {
-  it("creates immutable, privacy-minimized wedding audit and invalidation events", async () => {
-    const capture = createPermissionScopeChangeCapture(
-      await context("wedding"),
+function mutableState(
+  input: {
+    actorRole?: Role;
+    targetRole?: Role;
+    targetStatus?: "active" | "revoked";
+    lead?: boolean;
+    coupleAllows?: boolean;
+  } = {},
+) {
+  let version = "membership:1";
+  let actorVersion = "actor:1";
+  let target = membership(targetActorId, input.targetRole ?? "helper", {
+    status: input.targetStatus ?? "active",
+  });
+  const loadWeddingPermissionChange = vi.fn(async () => ({
+    actorIsAssignedLeadPlanner: input.lead ?? false,
+    actorPermissionScopeVersion: actorVersion,
+    coupleAllowsLeadPlannerAccessManagement: input.coupleAllows ?? false,
+    actorMembership: membership(actorId, input.actorRole ?? "partner"),
+    targetMembership: target,
+    membershipId,
+    targetPermissionScopeVersion: version,
+  }));
+  return {
+    state: {
+      loadWeddingPermissionChange,
+    } satisfies WeddingPermissionChangeAuthorizationState,
+    setVersion(next: string) {
+      version = next;
+    },
+    setActorVersion(next: string) {
+      actorVersion = next;
+    },
+    setTarget(next: ReturnType<typeof membership>) {
+      target = next;
+    },
+  };
+}
+
+function command(
+  mutation: Record<string, unknown> = { kind: "access_revoked" },
+  weddingId = weddingA,
+) {
+  return {
+    correlationId: "d04002c3-1f13-4da5-87a0-000000000001",
+    membershipId,
+    mutation,
+    weddingId,
+  };
+}
+
+describe("wedding access-management capability", () => {
+  it("derives a revocation reduction and immutable audit facts from the consumed mutation result", async () => {
+    const operation = await authorizeWeddingPermissionChange(
+      { actorId },
+      command(),
+      mutableState().state,
+      evaluatedAt,
+    );
+    expect(operation).toMatchObject({
+      change: "access_revoked",
+      effectiveAccess: "reduced",
+      expectedPermissionScopeVersion: "membership:1",
+      membershipId,
+      weddingId: weddingA,
+      membership: { status: "revoked" },
+    });
+
+    await consumeAuthorizedWeddingPermissionChange(operation, {
+      database: true,
+    });
+    const capture = completeAuthorizedWeddingPermissionChange(
+      operation,
       {
-        scope: "wedding",
-        weddingId: weddingA,
+        membership: operation.membership,
         membershipId,
-        change: "access_revoked",
-        effectiveAccess: "reduced",
-        previousPermissionScopeVersion: "membership:7",
-        permissionScopeVersion: "membership:8",
-        auditEventId,
-        outboxEventId,
-        occurredAt,
+        weddingId: weddingA,
+        previousPermissionScopeVersion: "membership:1",
+        permissionScopeVersion: "membership:2",
       },
+      eventIdentity,
     );
 
     expect(capture.audit).toMatchObject({
-      eventId: auditEventId,
-      eventType: "authorization.permission_scope_changed",
-      subjectType: "wedding_membership",
       subjectId: membershipId,
-      weddingId: weddingA,
-      actorId,
       metadata: {
         change: "access_revoked",
         effectiveAccess: "reduced",
-        previousPermissionScopeVersion: "membership:7",
-        permissionScopeVersion: "membership:8",
+        previousPermissionScopeVersion: "membership:1",
+        permissionScopeVersion: "membership:2",
       },
-    });
-    expect(capture.invalidation).toMatchObject({
-      eventId: outboxEventId,
-      eventType: "authorization.permission_scope_invalidated",
-      weddingId: weddingA,
-      payload: {
-        change: "access_revoked",
-        effectiveAccess: "reduced",
-        membershipId,
-        permissionScopeVersion: "membership:8",
-        scope: "wedding",
-        scopeId: weddingA,
-      },
-    });
-    expect(Object.isFrozen(capture)).toBe(true);
-    expect(Object.isFrozen(capture.audit.metadata)).toBe(true);
-    expect(Object.isFrozen(capture.invalidation.payload)).toBe(true);
-    expect(JSON.stringify(capture)).not.toContain("email");
-  });
-
-  it("captures organization changes only in their exact organization scope", async () => {
-    const capture = createPermissionScopeChangeCapture(
-      await context("organization"),
-      {
-        scope: "organization",
-        organizationId: organizationA,
-        membershipId,
-        change: "permissions_changed",
-        effectiveAccess: "expanded",
-        previousPermissionScopeVersion: "org:3",
-        permissionScopeVersion: "org:4",
-        auditEventId,
-        outboxEventId,
-        occurredAt,
-      },
-    );
-
-    expect(capture.audit).toMatchObject({
-      organizationId: organizationA,
-      subjectType: "organization_membership",
     });
     expect(capture.invalidation.payload).toMatchObject({
-      scope: "organization",
-      scopeId: organizationA,
-    });
-  });
-
-  it("rejects cross-tenant capture and unchanged or ambiguous versions", async () => {
-    const authorization = await context("wedding");
-    const base = {
-      scope: "wedding" as const,
-      weddingId: weddingA,
       membershipId,
-      change: "permissions_changed" as const,
-      effectiveAccess: "reduced" as const,
-      previousPermissionScopeVersion: "membership:7",
-      permissionScopeVersion: "membership:8",
-      auditEventId,
-      outboxEventId,
-      occurredAt,
-    };
-
-    expect(() =>
-      createPermissionScopeChangeCapture(authorization, {
-        ...base,
-        weddingId: weddingB,
-      }),
-    ).toThrow(PermissionScopeChangeValidationError);
-    expect(() =>
-      createPermissionScopeChangeCapture(authorization, {
-        ...base,
-        permissionScopeVersion: base.previousPermissionScopeVersion,
-      }),
-    ).toThrow(PermissionScopeChangeValidationError);
-    expect(() =>
-      createPermissionScopeChangeCapture(authorization, {
-        ...base,
-        outboxEventId: auditEventId,
-      }),
-    ).toThrow(PermissionScopeChangeValidationError);
+      permissionScopeVersion: "membership:2",
+      scope: "wedding",
+      scopeId: weddingA,
+    });
+    expect(Object.isFrozen(capture.audit.metadata)).toBe(true);
   });
 
-  it("rejects over-posted private data without reflecting its value", async () => {
+  it.each(["coordinator", "helper", "read_only_guest"] as const)(
+    "denies %s access management",
+    async (actorRole) => {
+      await expect(
+        authorizeWeddingPermissionChange(
+          { actorId },
+          command(),
+          mutableState({ actorRole }).state,
+          evaluatedAt,
+        ),
+      ).rejects.toMatchObject({ failure: "access_denied" });
+    },
+  );
+
+  it("allows only an assigned, couple-permitted lead planner to manage collaborator access", async () => {
+    for (const input of [
+      { lead: false, coupleAllows: true },
+      { lead: true, coupleAllows: false },
+    ]) {
+      await expect(
+        authorizeWeddingPermissionChange(
+          { actorId },
+          command(),
+          mutableState({ actorRole: "planner", ...input }).state,
+          evaluatedAt,
+        ),
+      ).rejects.toMatchObject({ failure: "access_denied" });
+    }
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command(),
+        mutableState({
+          actorRole: "planner",
+          lead: true,
+          coupleAllows: true,
+        }).state,
+        evaluatedAt,
+      ),
+    ).resolves.toMatchObject({ change: "access_revoked" });
+  });
+
+  it("protects either partner from every unilateral membership change", async () => {
+    for (const mutation of [
+      { kind: "access_revoked" },
+      { kind: "role_changed", role: "helper" },
+      { kind: "permissions_changed", permissionOverrides: [] },
+    ]) {
+      await expect(
+        authorizeWeddingPermissionChange(
+          { actorId },
+          command(mutation),
+          mutableState({ targetRole: "partner" }).state,
+          evaluatedAt,
+        ),
+      ).rejects.toMatchObject({ failure: "access_denied" });
+    }
+  });
+
+  it("denies unrelated planners, cross-wedding targets and malformed private inputs without reflection", async () => {
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command(),
+        mutableState({ actorRole: "planner" }).state,
+        evaluatedAt,
+      ),
+    ).rejects.toMatchObject({ failure: "access_denied" });
+    await expect(
+      authorizeWeddingPermissionChange(
+        { actorId },
+        command(undefined, weddingB),
+        mutableState().state,
+        evaluatedAt,
+      ),
+    ).rejects.toMatchObject({ failure: "access_denied" });
+
     const privateValue = "private-person@example.com";
     let caught: unknown;
     try {
-      createPermissionScopeChangeCapture(await context("wedding"), {
-        scope: "wedding",
-        weddingId: weddingA,
-        membershipId,
-        change: "role_changed",
-        effectiveAccess: "unchanged",
-        previousPermissionScopeVersion: "membership:7",
-        permissionScopeVersion: "membership:8",
-        auditEventId,
-        outboxEventId,
-        occurredAt,
-        email: privateValue,
-      } as never);
+      await authorizeWeddingPermissionChange(
+        { actorId },
+        { ...command(), email: privateValue },
+        mutableState().state,
+        evaluatedAt,
+      );
     } catch (error) {
       caught = error;
     }
-
-    expect(caught).toBeInstanceOf(PermissionScopeChangeValidationError);
+    expect(caught).toBeInstanceOf(PermissionScopeChangeError);
     expect(String(caught)).not.toContain(privateValue);
+  });
+
+  it("computes effective direction from before/after state, including expiry notification semantics", async () => {
+    const restore = await authorizeWeddingPermissionChange(
+      { actorId },
+      command({ kind: "access_restored" }),
+      mutableState({ targetStatus: "revoked" }).state,
+      evaluatedAt,
+    );
+    expect(restore.effectiveAccess).toBe("expanded");
+
+    const expiry = await authorizeWeddingPermissionChange(
+      { actorId },
+      command({
+        kind: "expiry_changed",
+        accessExpiresAt: "2026-11-05T09:00:00.000Z",
+      }),
+      mutableState().state,
+      evaluatedAt,
+    );
+    expect(expiry.effectiveAccess).toBe("unchanged");
+  });
+
+  it("rejects stale, forged, mismatched and reused mutation results", async () => {
+    const mutable = mutableState();
+    const stale = await authorizeWeddingPermissionChange(
+      { actorId },
+      command(),
+      mutable.state,
+      evaluatedAt,
+    );
+    mutable.setVersion("membership:2");
+    await expect(
+      consumeAuthorizedWeddingPermissionChange(stale, { database: true }),
+    ).rejects.toBeInstanceOf(PermissionScopeChangeError);
+
+    const actorChanged = mutableState();
+    const actorStale = await authorizeWeddingPermissionChange(
+      { actorId },
+      command(),
+      actorChanged.state,
+      evaluatedAt,
+    );
+    actorChanged.setActorVersion("actor:2");
+    await expect(
+      consumeAuthorizedWeddingPermissionChange(actorStale, {
+        database: true,
+      }),
+    ).rejects.toBeInstanceOf(PermissionScopeChangeError);
+
+    const fresh = await authorizeWeddingPermissionChange(
+      { actorId },
+      command(),
+      mutableState().state,
+      evaluatedAt,
+    );
+    expect(() =>
+      completeAuthorizedWeddingPermissionChange(
+        fresh,
+        {
+          membership: fresh.membership,
+          membershipId,
+          weddingId: weddingA,
+          previousPermissionScopeVersion: "membership:1",
+          permissionScopeVersion: "membership:2",
+        },
+        eventIdentity,
+      ),
+    ).toThrow(PermissionScopeChangeError);
+    await consumeAuthorizedWeddingPermissionChange(fresh, {});
+    expect(() =>
+      completeAuthorizedWeddingPermissionChange(
+        fresh,
+        {
+          membership: fresh.beforeMembership,
+          membershipId,
+          weddingId: weddingA,
+          previousPermissionScopeVersion: "membership:1",
+          permissionScopeVersion: "membership:2",
+        },
+        eventIdentity,
+      ),
+    ).toThrow(PermissionScopeChangeError);
   });
 });
