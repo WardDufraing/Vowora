@@ -16,7 +16,7 @@ const routeDatabaseRestrictions = [
     "Route handlers must call application services, never database repositories directly.",
 }));
 const applicationDatabaseInternalPattern =
-  "/(?:^@vowora\\/database\\/|\\/packages\\/database\\/(?:src|dist)(?:\\/|$))/";
+  "/(?:^@vowora\\/database\\/|(?:^|\\/)packages\\/.*database(?:\\/|$))/";
 const applicationDatabaseInternalRestrictions = [
   "ImportDeclaration",
   "ExportNamedDeclaration",

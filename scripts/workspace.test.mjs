@@ -144,6 +144,10 @@ test("application services cannot import database internals", async () => {
     });
     for (const source of [
       "import '../../../packages/database/src/tenant';",
+      "import '../../../packages/database/./src/tenant';",
+      "import '../../../packages/./database/src/tenant';",
+      "import '../../../packages/config/../database/src/tenant';",
+      "import '../../../packages/database/dist/../src/tenant';",
       "import '../../../packages/database/src/test/authorization';",
       "void import('../../../packages/database/dist/tenant.js');",
       "export * from '@vowora/database/testing';",
