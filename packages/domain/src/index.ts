@@ -21,6 +21,25 @@ export type {
   OutboxEventInput,
 } from "./events.js";
 export {
+  assertAuthorizedWeddingPermissionChange,
+  authorizeWeddingPermissionChange,
+  completeAuthorizedWeddingPermissionChange,
+  consumeAuthorizedWeddingPermissionChange,
+  effectiveAccessChanges,
+  permissionChangeKinds,
+  PermissionScopeChangeError,
+} from "./permission-changes.js";
+export type {
+  AuthorizedWeddingPermissionChange,
+  EffectiveAccessChange,
+  PermissionChangeEventIdentity,
+  PermissionChangeKind,
+  PermissionScopeChangeCapture,
+  WeddingPermissionChangeAuthorizationState,
+  WeddingPermissionChangeCommand,
+  WeddingPermissionMutationResult,
+} from "./permission-changes.js";
+export {
   canRemoveWeddingMembership,
   evaluateIndependentPlannerPrivateRecordPermission,
   evaluateOrganizationPrivateRecordPermission,

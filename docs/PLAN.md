@@ -36,8 +36,8 @@
 | 03-b | Session management and account recovery | 03-a | Done | [Brief](steps/03-b.md) |
 | 03-c | Authentication abuse protections and tests | 03-b | Done | [Brief](steps/03-c.md) |
 | 04-a | Permission vocabulary and role model | 03-c | Done | [Brief](steps/04-a.md) |
-| 04-b | Server authorization enforcement | 04-a | In review | [Brief](steps/04-b.md) |
-| 04-c | Permission changes, audit and regression suite | 04-b | Not started | [Brief](steps/04-c.md) |
+| 04-b | Server authorization enforcement | 04-a | Done | [Brief](steps/04-b.md) |
+| 04-c | Permission changes, audit and regression suite | 04-b | In review | [Brief](steps/04-c.md) |
 | 05-a | Semantic tokens and themes | 04-c | Not started | [Brief](steps/05-a.md) |
 | 05-b | Responsive app shell and navigation | 05-a | Not started | [Brief](steps/05-b.md) |
 | 05-c | Shared forms, tables and localization | 05-b | Not started | [Brief](steps/05-c.md) |
@@ -96,6 +96,14 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-29 — Owner merged 04-b [PR #33](https://github.com/WardDufraing/Vowora/pull/33) as `ab54805`. Fresh implementer `/root/implement_04_c` started 04-c from that integrated main with no competing open PR. The implementation adds exact-tenant permission-scope change audit/invalidation capture, optimistic version-change transaction regressions, and the complete default role/resource/action denial matrix without introducing the future 06/07 membership schema. Scope and executed evidence are recorded in [the 04-c handoff](implementation/04-c-permission-change-audit.md); independent review remains required before owner merge.
+
+- 2026-10-29 — Initial 04-c reviewer `/root/implement_04_c/review_04_c` blocked [PR #34](https://github.com/WardDufraing/Vowora/pull/34) at `5612726`: ordinary Tasks Edit authority could stand in for access management, audit/invalidation facts were optional caller data rather than the authoritative mutation result, and change/effective-access facts could contradict. The correction adds a dedicated partner/assigned-lead access-management capability with partner-removal protection, same-transaction revalidation, a mandatory compare-and-swap coordinator that derives capture from the authoritative result, and computed effective-access direction. Corrected focused/domain/database checks pass; a different fresh re-review remains required.
+
+- 2026-10-29 — Fresh 04-c re-reviewer `/root/implement_04_c/rereview_04_c` confirmed both initial high findings resolved at `7d26c82`, then found one medium DEC-436 inconsistency: restoration could retain an expired date while capture claimed expanded access. Coordinator/helper restoration now atomically requires a new future expiry and an actual matrix expansion; past-expiry, unsupported-role and zero-access restorations are rejected, with persisted audit/outbox coverage. Another fresh re-review remains required.
+
+- 2026-10-29 — Different fresh final reviewer `/root/implement_04_c/final_review_04_c` passed the complete corrected 04-c diff at `cb6a5a9` with no blocking, high or material medium findings. It independently passed 23 focused tests, workspace type checking, all 13 boundary tests and diff checks. Hosted policy, secret scan, database, marketing and both Vercel previews passed at the reviewed code. [PR #34](https://github.com/WardDufraing/Vowora/pull/34) now waits at the owner merge gate; no schema, migration, persistent database, external configuration or deployment changed.
 
 - 2026-10-28 — Owner merged 04-a [PR #32](https://github.com/WardDufraing/Vowora/pull/32) as `99626c8`; no competing PR remained. Fresh implementer `/root/implement_04_b` started 04-b from that integrated main. The implementation resolves authenticated session identity, authoritative membership/version and record relationship/visibility through one central deny-by-default boundary before minting an opaque operation and opening feature transactions. Cross-tenant, revoked/expired, collaborator-scope, private-organization, forged-input and privacy-safe API regressions pass. [Implementation evidence](implementation/04-b-server-authorization.md); independent review and PR evidence follow on the task branch. No schema, migration, persistent database, environment or deployment change is included.
 

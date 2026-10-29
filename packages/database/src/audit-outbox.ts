@@ -41,6 +41,35 @@ function assertEnvelopeScope(
   }
 }
 
+/** Package-internal primitive shared by authorized business and permission
+ * change transaction boundaries. It is not exported from the package root. */
+export async function appendAuthorizedAuditEvent(
+  authorization: AuthorizationContext,
+  session: AuditOutboxSession,
+  event: AuditEventEnvelope,
+): Promise<void> {
+  assertAuditEventEnvelope(event);
+  assertEnvelopeScope(authorization, event);
+  await session.insert(auditEvents).values({
+    ...event,
+    occurredAt: new Date(event.occurredAt),
+  });
+}
+
+/** Package-internal counterpart for transactionally captured outbox events. */
+export async function appendAuthorizedOutboxEvent(
+  authorization: AuthorizationContext,
+  session: AuditOutboxSession,
+  event: OutboxEventEnvelope,
+): Promise<void> {
+  assertOutboxEventEnvelope(event);
+  assertEnvelopeScope(authorization, event);
+  await session.insert(outboxEvents).values({
+    ...event,
+    occurredAt: new Date(event.occurredAt),
+  });
+}
+
 /** The sole application write interface for audit events. It intentionally
  * exposes no update/delete methods. */
 export class AuditEventWriter {
@@ -50,12 +79,7 @@ export class AuditEventWriter {
   ): Promise<void> {
     assertActiveAuthorizedRepositoryCall(call);
     const { authorization, session } = call;
-    assertAuditEventEnvelope(event);
-    assertEnvelopeScope(authorization, event);
-    await session.insert(auditEvents).values({
-      ...event,
-      occurredAt: new Date(event.occurredAt),
-    });
+    await appendAuthorizedAuditEvent(authorization, session, event);
   }
 }
 
@@ -68,11 +92,6 @@ export class OutboxEventWriter {
   ): Promise<void> {
     assertActiveAuthorizedRepositoryCall(call);
     const { authorization, session } = call;
-    assertOutboxEventEnvelope(event);
-    assertEnvelopeScope(authorization, event);
-    await session.insert(outboxEvents).values({
-      ...event,
-      occurredAt: new Date(event.occurredAt),
-    });
+    await appendAuthorizedOutboxEvent(authorization, session, event);
   }
 }
