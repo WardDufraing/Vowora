@@ -138,12 +138,29 @@ test.describe("semantic theme foundation", () => {
       }, theme);
       await page.goto("/design-system");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "A focused welcome back" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Planning at a glance" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          name: "One thoughtful place to plan together",
+        }),
+      ).toBeVisible();
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
       await testInfo.attach(`foundation-${theme}`, {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",
       });
+
+      await page.goto("/sign-in");
+      await expect(
+        page.getByRole("link", { name: "Forgot your password?" }),
+      ).toHaveCSS("text-decoration-line", "underline");
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     });
   }
 

@@ -43,10 +43,13 @@ future shadcn-compatible components. Components consume semantic aliases only.
 | Visualization | `chart-1`, `chart-2`, `chart-3` with non-color labels required |
 | Foundation | responsive type, 4px spacing, control/card/overlay radii and two elevation levels |
 
-Representative primitives cover buttons, connected input descriptions/errors,
-cards, text-labeled status badges, live feedback, loading, an accessible Radix
-dialog, a semantic table and its mobile record equivalent. Forced-colors and
-reduced-motion styles preserve focus and meaning.
+Representative primitives cover underlined links, buttons, connected input
+descriptions/errors, cards, text-labeled status badges, shared navigation and
+live notification treatments, loading, an accessible Radix dialog, a semantic
+table and its mobile record equivalent. Forced-colors and reduced-motion styles
+preserve focus and meaning. Foundation-only atmospheric login, editorial
+dashboard, refined list and immersive marketing examples appear in the fixture
+without becoming the 05-b product shell or feature screens.
 
 ## Contrast matrix
 
@@ -81,21 +84,31 @@ alone.
 
 Static review images:
 
-- [Light foundation](assets/05-a/foundation-light.png)
-- [Dark foundation](assets/05-a/foundation-dark.png)
-- [Narrow mobile foundation](assets/05-a/foundation-mobile.png)
+- [Light wide foundation and representative layouts](assets/05-a/foundation-light.png)
+- [Dark wide foundation and representative layouts](assets/05-a/foundation-dark.png)
+- [Narrow mobile foundation and representative layouts](assets/05-a/foundation-mobile.png)
 
-Browser checks cover Light/Dark/System behavior and persistence, axe scans in
-both explicit themes, keyboard dialog Escape/focus return, forced colors,
-reduced motion, narrow reflow, a 200% large-text equivalent, a 400% narrow
-viewport equivalent and 44px targets. The screenshots are visual evidence only;
+Browser checks cover Light/Dark/System behavior and persistence, axe scans of
+the foundation and real authentication pages in both explicit themes,
+persistent non-color link affordances, keyboard dialog Escape/focus return,
+forced colors, reduced motion, narrow reflow, long-label resilience, a 200%
+large-text equivalent, a 400% narrow viewport equivalent and 44px targets. The
+screenshots are visual evidence only;
 manual assistive-technology and real-device verification remain part of the
 formal release gate.
 
 Implementation commit `c8ef1f8` on `feat/05-a-semantic-tokens-themes` is in
 [PR #35](https://github.com/WardDufraing/Vowora/pull/35). Before independent
-review, formatting, lint, workspace types, 206 unit/component tests, four
+review, formatting, lint, workspace types, 207 unit/component tests, four
 tooling tests, 13 package-boundary tests, uncached builds, 11 application browser
 checks and 26 marketing browser regressions passed. Independent review remains
 pending. Rollback is a code/dependency revert. There is no schema, migration,
 database grant, environment variable or external configuration change.
+
+Initial fresh reviewer `/root/implement_05_a/review_05_a` found a high
+color-only inline-link affordance after the Tailwind reset and a medium gap in
+the FINAL-004 representative evidence. Persistent underlines plus real auth-page
+axe regressions correct the link issue. Shared navigation/notification
+primitives and explicit login/dashboard/list/marketing examples in the updated
+light/dark/wide/narrow evidence correct the foundation-package gap. Fresh
+independent re-review is pending.

@@ -5,6 +5,8 @@ import {
   Button,
   Card,
   FoundationDialog,
+  FoundationNavigation,
+  Notice,
   StatusBadge,
   TextField,
 } from "../../components/ui/foundation";
@@ -22,7 +24,8 @@ export default function DesignSystemPage() {
 
   return (
     <main className="foundation" id="main-content">
-      <header className="foundation__hero">
+      <FoundationNavigation />
+      <header className="foundation__hero" id="foundation-overview">
         <p className="eyebrow">Foundation review · non-production example</p>
         <h1>A calm foundation for wedding planning</h1>
         <p className="lede">
@@ -37,6 +40,69 @@ export default function DesignSystemPage() {
           <Button disabled>Unavailable</Button>
         </div>
       </header>
+
+      <section
+        aria-labelledby="representative-heading"
+        className="foundation__section"
+        id="representative-layouts"
+      >
+        <h2 id="representative-heading">Representative layouts</h2>
+        <p>
+          Synthetic foundation examples validate the approved visual language;
+          they are not product screens or new workflows.
+        </p>
+        <div className="representative-layouts">
+          <article className="representative-layout representative-layout--login">
+            <div>
+              <p className="eyebrow">Atmospheric login example</p>
+              <h3>A focused welcome back</h3>
+              <p>
+                Botanical hierarchy supports a clear, practical account form.
+              </p>
+            </div>
+            <form aria-label="Synthetic sign-in example">
+              <TextField id="review-email" label="Email" type="email" />
+              <TextField
+                id="review-password"
+                label="Password"
+                type="password"
+              />
+              <Button type="button">Sign in example</Button>
+            </form>
+          </article>
+
+          <article className="representative-layout representative-layout--dashboard">
+            <p className="eyebrow">Editorial dashboard example</p>
+            <h3>Planning at a glance</h3>
+            <div className="metric-grid">
+              <div className="metric">
+                <strong>Example</strong>
+                <span>Countdown moment</span>
+              </div>
+              <div className="metric">
+                <strong>3 of 5</strong>
+                <span>Sample priorities</span>
+              </div>
+              <div className="metric">
+                <strong>Calm</strong>
+                <span>Permission-limited state</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="representative-layout representative-layout--marketing">
+            <p className="eyebrow">Immersive marketing example</p>
+            <h3>One thoughtful place to plan together</h3>
+            <p>
+              A restrained botanical feature surface can introduce truthful
+              product information without changing public marketing behavior.
+            </p>
+            <Button type="button" variant="secondary">
+              Learn more example
+            </Button>
+          </article>
+        </div>
+      </section>
 
       <section aria-labelledby="states-heading" className="foundation__section">
         <h2 id="states-heading">Accessible states</h2>
@@ -74,10 +140,9 @@ export default function DesignSystemPage() {
             <FoundationDialog />
           </Card>
           <Card title="Feedback">
-            <div className="notice" role="status" aria-live="polite">
-              <strong>Saved example</strong>
-              <span>Your confirmed changes would appear here.</span>
-            </div>
+            <Notice title="Saved example">
+              Your confirmed changes would appear here.
+            </Notice>
             <div
               className="skeleton"
               aria-label="Loading example"

@@ -2,7 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { FoundationDialog, StatusBadge, TextField } from "./foundation";
+import {
+  FoundationDialog,
+  FoundationNavigation,
+  Notice,
+  StatusBadge,
+  TextField,
+} from "./foundation";
 
 describe("foundation primitives", () => {
   it("connects descriptions and errors to their input", () => {
@@ -25,6 +31,21 @@ describe("foundation primitives", () => {
   it("keeps an explicit label in every status badge", () => {
     render(<StatusBadge tone="warning">Needs attention</StatusBadge>);
     expect(screen.getByText("Needs attention")).toBeVisible();
+  });
+
+  it("uses shared landmarks and live semantics for navigation and feedback", () => {
+    render(
+      <>
+        <FoundationNavigation />
+        <Notice title="Saved">Changes are confirmed.</Notice>
+      </>,
+    );
+    expect(
+      screen.getByRole("navigation", { name: "Foundation example navigation" }),
+    ).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "SavedChanges are confirmed.",
+    );
   });
 
   it("closes the Radix dialog with Escape and returns focus", async () => {

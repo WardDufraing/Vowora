@@ -87,6 +87,34 @@ export function StatusBadge({
   return <span className={`status status--${tone}`}>{children}</span>;
 }
 
+export function Notice({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="notice" role="status" aria-live="polite">
+      <strong>{title}</strong>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+export function FoundationNavigation() {
+  return (
+    <nav className="foundation-nav" aria-label="Foundation example navigation">
+      <a aria-current="page" href="#foundation-overview">
+        Overview
+      </a>
+      <a href="#representative-layouts">Layouts</a>
+      <a href="#states-heading">Components</a>
+      <a href="#records-heading">Records</a>
+    </nav>
+  );
+}
+
 export function FoundationDialog() {
   return (
     <Dialog.Root>
