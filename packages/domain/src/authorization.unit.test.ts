@@ -1,15 +1,17 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import {
-  AuthorizationContextError,
-  assertAuthorizationContext,
   parseAuthorizationContextInput,
   resolveAuthorizationContext,
-  type AuthorizationContext,
   type AuthorizationContextInput,
   type AuthorizationContextVerifier,
   type TenantRepositoryCall,
   type TenantScopedRepository,
+} from "./authorization.js";
+import {
+  AuthorizationContextError,
+  assertAuthorizationContext,
+  type AuthorizationContext,
 } from "./index.js";
 
 const actorId = "019a1f5e-70a0-7000-8000-000000000001";

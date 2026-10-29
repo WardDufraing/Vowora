@@ -5,19 +5,19 @@ import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
-import {
-  resolveAuthorizationContext,
-  type AuthorizationContext,
-  type AuthorizationContextVerifier,
-  type TenantRepositoryCall,
-  type TenantScopedRepository,
-} from "@vowora/domain";
+import { type AuthorizationContext } from "@vowora/domain";
 
+import {
+  syntheticOrganizationAuthorization,
+  syntheticWeddingAuthorization,
+} from "./test/authorization.js";
 import { parseTestMigrationConfig } from "./config.js";
 import { withIsolatedTestSchema } from "./migrations.js";
 import {
   assertTenantWriteScope,
   tenantScopePredicate,
+  type TenantRepositoryCall,
+  type TenantScopedRepository,
   TenantScopeViolationError,
   type TenantScopeColumns,
   type TransactionHost,
@@ -85,22 +85,6 @@ const weddingA = "019a1f5e-70a0-7000-8000-000000000010";
 const weddingB = "019a1f5e-70a0-7000-8000-000000000011";
 const organizationA = "019a1f5e-70a0-7000-8000-000000000020";
 const organizationB = "019a1f5e-70a0-7000-8000-000000000021";
-const allowedWeddings = new Set([weddingA, weddingB]);
-const allowedOrganizations = new Set([organizationA, organizationB]);
-
-const verifier: AuthorizationContextVerifier = {
-  async authorize(candidate) {
-    return (
-      candidate.actorId === actorId &&
-      candidate.permissionScopeVersion === "synthetic:1" &&
-      (candidate.activeWeddingId === undefined ||
-        allowedWeddings.has(candidate.activeWeddingId)) &&
-      (candidate.activeOrganizationId === undefined ||
-        allowedOrganizations.has(candidate.activeOrganizationId))
-    );
-  },
-};
-
 function syntheticUuid(index: number): string {
   return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
 }
@@ -109,15 +93,16 @@ function authorization(scopes: {
   activeWeddingId?: string;
   activeOrganizationId?: string;
 }) {
-  return resolveAuthorizationContext(
-    {
+  if (scopes.activeWeddingId && !scopes.activeOrganizationId) {
+    return syntheticWeddingAuthorization(actorId, scopes.activeWeddingId);
+  }
+  if (scopes.activeOrganizationId && !scopes.activeWeddingId) {
+    return syntheticOrganizationAuthorization(
       actorId,
-      ...scopes,
-      permissionScopeVersion: "synthetic:1",
-      correlationId: randomUUID(),
-    },
-    verifier,
-  );
+      scopes.activeOrganizationId,
+    );
+  }
+  throw new Error("Synthetic tests issue exactly one authoritative scope");
 }
 
 function repositoryCall(
@@ -168,14 +153,6 @@ describe("tenant-scoped repository and transactions", () => {
       const weddingContext = await authorization({ activeWeddingId: weddingA });
       const organizationContext = await authorization({
         activeOrganizationId: organizationA,
-      });
-      const combinedContext = await authorization({
-        activeWeddingId: weddingA,
-        activeOrganizationId: organizationA,
-      });
-      const mismatchedCombinedContext = await authorization({
-        activeWeddingId: weddingA,
-        activeOrganizationId: organizationB,
       });
       const weddingRecord = {
         id: syntheticUuid(100),
@@ -233,13 +210,7 @@ describe("tenant-scoped repository and transactions", () => {
       ).resolves.toMatchObject({ value: "organization-a" });
       await expect(
         combinedRepository.findById(
-          repositoryCall(database, combinedContext),
-          combinedRecord.id,
-        ),
-      ).resolves.toMatchObject({ value: "wedding-a-organization-a" });
-      await expect(
-        combinedRepository.findById(
-          repositoryCall(database, mismatchedCombinedContext),
+          repositoryCall(database, weddingContext),
           combinedRecord.id,
         ),
       ).resolves.toBeNull();
@@ -262,17 +233,12 @@ describe("tenant-scoped repository and transactions", () => {
         ),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
       await expect(
-        combinedRepository.create(repositoryCall(database, combinedContext), {
+        combinedRepository.create(repositoryCall(database, weddingContext), {
           id: syntheticUuid(106),
           weddingId: weddingA,
           value: "missing-required-organization",
         }),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
-      await expect(
-        authorization({
-          activeWeddingId: "019a1f5e-70a0-7000-8000-000000000099",
-        }),
-      ).rejects.toMatchObject({ fields: ["authorization"] });
     });
   });
 

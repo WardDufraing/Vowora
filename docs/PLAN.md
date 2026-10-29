@@ -31,12 +31,12 @@
 | 01-c | CI, environment validation and API skeleton | 01-b (merged PR #8) | Done | [Brief](steps/01-c.md) |
 | 02-a | Neon, Drizzle and migration harness | 01-c (merged corrective PR #17) | Done | [Brief](steps/02-a.md) |
 | 02-b | Tenant-scoped repository and transaction primitives | 02-a | Done | [Brief](steps/02-b.md) |
-| 02-c | Audit events and transactional outbox | 02-b | In review | [Brief](steps/02-c.md) |
-| 03-a | Authentication integration | 02-c | In review | [Brief](steps/03-a.md) |
-| 03-b | Session management and account recovery | 03-a | In review | [Brief](steps/03-b.md) |
-| 03-c | Authentication abuse protections and tests | 03-b | In review | [Brief](steps/03-c.md) |
-| 04-a | Permission vocabulary and role model | 03-c | In review | [Brief](steps/04-a.md) |
-| 04-b | Server authorization enforcement | 04-a | Not started | [Brief](steps/04-b.md) |
+| 02-c | Audit events and transactional outbox | 02-b | Done | [Brief](steps/02-c.md) |
+| 03-a | Authentication integration | 02-c | Done | [Brief](steps/03-a.md) |
+| 03-b | Session management and account recovery | 03-a | Done | [Brief](steps/03-b.md) |
+| 03-c | Authentication abuse protections and tests | 03-b | Done | [Brief](steps/03-c.md) |
+| 04-a | Permission vocabulary and role model | 03-c | Done | [Brief](steps/04-a.md) |
+| 04-b | Server authorization enforcement | 04-a | In review | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Not started | [Brief](steps/04-c.md) |
 | 05-a | Semantic tokens and themes | 04-c | Not started | [Brief](steps/05-a.md) |
 | 05-b | Responsive app shell and navigation | 05-a | Not started | [Brief](steps/05-b.md) |
@@ -96,6 +96,18 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-28 — Owner merged 04-a [PR #32](https://github.com/WardDufraing/Vowora/pull/32) as `99626c8`; no competing PR remained. Fresh implementer `/root/implement_04_b` started 04-b from that integrated main. The implementation resolves authenticated session identity, authoritative membership/version and record relationship/visibility through one central deny-by-default boundary before minting an opaque operation and opening feature transactions. Cross-tenant, revoked/expired, collaborator-scope, private-organization, forged-input and privacy-safe API regressions pass. [Implementation evidence](implementation/04-b-server-authorization.md); independent review and PR evidence follow on the task branch. No schema, migration, persistent database, environment or deployment change is included.
+
+- 2026-10-29 — Initial 04-b reviewer `/root/implement_04_b/review_04_b` blocked [PR #33](https://github.com/WardDufraing/Vowora/pull/33) at `33876de` because repository calls lost the scoped permission, package roots exposed lower-level bypasses, and grants remained reusable after authorization changes. Continuation implementer `/root/continue_04_b_fixes` made capabilities single-use, revalidated authoritative state through the transaction session, carried exact action/area/resource/visibility into short-lived repository calls, removed public bypass exports, and added stale-state/package-boundary regressions. Corrected local checks and disposable PostgreSQL/Redis suites pass; fresh independent re-review remains required before owner merge.
+
+- 2026-10-29 — Fresh 04-b re-reviewer `/root/continue_04_b_fixes/rereview_04_b` confirmed the repository-capability and stale-state corrections at `818827d`, then found one high bypass through application deep imports of database internals and a production-emitted synthetic test issuer. Application-wide static/dynamic/re-export restrictions now block database source, dist and subpaths from feature services; the issuer moved under a production-excluded test path, clean build output contains no issuer, and simultaneous capability consumption has a deterministic regression. Corrected format/lint/types, 176 unit tests, four tooling tests, 13 boundary tests, both builds and disposable database suites pass; a different fresh final re-review remains required.
+
+- 2026-10-29 — Different 04-b final reviewer `/root/continue_04_b_fixes/final_review_04_b` verified the corrected capability, stale-state, production-output and canonical deep-import boundaries at `38004b7`, then reproduced one high normalized `database/./src` import bypass. The application rule now rejects every relative traversal from `packages` into `database`, including dot, parent and dist-to-src segments; exact web and marketing feature-service regressions pass. Another different fresh final re-review remains required before owner merge.
+
+- 2026-10-29 — Fresh reviewer `/root/continue_04_b_fixes/final_review_04_b_2` confirmed the normalized-path and authorization fixes at `c08fe1d`, then found one high bridge through the broad test-file lint exception. Application tests now remain barred from database source/dist and computed imports while retaining the published database testing entrypoint; production services are additionally barred from static, dynamic or re-export imports of test modules. Exact web/marketing two-file bridge regressions pass; another different fresh final re-review remains required.
+
+- 2026-10-29 — Different fresh final reviewer `/root/continue_04_b_fixes/final_review_04_b_3` passed the complete corrected 04-b diff at `e50e6b0` with no blocking, high or medium findings. It independently passed 28 focused authorization tests, 13 boundary tests, adversarial bridge/normalized/computed/package probes and clean output checks. Hosted policy, secret scan and both Vercel previews passed at review time; marketing and database jobs were still running. [PR #33](https://github.com/WardDufraing/Vowora/pull/33) remains at the owner merge gate; no migration, persistent database, external configuration or deployment changed.
 
 - 2026-10-28 — Fresh implementer `/root/implement_04_a` started 04-a from owner-merged 03-c main `214dc1d` with no competing open PR. The framework-independent permission model covers exact wedding/organization membership scope, equal partners, delegated planner access, coordinator/helper/read-only presets, per-area grants, record relationships, separate Download/Export and planner-private data. Initial review found one high runtime-visibility bypass and three medium lifecycle/private-owner/contact-scope gaps; all were fixed. Fresh re-review verified those fixes and found a new high collaborator Edit-scope escape, corrected in both parser and evaluator with 15 focused regressions. Different fresh reviewer `/root/implement_04_a/final_review_04_a` passed the complete corrected code at `8795e6a` with no blocking, high or medium findings. Corrected format, lint, types, 152 unit/component tests, four tooling tests, 12 boundary tests and both builds pass. [PR #32](https://github.com/WardDufraing/Vowora/pull/32); [implementation evidence](implementation/04-a-permission-model.md). Hosted policy, secret scan, database and both Vercel checks pass; marketing was still running at review time. No schema, migration, external configuration or deployment changed.
 

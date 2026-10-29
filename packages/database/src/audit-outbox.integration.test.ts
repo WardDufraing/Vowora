@@ -8,11 +8,13 @@ import { describe, expect, it } from "vitest";
 import {
   createAuditEventEnvelope,
   createOutboxEventEnvelope,
-  resolveAuthorizationContext,
   type AuthorizationContext,
-  type AuthorizationContextVerifier,
 } from "@vowora/domain";
 
+import {
+  syntheticOrganizationOperation,
+  syntheticWeddingOperation,
+} from "./test/authorization.js";
 import {
   AuditEventWriter,
   type AuditOutboxSession,
@@ -24,7 +26,7 @@ import { auditEvents, outboxEvents } from "./schema.js";
 import {
   TenantScopeViolationError,
   type TransactionHost,
-  withTenantTransaction,
+  withAuthorizedTenantTransaction,
 } from "./tenant.js";
 
 const businessRecords = pgTable("audit_outbox_business_records", {
@@ -46,37 +48,21 @@ const weddingA = "019a1f5e-70a0-7000-8000-000000000010";
 const weddingB = "019a1f5e-70a0-7000-8000-000000000011";
 const organizationA = "019a1f5e-70a0-7000-8000-000000000020";
 const organizationB = "019a1f5e-70a0-7000-8000-000000000021";
-const allowedWeddings = new Set([weddingA, weddingB]);
-const allowedOrganizations = new Set([organizationA, organizationB]);
-const verifier: AuthorizationContextVerifier = {
-  async authorize(candidate) {
-    return (
-      candidate.actorId === actorId &&
-      (candidate.activeWeddingId === undefined ||
-        allowedWeddings.has(candidate.activeWeddingId)) &&
-      (candidate.activeOrganizationId === undefined ||
-        allowedOrganizations.has(candidate.activeOrganizationId))
-    );
-  },
-};
-
 function syntheticUuid(index: number): string {
   return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
 }
 
-function authorization(scopes: {
+function authorizationOperation(scopes: {
   activeWeddingId?: string;
   activeOrganizationId?: string;
 }) {
-  return resolveAuthorizationContext(
-    {
-      actorId,
-      ...scopes,
-      permissionScopeVersion: "synthetic:1",
-      correlationId: randomUUID(),
-    },
-    verifier,
-  );
+  if (scopes.activeWeddingId && !scopes.activeOrganizationId) {
+    return syntheticWeddingOperation(actorId, scopes.activeWeddingId);
+  }
+  if (scopes.activeOrganizationId && !scopes.activeWeddingId) {
+    return syntheticOrganizationOperation(actorId, scopes.activeOrganizationId);
+  }
+  throw new Error("Synthetic tests issue exactly one authoritative scope");
 }
 
 function events(
@@ -141,15 +127,18 @@ function transactionHost(
 describe("transactional audit and outbox persistence", () => {
   it("commits business, audit and outbox rows in one tenant transaction", async () => {
     await withDatabase("audit-outbox-commit", async (database) => {
-      const context = await authorization({ activeWeddingId: weddingA });
+      const operation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
+      const context = operation.authorization;
       const businessId = syntheticUuid(100);
       const event = events(context, syntheticUuid(101), businessId);
       const auditWriter = new AuditEventWriter();
       const outboxWriter = new OutboxEventWriter();
 
-      await withTenantTransaction(
+      await withAuthorizedTenantTransaction(
         transactionHost(database),
-        context,
+        operation,
         async (transaction) => {
           await transaction.session.insert(businessRecords).values({
             id: businessId,
@@ -186,8 +175,13 @@ describe("transactional audit and outbox persistence", () => {
 
   it("rolls every row back on application failure and tenant mismatch", async () => {
     await withDatabase("audit-outbox-rollback", async (database) => {
-      const contextA = await authorization({ activeWeddingId: weddingA });
-      const contextB = await authorization({ activeWeddingId: weddingB });
+      const operationA = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
+      const contextA = operationA.authorization;
+      const contextB = (
+        await authorizationOperation({ activeWeddingId: weddingB })
+      ).authorization;
       const auditWriter = new AuditEventWriter();
       const outboxWriter = new OutboxEventWriter();
       const host = transactionHost(database);
@@ -199,16 +193,20 @@ describe("transactional audit and outbox persistence", () => {
       );
 
       await expect(
-        withTenantTransaction(host, contextA, async (transaction) => {
-          await transaction.session.insert(businessRecords).values({
-            id: failedBusinessId,
-            weddingId: weddingA,
-            value: "roll back on application error",
-          });
-          await auditWriter.append(transaction, failedEvent.audit);
-          await outboxWriter.enqueue(transaction, failedEvent.outbox);
-          throw new Error("synthetic application failure");
-        }),
+        withAuthorizedTenantTransaction(
+          host,
+          operationA,
+          async (transaction) => {
+            await transaction.session.insert(businessRecords).values({
+              id: failedBusinessId,
+              weddingId: weddingA,
+              value: "roll back on application error",
+            });
+            await auditWriter.append(transaction, failedEvent.audit);
+            await outboxWriter.enqueue(transaction, failedEvent.outbox);
+            throw new Error("synthetic application failure");
+          },
+        ),
       ).rejects.toThrow("synthetic application failure");
 
       const crossTenantBusinessId = syntheticUuid(202);
@@ -217,31 +215,41 @@ describe("transactional audit and outbox persistence", () => {
         syntheticUuid(203),
         crossTenantBusinessId,
       );
+      const crossTenantOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
       await expect(
-        withTenantTransaction(host, contextA, async (transaction) => {
-          await transaction.session.insert(businessRecords).values({
-            id: crossTenantBusinessId,
-            weddingId: weddingA,
-            value: "roll back on tenant mismatch",
-          });
-          await auditWriter.append(transaction, crossTenantEvent.audit);
-        }),
+        withAuthorizedTenantTransaction(
+          host,
+          crossTenantOperation,
+          async (transaction) => {
+            await transaction.session.insert(businessRecords).values({
+              id: crossTenantBusinessId,
+              weddingId: weddingA,
+              value: "roll back on tenant mismatch",
+            });
+            await auditWriter.append(transaction, crossTenantEvent.audit);
+          },
+        ),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
 
-      const organizationContextA = await authorization({
+      const organizationOperationA = await authorizationOperation({
         activeOrganizationId: organizationA,
       });
-      const organizationContextB = await authorization({
-        activeOrganizationId: organizationB,
-      });
+      const organizationContextB = (
+        await authorizationOperation({ activeOrganizationId: organizationB })
+      ).authorization;
       const crossOrganizationEvent = events(
         organizationContextB,
         syntheticUuid(204),
         syntheticUuid(205),
       );
       await expect(
-        withTenantTransaction(host, organizationContextA, (transaction) =>
-          outboxWriter.enqueue(transaction, crossOrganizationEvent.outbox),
+        withAuthorizedTenantTransaction(
+          host,
+          organizationOperationA,
+          (transaction) =>
+            outboxWriter.enqueue(transaction, crossOrganizationEvent.outbox),
         ),
       ).rejects.toBeInstanceOf(TenantScopeViolationError);
 
@@ -253,7 +261,10 @@ describe("transactional audit and outbox persistence", () => {
 
   it("rejects duplicate audit and outbox IDs and rolls back business work", async () => {
     await withDatabase("audit-outbox-idempotency", async (database) => {
-      const context = await authorization({ activeWeddingId: weddingA });
+      const originalOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
+      const context = originalOperation.authorization;
       const auditWriter = new AuditEventWriter();
       const outboxWriter = new OutboxEventWriter();
       const host = transactionHost(database);
@@ -261,48 +272,66 @@ describe("transactional audit and outbox persistence", () => {
       const originalEventId = syntheticUuid(301);
       const original = events(context, originalEventId, originalBusinessId);
 
-      await withTenantTransaction(host, context, async (transaction) => {
-        await transaction.session.insert(businessRecords).values({
-          id: originalBusinessId,
-          weddingId: weddingA,
-          value: "original",
-        });
-        await auditWriter.append(transaction, original.audit);
-        await outboxWriter.enqueue(transaction, original.outbox);
-      });
+      await withAuthorizedTenantTransaction(
+        host,
+        originalOperation,
+        async (transaction) => {
+          await transaction.session.insert(businessRecords).values({
+            id: originalBusinessId,
+            weddingId: weddingA,
+            value: "original",
+          });
+          await auditWriter.append(transaction, original.audit);
+          await outboxWriter.enqueue(transaction, original.outbox);
+        },
+      );
 
       const duplicateAuditBusinessId = syntheticUuid(302);
+      const duplicateAuditOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
       const duplicateAudit = events(
-        context,
+        duplicateAuditOperation.authorization,
         originalEventId,
         duplicateAuditBusinessId,
       );
       await expect(
-        withTenantTransaction(host, context, async (transaction) => {
-          await transaction.session.insert(businessRecords).values({
-            id: duplicateAuditBusinessId,
-            weddingId: weddingA,
-            value: "duplicate audit",
-          });
-          await auditWriter.append(transaction, duplicateAudit.audit);
-        }),
+        withAuthorizedTenantTransaction(
+          host,
+          duplicateAuditOperation,
+          async (transaction) => {
+            await transaction.session.insert(businessRecords).values({
+              id: duplicateAuditBusinessId,
+              weddingId: weddingA,
+              value: "duplicate audit",
+            });
+            await auditWriter.append(transaction, duplicateAudit.audit);
+          },
+        ),
       ).rejects.toThrow();
 
       const duplicateOutboxBusinessId = syntheticUuid(303);
+      const duplicateOutboxOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
       const duplicateOutbox = events(
-        context,
+        duplicateOutboxOperation.authorization,
         originalEventId,
         duplicateOutboxBusinessId,
       );
       await expect(
-        withTenantTransaction(host, context, async (transaction) => {
-          await transaction.session.insert(businessRecords).values({
-            id: duplicateOutboxBusinessId,
-            weddingId: weddingA,
-            value: "duplicate outbox",
-          });
-          await outboxWriter.enqueue(transaction, duplicateOutbox.outbox);
-        }),
+        withAuthorizedTenantTransaction(
+          host,
+          duplicateOutboxOperation,
+          async (transaction) => {
+            await transaction.session.insert(businessRecords).values({
+              id: duplicateOutboxBusinessId,
+              weddingId: weddingA,
+              value: "duplicate outbox",
+            });
+            await outboxWriter.enqueue(transaction, duplicateOutbox.outbox);
+          },
+        ),
       ).rejects.toThrow();
 
       expect(await database.select().from(businessRecords)).toMatchObject([
@@ -315,22 +344,35 @@ describe("transactional audit and outbox persistence", () => {
 
   it("rejects forged envelopes and database mutation of audit history", async () => {
     await withDatabase("audit-append-only", async (database) => {
-      const context = await authorization({ activeWeddingId: weddingA });
+      const forgedOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
+      const context = forgedOperation.authorization;
       const businessId = syntheticUuid(400);
       const event = events(context, syntheticUuid(401), businessId);
       const auditWriter = new AuditEventWriter();
       const host = transactionHost(database);
 
       await expect(
-        withTenantTransaction(host, context, (transaction) =>
+        withAuthorizedTenantTransaction(host, forgedOperation, (transaction) =>
           auditWriter.append(transaction, {
             ...event.audit,
           } as typeof event.audit),
         ),
       ).rejects.toThrow("Invalid event envelope");
 
-      await withTenantTransaction(host, context, (transaction) =>
-        auditWriter.append(transaction, event.audit),
+      const validOperation = await authorizationOperation({
+        activeWeddingId: weddingA,
+      });
+      const validEvent = events(
+        validOperation.authorization,
+        event.audit.eventId,
+        businessId,
+      );
+      await withAuthorizedTenantTransaction(
+        host,
+        validOperation,
+        (transaction) => auditWriter.append(transaction, validEvent.audit),
       );
 
       for (const mutation of [

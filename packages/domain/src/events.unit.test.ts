@@ -8,8 +8,8 @@ import {
 import {
   parseAuthorizationContextInput,
   resolveAuthorizationContext,
-  type AuthorizationContext,
-} from "./index.js";
+} from "./authorization.js";
+import type { AuthorizationContext } from "./index.js";
 
 const actorId = "019a1f5e-70a0-7000-8000-000000000001";
 const weddingId = "019a1f5e-70a0-7000-8000-000000000002";

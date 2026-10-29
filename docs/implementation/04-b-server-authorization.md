@@ -1,0 +1,37 @@
+# 04-b server authorization enforcement
+
+Task 04-b connects the merged permission vocabulary to the existing authentication and tenant-repository foundations. The central domain boundary receives only a server-authenticated actor plus route-owned action, tenant and resource identifiers. It loads the exact membership, permission-scope version, record tenant, relationship and visibility through a trusted persistence interface; request bodies cannot supply actor IDs, grants, relationship, visibility or scope versions. Strict schemas reject over-posted facts before any loader runs.
+
+Wedding, planner-organization and independent-planner private records follow separate resolution paths. Existing record area, assignment/share relationship, visibility and private owner are authoritative projections. Creation derives the `new_record` relationship inside the boundary. The 04-a policy rejects missing, revoked or expired membership, role/grant denial, collaborator records outside assigned/shared scope, cross-wedding records, cross-organization private records and private records whose owner differs from the authenticated independent planner. Only a successful policy decision mints a runtime-registered wedding, organization or private-owner context and opaque authorized operation. Structural clones and casts fail the runtime provenance check. Each operation is single-use. The database transaction boundary consumes it and reruns the authoritative membership, scope-version, record-tenant, relationship, visibility and ownership checks through the transaction session before protected work begins. Revocation, expiry, permission-version changes, unsharing and reassignment therefore take effect between initial resolution and execution.
+
+The web application service reads Better Auth with cookie caching and refresh disabled, uses the session user ID as the sole actor identity and returns correlation-bearing Problem Details. Anonymous access returns 401, policy denial returns one privacy-safe 403 without reflecting actor/tenant/record facts, and session/state failures fail closed with a privacy-safe 503. Feature services pass the opaque operation to `withAuthorizedTenantTransaction`. Its callback receives a short-lived, runtime-registered repository call containing the same operation, authorization context and transaction session. Every feature repository declares and asserts its exact area, action, visibility and existing resource ID or explicit new-record capability before SQL. A Task View capability cannot become Edit/create access, reach a second record or area, or cross into private visibility. The call becomes invalid when the callback ends. Audit/outbox writers accept the same active call, so they remain inside the already-authorized business transaction without creating a bypass.
+
+The public domain entrypoint no longer exports context parsing or arbitrary-verifier resolution, and the public database entrypoint no longer exports the bare tenant transaction helper or legacy repository-call types. Package-local foundation tests retain those lower-level primitives through relative imports. Application-wide lint boundaries reject static imports, dynamic imports and re-exports of database source, compiled internals and package subpaths while allowing the public database root in feature services. Synthetic authorization issuers live under a test-only source path excluded from production compilation; a clean database build emits none of them. Runtime and lint package-boundary regressions prove application feature code cannot obtain either bypass. There is no client-only authorization check.
+
+This implementation traces ARCH-008, ARCH-037, ARCH-047 and ARCH-148; DEC-001–011; and the permission details DEC-411–415 and DEC-447–457. It does not invent wedding or organization membership tables before their owning tasks 06 and 07. Those features implement `ServerAuthorizationState` with exact tenant-scoped persistence. No public product endpoint or UI is invented before its owning feature task.
+
+## Verification
+
+The implementation agent ran:
+
+```sh
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test:unit
+pnpm test:tooling
+pnpm test:boundaries
+pnpm exec turbo run build --force --concurrency=2
+DATABASE_MIGRATION_URL=<disposable-loopback-postgres> \
+  DATABASE_MIGRATION_TARGET=test \
+  AUTH_ABUSE_REDIS_URL=<disposable-loopback-redis> \
+  pnpm test:database
+```
+
+Formatting, lint and workspace type checks passed. The corrected full unit/component run passed 176 tests in 25 files; the focused domain, database and web boundary suites passed 28 tests. New regressions cover exact action/area/resource/visibility repository requirements, forged and expired repository calls, sequential and simultaneous single-use grants, in-transaction session revalidation, revocation, permission-scope changes, unsharing and reassignment. Four tooling and 13 package-boundary tests passed. Both Next.js applications and all packages built successfully from an uncached production build; the clean database output check confirmed no test issuer was emitted. Migration metadata/drift/safety, three PostgreSQL integration files with nine tests, two Better Auth PostgreSQL scenarios and two exact Redis abuse-policy tests passed against disposable loopback PostgreSQL 17 and Redis 7.4 containers with synthetic credentials. Both containers were removed afterward. No persistent database was contacted and `pnpm test:database` was not pointed at Neon.
+
+Browser/accessibility checks are not applicable because this task adds no route, page or UI behavior. Persistent migration checks are not applicable because no schema, SQL migration or database grant changes.
+
+## Review, configuration and rollback
+
+Branch `feat/04-b-server-authorization`, based on owner-merged main `99626c8c63001093b6b2aec70ae48102494a33f3`. Initial implementation `dd12810`; [PR #33](https://github.com/WardDufraing/Vowora/pull/33). Initial fresh reviewer `/root/implement_04_b/review_04_b` found three high-severity gaps at `33876de`: the repository boundary discarded the scoped decision, public roots exposed context/transaction bypasses, and reusable grants were not revalidated. Continuation implementer `/root/continue_04_b_fixes` corrected those gaps at `818827d`. Fresh re-reviewer `/root/continue_04_b_fixes/rereview_04_b` confirmed the capability/stale-state fixes and found one remaining high application deep-import/test-helper bypass, corrected at `38004b7`. Different reviewer `/root/continue_04_b_fixes/final_review_04_b` verified the substantive fixes and found one normalized dot-segment import variant, corrected at `c08fe1d`. Another reviewer `/root/continue_04_b_fixes/final_review_04_b_2` confirmed those fixes and found the broad test-file lint exception could bridge an internal into production, corrected at `e50e6b0`. Different fresh final reviewer `/root/continue_04_b_fixes/final_review_04_b_3` passed the complete corrected diff with no blocking, high or medium findings and independently passed 28 focused authorization tests, 13 boundary tests, adversarial bridge/path/import probes and clean production-output checks. Rollback is a reviewed code revert; there is no data rollback. No Neon, Vercel, Cloudflare, Upstash, DNS, environment, staging or production resource changed. Tasks 06/07 own authoritative persistence loaders and 04-c owns permission-change audit/invalidation; 04-c remains blocked until owner merge.

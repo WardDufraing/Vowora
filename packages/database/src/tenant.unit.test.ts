@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { pgTable, uuid } from "drizzle-orm/pg-core";
 
+import { type AuthorizationContext } from "@vowora/domain";
+
 import {
-  parseAuthorizationContextInput,
-  resolveAuthorizationContext,
-  type AuthorizationContext,
-  type AuthorizationContextVerifier,
-} from "@vowora/domain";
+  syntheticPrivateOwnerAuthorization,
+  syntheticWeddingAuthorization,
+} from "./test/authorization.js";
 
 import {
   assertTenantWriteScope,
@@ -22,19 +22,17 @@ const contextInput = {
   permissionScopeVersion: "scope:1",
   correlationId: "fd901f2e-3f91-4e12-a32e-cf48c853fd44",
 };
-const verifier: AuthorizationContextVerifier = {
-  async authorize(candidate) {
-    return candidate.actorId === contextInput.actorId;
-  },
-};
-
 function authorization() {
-  return resolveAuthorizationContext(contextInput, verifier);
+  return syntheticWeddingAuthorization(
+    contextInput.actorId,
+    contextInput.activeWeddingId,
+  );
 }
 
 const scopedRecord = pgTable("scoped_record", {
   weddingId: uuid("wedding_id"),
   organizationId: uuid("organization_id"),
+  privateOwnerActorId: uuid("private_owner_actor_id"),
 });
 const bothScopes = {
   weddingId: scopedRecord.weddingId,
@@ -49,20 +47,55 @@ describe("tenant primitives", () => {
         context,
         {
           weddingId: context.activeWeddingId,
-          organizationId: context.activeOrganizationId,
         },
-        bothScopes,
+        { weddingId: scopedRecord.weddingId },
       ),
     ).not.toThrow();
     for (const values of [
       {},
       { weddingId: "019a1f5e-70a0-7000-8000-000000000099" },
-      { organizationId: "019a1f5e-70a0-7000-8000-000000000099" },
+      { organizationId: contextInput.activeOrganizationId },
     ]) {
-      expect(() => assertTenantWriteScope(context, values, bothScopes)).toThrow(
-        TenantScopeViolationError,
-      );
+      expect(() =>
+        assertTenantWriteScope(context, values, {
+          weddingId: scopedRecord.weddingId,
+        }),
+      ).toThrow(TenantScopeViolationError);
     }
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        {
+          weddingId: context.activeWeddingId,
+          organizationId: contextInput.activeOrganizationId,
+        },
+        bothScopes,
+      ),
+    ).toThrow(TenantScopeViolationError);
+  });
+
+  it("enforces exact actor ownership for independent-planner private writes", async () => {
+    const context = await syntheticPrivateOwnerAuthorization(
+      contextInput.actorId,
+    );
+    const ownerScope = {
+      privateOwnerActorId: scopedRecord.privateOwnerActorId,
+    };
+
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        { privateOwnerActorId: contextInput.actorId },
+        ownerScope,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertTenantWriteScope(
+        context,
+        { privateOwnerActorId: "019a1f5e-70a0-7000-8000-000000000099" },
+        ownerScope,
+      ),
+    ).toThrow(TenantScopeViolationError);
   });
 
   it("validates once and supplies one transaction session to the callback", async () => {
@@ -84,20 +117,6 @@ describe("tenant primitives", () => {
     );
     expect(transactionCalls).toBe(1);
     expect(callback).toHaveBeenCalledWith({ authorization: context, session });
-  });
-
-  it("rejects unresolved context before opening a transaction", () => {
-    const transaction = vi.fn();
-    const unresolved = parseAuthorizationContextInput(contextInput);
-
-    expect(() =>
-      withTenantTransaction(
-        { transaction },
-        unresolved as unknown as AuthorizationContext,
-        async () => undefined,
-      ),
-    ).toThrow();
-    expect(transaction).not.toHaveBeenCalled();
   });
 
   it("rejects a clone of a resolved context before opening a transaction", async () => {

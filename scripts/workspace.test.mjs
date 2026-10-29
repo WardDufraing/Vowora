@@ -135,6 +135,60 @@ test("web route handlers cannot bypass application services for database access"
   );
   assert.equal(service.errorCount, 0);
 });
+test("application services cannot import database internals", async () => {
+  for (const layer of ["web", "marketing"]) {
+    const lint = new ESLint({
+      cwd: new URL(`apps/${layer}/`, root).pathname,
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const source of [
+      "import '../../../packages/database/src/tenant';",
+      "import '../../../packages/database/./src/tenant';",
+      "import '../../../packages/./database/src/tenant';",
+      "import '../../../packages/config/../database/src/tenant';",
+      "import '../../../packages/database/dist/../src/tenant';",
+      "import '../../../packages/database/src/test/authorization';",
+      "void import('../../../packages/database/dist/tenant.js');",
+      "const target = '../../../packages/database'; void import(target + '/src/tenant');",
+      "export * from '@vowora/database/testing';",
+      "import './database-bridge.unit.test';",
+      "void import('./database-bridge.unit.test');",
+      "export * from './database-bridge.unit.test';",
+    ]) {
+      const [result] = await lint.lintText(source, {
+        filePath: "lib/feature-service.ts",
+      });
+      assert(
+        result.messages.some(
+          (message) => message.ruleId === "no-restricted-syntax",
+        ),
+        `${layer}: ${source}`,
+      );
+    }
+    const [publicRoot] = await lint.lintText(
+      "import type { TransactionHost } from '@vowora/database';",
+      { filePath: "lib/feature-service.ts" },
+    );
+    assert.equal(publicRoot.errorCount, 0, layer);
+
+    const [testBridge] = await lint.lintText(
+      "export { withTenantTransaction } from '../../../packages/database/src/tenant';",
+      { filePath: "lib/database-bridge.unit.test.ts" },
+    );
+    assert(
+      testBridge.messages.some(
+        (message) => message.ruleId === "no-restricted-syntax",
+      ),
+      `${layer}: test files cannot bridge database internals`,
+    );
+    const [testEntrypoint] = await lint.lintText(
+      "import type {} from '@vowora/database/testing';",
+      { filePath: "lib/database-fixture.unit.test.ts" },
+    );
+    assert.equal(testEntrypoint.errorCount, 0, `${layer}: test entrypoint`);
+  }
+});
 test("domain/contracts expose only their public compiled entrypoint", async () => {
   for (const name of ["domain", "contracts"]) {
     const manifest = JSON.parse(
@@ -152,6 +206,16 @@ test("domain/contracts expose only their public compiled entrypoint", async () =
     );
     assert.equal(output, "");
   }
+  const domainOutput = execFileSync(
+    "node",
+    [
+      "--input-type=module",
+      "-e",
+      "const runtime = await import('@vowora/domain'); if ('resolveAuthorizationContext' in runtime || 'parseAuthorizationContextInput' in runtime) process.exit(1);",
+    ],
+    { cwd: new URL("apps/web/", root), encoding: "utf8" },
+  );
+  assert.equal(domainOutput, "");
 });
 test("database keeps migration helpers behind its explicit testing entrypoint", async () => {
   const manifest = JSON.parse(
@@ -167,7 +231,7 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
     [
       "--input-type=module",
       "-e",
-      "const runtime = await import('@vowora/database'); if ('applyMigrations' in runtime || 'parseTestMigrationConfig' in runtime || 'withIsolatedTestSchema' in runtime) process.exit(1); const testing = await import('@vowora/database/testing'); if (typeof testing.applyMigrations !== 'function' || typeof testing.parseTestMigrationConfig !== 'function') process.exit(1);",
+      "const runtime = await import('@vowora/database'); if ('applyMigrations' in runtime || 'parseTestMigrationConfig' in runtime || 'withIsolatedTestSchema' in runtime || 'withTenantTransaction' in runtime) process.exit(1); const testing = await import('@vowora/database/testing'); if (typeof testing.applyMigrations !== 'function' || typeof testing.parseTestMigrationConfig !== 'function') process.exit(1);",
     ],
     { cwd: new URL("packages/database/", root), encoding: "utf8" },
   );
