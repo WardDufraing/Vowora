@@ -150,7 +150,11 @@ test("application services cannot import database internals", async () => {
       "import '../../../packages/database/dist/../src/tenant';",
       "import '../../../packages/database/src/test/authorization';",
       "void import('../../../packages/database/dist/tenant.js');",
+      "const target = '../../../packages/database'; void import(target + '/src/tenant');",
       "export * from '@vowora/database/testing';",
+      "import './database-bridge.unit.test';",
+      "void import('./database-bridge.unit.test');",
+      "export * from './database-bridge.unit.test';",
     ]) {
       const [result] = await lint.lintText(source, {
         filePath: "lib/feature-service.ts",
@@ -167,6 +171,22 @@ test("application services cannot import database internals", async () => {
       { filePath: "lib/feature-service.ts" },
     );
     assert.equal(publicRoot.errorCount, 0, layer);
+
+    const [testBridge] = await lint.lintText(
+      "export { withTenantTransaction } from '../../../packages/database/src/tenant';",
+      { filePath: "lib/database-bridge.unit.test.ts" },
+    );
+    assert(
+      testBridge.messages.some(
+        (message) => message.ruleId === "no-restricted-syntax",
+      ),
+      `${layer}: test files cannot bridge database internals`,
+    );
+    const [testEntrypoint] = await lint.lintText(
+      "import type {} from '@vowora/database/testing';",
+      { filePath: "lib/database-fixture.unit.test.ts" },
+    );
+    assert.equal(testEntrypoint.errorCount, 0, `${layer}: test entrypoint`);
   }
 });
 test("domain/contracts expose only their public compiled entrypoint", async () => {

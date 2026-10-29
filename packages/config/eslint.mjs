@@ -15,18 +15,43 @@ const routeDatabaseRestrictions = [
   message:
     "Route handlers must call application services, never database repositories directly.",
 }));
-const applicationDatabaseInternalPattern =
-  "/(?:^@vowora\\/database\\/|(?:^|\\/)packages\\/.*database(?:\\/|$))/";
-const applicationDatabaseInternalRestrictions = [
+const importNodes = [
   "ImportDeclaration",
   "ExportNamedDeclaration",
   "ExportAllDeclaration",
   "ImportExpression",
-].map((nodeType) => ({
-  selector: `${nodeType}[source.value=${applicationDatabaseInternalPattern}]`,
-  message:
-    "Application services may import the public database package only; database source, dist and subpaths are internal.",
-}));
+];
+function importRestrictions(pattern, message) {
+  return importNodes.map((nodeType) => ({
+    selector: `${nodeType}[source.value=${pattern}]`,
+    message,
+  }));
+}
+const applicationDatabaseSourceRestrictions = importRestrictions(
+  "/(?:^|\\/)packages\\/.*database(?:\\/|$)/",
+  "Database source and compiled internals are unreachable from application files, including tests.",
+);
+const applicationDatabaseSubpathRestrictions = importRestrictions(
+  "/^@vowora\\/database\\//",
+  "Application services may import the public database package only; database subpaths are internal.",
+);
+const applicationComputedImportRestrictions = [
+  {
+    selector: 'ImportExpression[source.type!="Literal"]',
+    message:
+      "Application dynamic imports require a literal public module specifier so package boundaries remain enforceable.",
+  },
+];
+const applicationTestModuleRestrictions = importRestrictions(
+  "/^\\..*(?:\\/tests?(?:\\/|$)|(?:\\.test|\\.spec)(?:\\.[^/]*)?$)/",
+  "Production application modules cannot import or re-export test modules.",
+);
+const applicationDatabaseInternalRestrictions = [
+  ...applicationDatabaseSourceRestrictions,
+  ...applicationDatabaseSubpathRestrictions,
+  ...applicationComputedImportRestrictions,
+  ...applicationTestModuleRestrictions,
+];
 
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
@@ -106,7 +131,11 @@ export function workspaceConfig(layer) {
               "**/tests/**/*.{ts,tsx}",
             ],
             rules: {
-              "no-restricted-syntax": "off",
+              "no-restricted-syntax": [
+                "error",
+                ...applicationDatabaseSourceRestrictions,
+                ...applicationComputedImportRestrictions,
+              ],
             },
           },
         ]
