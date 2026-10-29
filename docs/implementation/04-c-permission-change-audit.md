@@ -34,4 +34,4 @@ Browser/accessibility tests are not applicable because this task adds no route, 
 
 ## Review, configuration and rollback
 
-Branch `feat/04-c-permission-change-audit`, based on owner-merged main `ab548059a9daedb6b1d611456730b1deff332dd3`. Draft PR and independent review evidence will be linked after creation. Rollback is a reviewed code revert; there is no data rollback. No Neon, Vercel, Cloudflare, Upstash, DNS, environment, staging or production resource was contacted or changed.
+Branch `feat/04-c-permission-change-audit`, based on owner-merged main `ab548059a9daedb6b1d611456730b1deff332dd3`. [PR #34](https://github.com/WardDufraing/Vowora/pull/34) remains draft pending independent review. Rollback is a reviewed code revert; there is no data rollback. No Neon, Vercel, Cloudflare, Upstash, DNS, environment, staging or production resource was contacted or changed.
