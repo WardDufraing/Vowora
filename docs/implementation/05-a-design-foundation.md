@@ -97,13 +97,16 @@ screenshots are visual evidence only;
 manual assistive-technology and real-device verification remain part of the
 formal release gate.
 
-Implementation commit `c8ef1f8` on `feat/05-a-semantic-tokens-themes` is in
+Initial implementation commit `c8ef1f8` and final reviewed correction
+`5b2d6d2` on `feat/05-a-semantic-tokens-themes` are in
 [PR #35](https://github.com/WardDufraing/Vowora/pull/35). Before independent
 review, formatting, lint, workspace types, 207 unit/component tests, four
 tooling tests, 13 package-boundary tests, uncached builds, 11 application browser
-checks and 26 marketing browser regressions passed. Independent review remains
-pending. Rollback is a code/dependency revert. There is no schema, migration,
-database grant, environment variable or external configuration change.
+checks and 26 marketing browser regressions passed. The final correction was
+again verified by formatting, web lint/types and build, all 207 unit/component
+tests, all 11 application browser checks and all 26 marketing regressions.
+Rollback is a code/dependency revert. There is no schema, migration, database
+grant, environment variable or external configuration change.
 
 Initial fresh reviewer `/root/implement_05_a/review_05_a` found a high
 color-only inline-link affordance after the Tailwind reset and a medium gap in
@@ -126,5 +129,11 @@ the shared selected-record fact. The corrected mobile cards now render visible
 `Selected` or `Not selected` text from that same fact, use semantic selected
 tokens as a supporting visual treatment and retain title, owner and status.
 The narrow-browser regression compares all four facts for every record, and
-the committed mobile screenshot reflects the correction. Another fresh final
-re-review is pending.
+the committed mobile screenshot reflects the correction. Different fresh final
+reviewer `/root/continue_05_a_final/final_review_05_a_selection` passed the
+complete corrected diff at `5b2d6d2` with no blocking, high or material medium
+findings. It independently passed 18 focused tests, the web production build,
+five semantic-theme browser tests and the complete diff check, and confirmed
+the screenshot matches the title/owner/status/selection contract. Later formal
+release-gate work remains limited to manual assistive-technology and real-device
+validation plus ongoing feature-screen accessibility under FINAL-004.
