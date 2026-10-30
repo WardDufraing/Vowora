@@ -218,7 +218,7 @@ export default function DesignSystemPage() {
             return (
               <article
                 aria-labelledby={headingId}
-                className="mobile-record"
+                className={`mobile-record${record.selected ? " mobile-record--selected" : ""}`}
                 key={record.title}
                 role="listitem"
               >
@@ -231,6 +231,10 @@ export default function DesignSystemPage() {
                   <div>
                     <dt>Status</dt>
                     <dd>{record.status}</dd>
+                  </div>
+                  <div>
+                    <dt>Selection</dt>
+                    <dd>{record.selected ? "Selected" : "Not selected"}</dd>
                   </div>
                 </dl>
               </article>

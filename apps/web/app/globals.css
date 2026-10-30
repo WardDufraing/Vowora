@@ -613,6 +613,11 @@ tr[aria-selected="true"] {
   padding: var(--space-4);
   background: var(--card);
 }
+.mobile-record--selected {
+  border-color: var(--selected-foreground);
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
 .mobile-record dl,
 .mobile-record dl div {
   display: grid;

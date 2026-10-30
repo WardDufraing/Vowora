@@ -197,12 +197,37 @@ test.describe("semantic theme foundation", () => {
     await page.setViewportSize({ width: 320, height: 720 });
     await page.goto("/design-system");
     const desktopRecords = await page
-      .locator('table tbody th[scope="row"]')
-      .allTextContents();
+      .locator("table tbody tr")
+      .evaluateAll((rows) =>
+        rows.map((row) => ({
+          title: row.querySelector('th[scope="row"]')?.textContent?.trim(),
+          owner: row.querySelector("td:nth-of-type(1)")?.textContent?.trim(),
+          status: row.querySelector("td:nth-of-type(2)")?.textContent?.trim(),
+          selection:
+            row.getAttribute("aria-selected") === "true"
+              ? "Selected"
+              : "Not selected",
+        })),
+      );
     const mobileRecords = await page
       .getByRole("list", { name: "Mobile task examples" })
-      .getByRole("heading")
-      .allTextContents();
+      .getByRole("listitem")
+      .evaluateAll((records) =>
+        records.map((record) => {
+          const facts = Object.fromEntries(
+            Array.from(record.querySelectorAll("dl > div")).map((fact) => [
+              fact.querySelector("dt")?.textContent?.trim(),
+              fact.querySelector("dd")?.textContent?.trim(),
+            ]),
+          );
+          return {
+            title: record.querySelector("h3")?.textContent?.trim(),
+            owner: facts.Owner,
+            status: facts.Status,
+            selection: facts.Selection,
+          };
+        }),
+      );
     expect(mobileRecords).toEqual(desktopRecords);
     await page
       .getByRole("button", { name: "Secondary action" })

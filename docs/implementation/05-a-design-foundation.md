@@ -118,4 +118,13 @@ findings were resolved and found one material mobile-equivalence gap: the
 two-row desktop example had only one mobile card. Both representations now map
 the same shared synthetic records, preserve every displayed field, expose a
 named semantic mobile list and have a narrow-browser parity regression. The
-mobile screenshot is updated. Final fresh re-review is pending.
+mobile screenshot is updated.
+
+The next fresh reviewer `/root/implement_05_a/final_review_05_a` confirmed the
+missing row was fixed and found that the mobile representation still omitted
+the shared selected-record fact. The corrected mobile cards now render visible
+`Selected` or `Not selected` text from that same fact, use semantic selected
+tokens as a supporting visual treatment and retain title, owner and status.
+The narrow-browser regression compares all four facts for every record, and
+the committed mobile screenshot reflects the correction. Another fresh final
+re-review is pending.
