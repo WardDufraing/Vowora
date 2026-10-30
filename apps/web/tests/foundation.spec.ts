@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 test("account entry points render honestly and remain outside search", async ({
   page,
@@ -98,6 +99,172 @@ test("product foundation fits narrow mobile viewports", async ({ page }) => {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test.describe("semantic theme foundation", () => {
+  test("defaults to System, follows OS changes and persists explicit overrides", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/design-system");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
+    await expect(page.getByLabel("Appearance")).toHaveValue("system");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(20, 33, 27)",
+    );
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(248, 248, 245)",
+    );
+
+    await page.getByLabel("Appearance").selectOption("dark");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(20, 33, 27)",
+    );
+  });
+
+  for (const theme of ["light", "dark"] as const) {
+    test(`${theme} foundation has no detectable accessibility violations`, async ({
+      page,
+    }, testInfo) => {
+      await page.addInitScript((preference) => {
+        localStorage.setItem("vowora-app-theme", preference);
+      }, theme);
+      await page.goto("/design-system");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "A focused welcome back" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Planning at a glance" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          name: "One thoughtful place to plan together",
+        }),
+      ).toBeVisible();
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(results.violations).toEqual([]);
+      await testInfo.attach(`foundation-${theme}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+      });
+
+      await page.goto("/sign-in");
+      await expect(
+        page.getByRole("link", { name: "Forgot your password?" }),
+      ).toHaveCSS("text-decoration-line", "underline");
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    });
+  }
+
+  test("supports keyboard dialog behavior and forced-color focus", async ({
+    page,
+  }) => {
+    await page.goto("/design-system");
+    await page.getByRole("button", { name: "Open dialog example" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("button", { name: "Open dialog example" }),
+    ).toBeFocused();
+
+    await page.emulateMedia({
+      forcedColors: "active",
+      reducedMotion: "reduce",
+    });
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(
+        () =>
+          window.matchMedia("(forced-colors: active)").matches &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      ),
+    ).toBe(true);
+  });
+
+  test("reflows at narrow and large-text equivalents with usable targets", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.goto("/design-system");
+    const desktopRecords = await page
+      .locator("table tbody tr")
+      .evaluateAll((rows) =>
+        rows.map((row) => ({
+          title: row.querySelector('th[scope="row"]')?.textContent?.trim(),
+          owner: row.querySelector("td:nth-of-type(1)")?.textContent?.trim(),
+          status: row.querySelector("td:nth-of-type(2)")?.textContent?.trim(),
+          selection:
+            row.getAttribute("aria-selected") === "true"
+              ? "Selected"
+              : "Not selected",
+        })),
+      );
+    const mobileRecords = await page
+      .getByRole("list", { name: "Mobile task examples" })
+      .getByRole("listitem")
+      .evaluateAll((records) =>
+        records.map((record) => {
+          const facts = Object.fromEntries(
+            Array.from(record.querySelectorAll("dl > div")).map((fact) => [
+              fact.querySelector("dt")?.textContent?.trim(),
+              fact.querySelector("dd")?.textContent?.trim(),
+            ]),
+          );
+          return {
+            title: record.querySelector("h3")?.textContent?.trim(),
+            owner: facts.Owner,
+            status: facts.Status,
+            selection: facts.Selection,
+          };
+        }),
+      );
+    expect(mobileRecords).toEqual(desktopRecords);
+    await page
+      .getByRole("button", { name: "Secondary action" })
+      .evaluate((button) => {
+        button.textContent =
+          "Secondary action with a deliberately long localized label";
+      });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.setViewportSize({ width: 640, height: 720 });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "200%";
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    const targets = await page
+      .locator("button:not([disabled]), select")
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        }),
+      );
+    expect(
+      targets.every(({ width, height }) => width >= 44 && height >= 44),
+    ).toBe(true);
+    await testInfo.attach("foundation-mobile-large-text", {
+      body: await page.screenshot({ fullPage: true }),
+      contentType: "image/png",
+    });
+  });
 });
 
 test("sign-in exposes an accessible fallback when elevated risk requires a challenge", async ({

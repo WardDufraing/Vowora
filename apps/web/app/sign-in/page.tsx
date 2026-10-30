@@ -4,7 +4,7 @@ import { AuthForm } from "../auth-form";
 
 export default function SignInPage() {
   return (
-    <main>
+    <main id="main-content">
       <p>Vowora</p>
       <h1>Sign in</h1>
       <p>Your email address must be verified before access is granted.</p>

@@ -4,7 +4,7 @@ import { VerifyEmailForm } from "./verify-email-form";
 
 export default function VerifyEmailPage() {
   return (
-    <main>
+    <main id="main-content">
       <p>Vowora</p>
       <h1>Verify your email</h1>
       <p>

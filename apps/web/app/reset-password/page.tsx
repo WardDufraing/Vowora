@@ -8,7 +8,7 @@ export default async function ResetPasswordPage({
 }) {
   const { token, error } = await searchParams;
   return (
-    <main>
+    <main id="main-content">
       <p>Vowora</p>
       <h1>Choose a new password</h1>
       {token && !error ? (
