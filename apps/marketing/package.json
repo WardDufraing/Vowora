@@ -13,7 +13,7 @@
   "dependencies": {
     "@fontsource/cormorant-garamond": "5.3.0",
     "@fontsource/dm-sans": "5.3.0",
-    "lucide-react": "1.61.0",
+    "lucide-react": "1.63.0",
     "next": "16.4.3",
     "next-intl": "4.14.9",
     "react": "19.3.1",
