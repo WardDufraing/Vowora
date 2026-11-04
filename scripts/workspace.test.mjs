@@ -261,6 +261,36 @@ test("database integration task builds workspace dependencies on a clean checkou
     "database integration depends on the domain build",
   );
 });
+test("shared TypeScript configs name Node ambient types explicitly", async () => {
+  const library = JSON.parse(
+    await readFile(new URL("packages/config/library.json", root), "utf8"),
+  );
+  const next = JSON.parse(
+    await readFile(new URL("packages/config/next.json", root), "utf8"),
+  );
+  assert.deepEqual(library.compilerOptions.lib, ["ES2022"]);
+  assert.deepEqual(library.compilerOptions.types, ["node"]);
+  assert.equal(
+    library.compilerOptions.lib.some((name) => /dom/i.test(name)),
+    false,
+  );
+  assert.deepEqual(next.compilerOptions.types, ["node"]);
+  for (const file of [
+    "packages/domain/tsconfig.json",
+    "packages/database/tsconfig.json",
+    "packages/contracts/tsconfig.json",
+    "apps/web/tsconfig.json",
+    "apps/marketing/tsconfig.json",
+    "tsconfig.test.json",
+  ]) {
+    const config = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    assert.equal(
+      Object.hasOwn(config.compilerOptions ?? {}, "types"),
+      false,
+      file,
+    );
+  }
+});
 test("root test typecheck resolves integration imports without compiled package output", async () => {
   const config = JSON.parse(
     await readFile(new URL("tsconfig.test.json", root)),
