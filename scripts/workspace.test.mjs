@@ -237,6 +237,121 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
   );
   assert.equal(output, "");
 });
+test("feature code cannot import or call the infrastructure-only tenant transaction", async () => {
+  const imported =
+    "import { withTenantTransaction } from '@vowora/database';\nvoid withTenantTransaction;\n";
+  const authorized =
+    "import { withAuthorizedTenantTransaction } from '@vowora/database';\nvoid withAuthorizedTenantTransaction;\n";
+  const called =
+    "export async function save(): Promise<void> {\n  await withTenantTransaction();\n}\ndeclare function withTenantTransaction(): Promise<void>;\n";
+  const computed =
+    "import * as database from '@vowora/database';\nvoid database['withTenantTransaction'];\n";
+  const isBareTenantTransaction = (result) =>
+    result.messages.some(
+      (message) =>
+        message.ruleId === "no-restricted-syntax" &&
+        message.message.includes("withAuthorizedTenantTransaction"),
+    );
+
+  for (const layer of ["web", "marketing"]) {
+    const lint = new ESLint({
+      cwd: new URL(`apps/${layer}/`, root).pathname,
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const [filePath, source] of [
+      ["lib/feature-service.ts", imported],
+      ["lib/feature-service.ts", called],
+      ["lib/feature-service.ts", computed],
+      ["lib/feature-service.unit.test.ts", imported],
+      ["app/api/v1/probe/route.ts", called],
+    ]) {
+      const [result] = await lint.lintText(source, { filePath });
+      assert(
+        isBareTenantTransaction(result),
+        `${layer} ${filePath} accepted infrastructure transaction`,
+      );
+    }
+    const [allowed] = await lint.lintText(authorized, {
+      filePath: "lib/feature-service.ts",
+    });
+    assert.equal(allowed.errorCount, 0, `${layer} authorized boundary`);
+  }
+
+  const databaseLint = new ESLint({
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("database"),
+  });
+  const relativeImport =
+    "import { withTenantTransaction } from './tenant.js';\nvoid withTenantTransaction;\n";
+  for (const filePath of [
+    "src/feature-repository.ts",
+    "packages/database/src/feature-repository.ts",
+    "src/repositories/wedding.ts",
+    "packages/database/src/repositories/wedding.ts",
+    "vitest.integration.config.ts",
+    "packages/database/vitest.integration.config.ts",
+    "packages/domain/src/tenant.unit.test.ts",
+  ]) {
+    const [result] = await databaseLint.lintText(relativeImport, { filePath });
+    assert(
+      isBareTenantTransaction(result),
+      `${filePath} accepted infrastructure transaction`,
+    );
+  }
+  const [databaseCall] = await databaseLint.lintText(called, {
+    filePath: "src/feature-repository.ts",
+  });
+  assert(isBareTenantTransaction(databaseCall), "database call");
+  const definition =
+    "export function withTenantTransaction(): Promise<void> {\n  return Promise.resolve();\n}\n";
+  const authorizedRelative =
+    "import { withAuthorizedTenantTransaction } from './tenant.js';\nvoid withAuthorizedTenantTransaction;\n";
+  for (const [filePath, source] of [
+    ["src/tenant.ts", definition],
+    ["packages/database/src/tenant.ts", definition],
+    ["src/tenant.unit.test.ts", relativeImport],
+    ["packages/database/src/tenant.unit.test.ts", relativeImport],
+    ["src/tenant-repository.integration.test.ts", relativeImport],
+    [
+      "packages/database/src/tenant-repository.integration.test.ts",
+      relativeImport,
+    ],
+    ["src/test/authorization.ts", relativeImport],
+    ["packages/database/src/test/authorization.ts", relativeImport],
+    ["src/feature-repository.ts", authorizedRelative],
+    ["packages/database/src/feature-repository.ts", authorizedRelative],
+  ]) {
+    const [result] = await databaseLint.lintText(source, { filePath });
+    assert.equal(
+      result.errorCount,
+      0,
+      `${filePath}\n${result.messages.map((message) => message.message).join("\n")}`,
+    );
+  }
+
+  for (const layer of ["domain", "contracts"]) {
+    const lint = new ESLint({
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const filePath of [
+      "src/feature.ts",
+      `packages/${layer}/src/feature.ts`,
+    ]) {
+      const [result] = await lint.lintText(called, { filePath });
+      assert(
+        isBareTenantTransaction(result),
+        `${layer} ${filePath} accepted infrastructure transaction`,
+      );
+    }
+    const [allowed] = await lint.lintText(
+      'export const boundary = "withTenantTransaction";\n',
+      { filePath: "src/feature.ts" },
+    );
+    assert.equal(allowed.errorCount, 0, `${layer} string mention`);
+  }
+});
 test("database integration task builds workspace dependencies on a clean checkout", () => {
   const run = JSON.parse(
     execFileSync(

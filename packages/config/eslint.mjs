@@ -52,6 +52,41 @@ const applicationDatabaseInternalRestrictions = [
   ...applicationComputedImportRestrictions,
   ...applicationTestModuleRestrictions,
 ];
+// withTenantTransaction takes no AuthorizedServerOperation. Feature code must
+// use withAuthorizedTenantTransaction. The defining module, the database
+// package tests, and that package's test helpers stay allowlisted.
+const bareTenantTransactionMessage =
+  "Feature code must use withAuthorizedTenantTransaction. withTenantTransaction is infrastructure-only and takes no AuthorizedServerOperation.";
+const bareTenantTransactionRestrictions = [
+  {
+    selector: "Identifier[name='withTenantTransaction']",
+    message: bareTenantTransactionMessage,
+  },
+  {
+    selector: "MemberExpression[property.value='withTenantTransaction']",
+    message: bareTenantTransactionMessage,
+  },
+  {
+    selector: "Property[key.value='withTenantTransaction']",
+    message: bareTenantTransactionMessage,
+  },
+];
+const databaseBareTenantTransactionAllowlist = [
+  "src/tenant.ts",
+  "src/*.test.ts",
+  "src/*.test.tsx",
+  "src/**/*.test.ts",
+  "src/**/*.test.tsx",
+  "src/test/**/*.ts",
+  "src/test/**/*.tsx",
+  "**/packages/database/src/tenant.ts",
+  "**/packages/database/src/*.test.ts",
+  "**/packages/database/src/*.test.tsx",
+  "**/packages/database/src/**/*.test.ts",
+  "**/packages/database/src/**/*.test.tsx",
+  "**/packages/database/src/test/**/*.ts",
+  "**/packages/database/src/test/**/*.tsx",
+];
 
 // Keep transport/domain packages independent of application/framework internals.
 export function workspaceConfig(layer) {
@@ -115,6 +150,7 @@ export function workspaceConfig(layer) {
           ? {
               "no-restricted-syntax": [
                 "error",
+                ...bareTenantTransactionRestrictions,
                 ...applicationDatabaseInternalRestrictions,
               ],
             }
@@ -133,6 +169,7 @@ export function workspaceConfig(layer) {
             rules: {
               "no-restricted-syntax": [
                 "error",
+                ...bareTenantTransactionRestrictions,
                 ...applicationDatabaseSourceRestrictions,
                 ...applicationComputedImportRestrictions,
               ],
@@ -147,8 +184,36 @@ export function workspaceConfig(layer) {
             rules: {
               "no-restricted-syntax": [
                 "error",
+                ...bareTenantTransactionRestrictions,
                 ...applicationDatabaseInternalRestrictions,
                 ...routeDatabaseRestrictions,
+              ],
+            },
+          },
+        ]
+      : []),
+    ...(layer === "database"
+      ? [
+          {
+            files: ["**/*.{ts,tsx}"],
+            ignores: databaseBareTenantTransactionAllowlist,
+            rules: {
+              "no-restricted-syntax": [
+                "error",
+                ...bareTenantTransactionRestrictions,
+              ],
+            },
+          },
+        ]
+      : []),
+    ...(layer === "domain" || layer === "contracts"
+      ? [
+          {
+            files: ["**/*.{ts,tsx}"],
+            rules: {
+              "no-restricted-syntax": [
+                "error",
+                ...bareTenantTransactionRestrictions,
               ],
             },
           },

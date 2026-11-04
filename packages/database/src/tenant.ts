@@ -151,10 +151,18 @@ export function assertAuthorizedRepositoryCall<Session>(
   assertAuthorizedOperationRequirement(call.operation, requirement);
 }
 
-/** Application-service transaction boundary for bounded database work only.
- * Repositories receive the same caller-owned session and validated context;
- * they never start transactions. External calls belong before or after this
- * callback so they cannot extend database lock lifetimes. */
+/**
+ * Infrastructure-only transaction boundary for bounded database work. It
+ * checks an authorization context before opening one transaction and passes
+ * that same context and session to the callback. It takes no
+ * AuthorizedServerOperation. Feature services and repositories must use
+ * withAuthorizedTenantTransaction. Step 06-a (the first real tenant tables)
+ * must call that authorized boundary with a production ServerAuthorizationState
+ * membership loader — the only loader today is the test fixture in
+ * packages/database/src/test/authorization.ts — and must include cross-tenant
+ * tests. External calls belong before or after the callback so they cannot
+ * extend database lock lifetimes.
+ */
 export function withTenantTransaction<Session, Result>(
   host: TransactionHost<Session>,
   authorization: AuthorizationContext,
@@ -169,9 +177,12 @@ export function withTenantTransaction<Session, Result>(
 /**
  * Domain-operation transaction boundary. The opaque operation proves that an
  * authenticated actor, authoritative membership, record visibility and action
- * were evaluated before the transaction opens. Feature services should use
- * this boundary; the lower-level helper remains for infrastructure writers and
- * compatibility with the pre-04 authorization foundation.
+ * were evaluated before the transaction opens. Feature services must use this
+ * boundary. Step 06-a (the first real tenant tables) must call it with a
+ * production ServerAuthorizationState membership loader — the only loader
+ * today is the test fixture in packages/database/src/test/authorization.ts —
+ * and must include cross-tenant tests. The lower-level helper remains
+ * available to infrastructure writers and the pre-04 authorization foundation.
  */
 export function withAuthorizedTenantTransaction<Session, Result>(
   host: TransactionHost<Session>,

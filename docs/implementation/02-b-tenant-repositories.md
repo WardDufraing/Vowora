@@ -10,6 +10,8 @@ Structural parsing cannot mint the authorization type repositories trust. The se
 
 Application services own transactions through `withTenantTransaction`. It validates the context before opening one transaction and supplies the same transaction session and authorization object to every repository call. The callback is for bounded database work only; external calls must happen before or after it. Repository methods accept the caller-supplied session and do not create nested transactions.
 
+**Current boundary.** Feature code must use `withAuthorizedTenantTransaction`. `withTenantTransaction` is infrastructure-only: it accepts an authorization context and takes no `AuthorizedServerOperation`. The shared ESLint config rejects importing or calling it outside `packages/database/src/tenant.ts`, that package's tests, and its `src/test` helpers. Step 06-a (the first real tenant tables) must call `withAuthorizedTenantTransaction` with a production `ServerAuthorizationState` membership loader — the only loader today is the test fixture in `packages/database/src/test/authorization.ts` — and must include cross-tenant tests.
+
 No product entity or persistence table was invented for this foundation task. Real PostgreSQL isolation tests create a synthetic fixture table inside the existing per-run isolated schema, use deterministic synthetic UUIDv7 tenant fixtures, and rely on the harness's `finally` cleanup. This exercises actual Drizzle SQL filters, constraint failures and transaction rollback without turning arbitrary test payload into a production domain model. PostgreSQL RLS remains disabled under the approved application-enforced isolation baseline. Audit and outbox work remains 02-c.
 
 ## Verification
