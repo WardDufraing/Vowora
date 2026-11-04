@@ -76,3 +76,7 @@ Rollback is a code and dependency revert. There is no schema, migration,
 database grant, environment variable, persistent-data, external configuration
 or deployment change. The shell reuses the repository's pinned
 `lucide-react@1.63.0` version for its approved icons.
+
+Implementation and current-main integration are in
+[PR #54](https://github.com/WardDufraing/Vowora/pull/54). Independent review is
+pending, so the pull request remains draft.
