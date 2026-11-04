@@ -70,12 +70,18 @@ test("shallow checkout with a frozen file renamed out fails", () => {
   assertFrozenFailure(result, "docs/product/UI-DESIGN-SYSTEM.md");
 });
 
-test("a file renamed onto a frozen document fails", () => {
+test("replacing the content of a frozen document fails", () => {
   const result = runOnCheckout("renamed-in");
   assertFrozenFailure(
     result,
     "docs/product/Wedding-Platform-Product-Specification.md",
   );
+});
+
+test("a rename whose destination is a new frozen path fails", () => {
+  const result = runOnCheckout("rename-dest");
+  assertFrozenFailure(result, "docs/product/UI-DESIGN-SYSTEM.md");
+  assert.match(result.stdout, /Frozen product source changed: R/);
 });
 
 test("a docs/product-extra path outside the frozen directory passes", () => {
@@ -293,12 +299,15 @@ function buildFixture() {
   writeFiles(source, {
     "README.md": "readme\n",
     "NOTES.md": "notes\n",
-    "docs/product/UI-DESIGN-SYSTEM.md": "design\n",
     "docs/product/Wedding-Platform-Product-Specification.md": "spec\n",
     "docs/product/product-architecture.md": "arch\n",
   });
   git(source, ["add", "."]);
   git(source, ["commit", "-q", "-m", "root"]);
+  const beforeDesign = git(source, ["rev-parse", "HEAD"]).stdout.trim();
+  writeFiles(source, { "docs/product/UI-DESIGN-SYSTEM.md": "design\n" });
+  git(source, ["add", "docs/product/UI-DESIGN-SYSTEM.md"]);
+  git(source, ["commit", "-q", "-m", "add design"]);
   writeFiles(source, { "README.md": "readme\nmain2\n" });
   git(source, ["commit", "-q", "-am", "main2"]);
   const base = git(source, ["rev-parse", "HEAD"]).stdout.trim();
@@ -358,6 +367,17 @@ function buildFixture() {
     pull += 1;
     git(source, ["checkout", "-q", "main"]);
   }
+
+  git(source, ["checkout", "-q", "-b", "rename-dest", beforeDesign]);
+  git(source, ["mv", "NOTES.md", "docs/product/UI-DESIGN-SYSTEM.md"]);
+  git(source, ["commit", "-q", "-m", "rename onto frozen path"]);
+  refs["rename-dest"] = "refs/pull/50/merge";
+  git(source, [
+    "update-ref",
+    refs["rename-dest"],
+    git(source, ["rev-parse", "HEAD"]).stdout.trim(),
+  ]);
+  git(source, ["checkout", "-q", "main"]);
 
   git(source, ["checkout", "-q", "--orphan", "unrelated"]);
   git(source, ["rm", "-q", "-rf", "."]);
