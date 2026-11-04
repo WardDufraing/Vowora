@@ -668,3 +668,4 @@ FINAL-004 B is approved. Begin with the foundation phase only: implement and rev
 - **FINAL-003:** Approved option B — Approve Core Palette, Validate Remaining Tokens. Core light/dark semantic palette values in section 4 approved as reference; remaining semantic and interaction tokens require documented definition, actual-surface accessibility verification and review before sign-off. No blanket WCAG approval.
 
 - **FINAL-004:** Approved option B — Foundation First, Then Implement. Complete and review semantic tokens, shared component states and representative accessible layouts before feature-screen implementation; test accessibility continuously thereafter and require formal release-readiness approval.
+<!-- throwaway agent-policy probe; this commit is reverted -->
