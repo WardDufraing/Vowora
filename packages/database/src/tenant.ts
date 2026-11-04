@@ -181,8 +181,9 @@ export function withTenantTransaction<Session, Result>(
  * boundary. Step 06-a (the first real tenant tables) must call it with a
  * production ServerAuthorizationState membership loader — the only loader
  * today is the test fixture in packages/database/src/test/authorization.ts —
- * and must include cross-tenant tests. The lower-level helper remains
- * available to infrastructure writers and the pre-04 authorization foundation.
+ * and must include cross-tenant tests. The lower-level helper remains in
+ * this module for the pre-04 authorization foundation. Lint allows that name
+ * only in this file, the database package's tests, and its src/test helpers.
  */
 export function withAuthorizedTenantTransaction<Session, Result>(
   host: TransactionHost<Session>,
