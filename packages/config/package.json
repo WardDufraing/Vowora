@@ -9,8 +9,9 @@
     "./library.json": "./library.json"
   },
   "dependencies": {
-    "eslint": "10.13.0",
-    "eslint-config-next": "16.4.3"
+    "eslint": "10.14.0",
+    "eslint-config-next": "16.4.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2"
   },
   "scripts": {
     "lint": "eslint ."

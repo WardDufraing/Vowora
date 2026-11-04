@@ -117,16 +117,24 @@ describe("Better Auth PostgreSQL integration", () => {
             });
             let abuseDecision: AuthAbuseDecision = { outcome: "allow" };
             let abuseFailure = false;
+            let abuseEvaluations = 0;
+            let verifiedFailures = 0;
+            let lastClientAddress: string | undefined;
             const auth = createVoworaAuth({
               baseURL,
               backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
               database: createTestDatabase(client),
               rateLimitEnabled: false,
               abuseProtection: {
-                async evaluate() {
+                async evaluate(entry: { readonly clientAddress?: string }) {
+                  abuseEvaluations += 1;
+                  lastClientAddress = entry.clientAddress;
                   if (abuseFailure)
                     throw new Error("synthetic provider failure");
                   return abuseDecision;
+                },
+                async recordVerifiedFailure() {
+                  verifiedFailures += 1;
                 },
               },
               scheduleBackgroundTask: (task) => scheduledTasks.push(task),
@@ -229,6 +237,47 @@ describe("Better Auth PostgreSQL integration", () => {
             );
             abuseFailure = false;
             abuseDecision = { outcome: "allow" };
+            const evaluationsBeforeAddress = abuseEvaluations;
+            const previousVercel = process.env.VERCEL;
+            process.env.VERCEL = "1";
+            try {
+              const missingAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", { method: "POST" }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(missingAddress?.status).toBe(503);
+              expect((await missingAddress?.json()).code).toBe(
+                "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+              );
+              const chainedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.5, 198.51.100.8" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(chainedAddress?.status).toBe(503);
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress);
+              const trustedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.10" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(trustedAddress).toBeUndefined();
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress + 1);
+              expect(lastClientAddress).toBe("203.0.113.10");
+            } finally {
+              if (previousVercel === undefined) delete process.env.VERCEL;
+              else process.env.VERCEL = previousVercel;
+            }
 
             const anonymousSession = await auth.handler(
               request("/get-session"),
@@ -336,6 +385,9 @@ describe("Better Auth PostgreSQL integration", () => {
             for (const [method, path] of [
               ["POST", "/change-password"],
               ["GET", "/list-sessions"],
+              ["GET", "/sign-out"],
+              ["POST", "/revoke-sessions"],
+              ["POST", "/delete-user"],
             ]) {
               const unavailable = await handleAuthRequest(
                 auth,
@@ -375,6 +427,40 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(() =>
               problemDetailsSchema.parse(wrongPasswordBody),
             ).not.toThrow();
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const penaltiesBefore = verifiedFailures;
+            const penalizedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(penalizedGuess.status).toBe(401);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            const rightPassword = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(rightPassword.status).toBe(403);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "challenge" };
+            const unsolvedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(unsolvedGuess.status).toBe(403);
+            expect((await unsolvedGuess.json()).code).toBe(
+              "AUTHENTICATION_CHALLENGE_REQUIRED",
+            );
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
 
             const verificationUrl = deliveries[0]?.verificationUrl;
             expect(verificationUrl).toBeDefined();
@@ -385,10 +471,15 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(verify.headers.get("location")).toBe(`${baseURL}/account`);
             expect(verify.headers.get("set-cookie")).toBeNull();
 
-            const verifiedSignIn = await auth.handler(
-              post("/sign-in/email", validCredentials),
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const verifiedSignIn = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
             );
             expect(verifiedSignIn.status).toBe(200);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
             const cookie = verifiedSignIn.headers.get("set-cookie");
             expect(cookie).toContain("__Secure-vowora.session_token=");
             expect(cookie).toContain("HttpOnly");
@@ -571,6 +662,24 @@ describe("Better Auth PostgreSQL integration", () => {
               listed.data.every((entry) => entry.token === undefined),
             ).toBe(true);
             const secondary = listed.data.find((entry) => !entry.current)!;
+            const currentListed = listed.data.find((entry) => entry.current)!;
+            expect(
+              (
+                await revokeAccountSession(
+                  auth,
+                  request("/ignored", {
+                    method: "DELETE",
+                    headers: { Cookie: firstCookie },
+                  }),
+                  currentListed.id,
+                )
+              ).status,
+            ).toBe(404);
+            expect(
+              await auth.api.getSession({
+                headers: new Headers({ Cookie: firstCookie }),
+              }),
+            ).not.toBeNull();
 
             const otherRow = await client.query<{ id: string }>(
               "SELECT s.id FROM auth_session s JOIN auth_user u ON u.id = s.user_id WHERE u.email = $1",
@@ -634,6 +743,151 @@ describe("Better Auth PostgreSQL integration", () => {
                 headers: new Headers({ Cookie: firstCookie }),
               }),
             ).not.toBeNull();
+
+            const signOutCookie = await signIn(
+              primary,
+              "Sign-out synthetic browser",
+            );
+            const sessionCount = async () =>
+              (
+                await client.query<{ count: number }>(
+                  "SELECT count(*)::int AS count FROM auth_session s JOIN auth_user u ON u.id = s.user_id WHERE u.email = $1",
+                  [primary.email],
+                )
+              ).rows[0]!.count;
+            expect(await sessionCount()).toBe(2);
+            const signOutTarget = (
+              cookie: string,
+              init?: RequestInit & { origin?: string | null },
+            ) => {
+              const headers = new Headers(init?.headers);
+              headers.set("content-type", "application/json");
+              headers.set(
+                "x-correlation-id",
+                "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2",
+              );
+              headers.set("cookie", cookie);
+              if (init?.origin === undefined) headers.set("origin", baseURL);
+              else if (init.origin) headers.set("origin", init.origin);
+              const method = init?.method ?? "POST";
+              return new Request(`${baseURL}/api/v1/auth/sign-out`, {
+                method,
+                headers,
+                body: method === "GET" ? undefined : (init?.body ?? "{}"),
+              });
+            };
+            const rejectedSignOut = async (
+              init: RequestInit & { origin?: string | null },
+            ) => {
+              const response = await handleAuthRequest(
+                auth,
+                signOutTarget(signOutCookie, init),
+                baseURL,
+              );
+              expect(response.status).toBeGreaterThanOrEqual(400);
+              return response;
+            };
+            const crossOriginSignOut = await rejectedSignOut({
+              origin: "https://attacker.example",
+            });
+            expect(crossOriginSignOut.status).toBe(403);
+            expect((await crossOriginSignOut.json()).code).toBe(
+              "CSRF_VALIDATION_FAILED",
+            );
+            const missingOriginSignOut = await rejectedSignOut({
+              origin: null,
+            });
+            expect(missingOriginSignOut.status).toBe(403);
+            expect((await missingOriginSignOut.json()).code).toBe(
+              "CSRF_VALIDATION_FAILED",
+            );
+            const crossSiteSignOut = await rejectedSignOut({
+              headers: { "sec-fetch-site": "cross-site" },
+            });
+            expect(crossSiteSignOut.status).toBe(403);
+            expect((await crossSiteSignOut.json()).code).toBe(
+              "CSRF_VALIDATION_FAILED",
+            );
+            expect(
+              (await (await rejectedSignOut({ method: "GET" })).json()).code,
+            ).toBe("AUTHENTICATION_ROUTE_NOT_FOUND");
+            expect((await rejectedSignOut({ body: "" })).status).toBe(400);
+            expect(
+              (
+                await rejectedSignOut({
+                  body: JSON.stringify({
+                    callbackURL: "https://attacker.example/sign-in",
+                  }),
+                })
+              ).status,
+            ).toBe(400);
+            expect(
+              await auth.api.getSession({
+                headers: new Headers({ Cookie: signOutCookie }),
+              }),
+            ).not.toBeNull();
+            expect(await sessionCount()).toBe(2);
+
+            const signedOut = await handleAuthRequest(
+              auth,
+              signOutTarget(signOutCookie),
+              baseURL,
+            );
+            expect(signedOut.status).toBe(200);
+            expect(await signedOut.json()).toEqual({ success: true });
+            const clearing = signedOut.headers.getSetCookie();
+            expect(
+              clearing.some(
+                (cookie) =>
+                  cookie.startsWith("__Secure-vowora.session_token=") &&
+                  /max-age=0/i.test(cookie) &&
+                  cookie.includes("HttpOnly") &&
+                  cookie.includes("Secure") &&
+                  !cookie.includes("Domain="),
+              ),
+            ).toBe(true);
+            expect(
+              await auth.api.getSession({
+                headers: new Headers({ Cookie: signOutCookie }),
+              }),
+            ).toBeNull();
+            const endedSession = await handleAuthRequest(
+              auth,
+              request("/get-session", {
+                headers: { Cookie: signOutCookie },
+              }),
+              baseURL,
+            );
+            expect(endedSession.status).toBe(200);
+            expect(await endedSession.json()).toBeNull();
+            const protectedSessions = await listAccountSessions(
+              auth,
+              request("/ignored", { headers: { Cookie: signOutCookie } }),
+            );
+            expect(protectedSessions.status).toBe(401);
+            expect(
+              problemDetailsSchema.parse(await protectedSessions.json()).code,
+            ).toBe("AUTHENTICATION_REQUIRED");
+            expect(await sessionCount()).toBe(1);
+            expect(
+              await auth.api.getSession({
+                headers: new Headers({ Cookie: firstCookie }),
+              }),
+            ).not.toBeNull();
+            expect(
+              await auth.api.getSession({
+                headers: new Headers({ Cookie: otherCookie }),
+              }),
+            ).not.toBeNull();
+
+            const anonymousSignOut = await handleAuthRequest(
+              auth,
+              post("/sign-out", {}),
+              baseURL,
+            );
+            expect(anonymousSignOut.status).toBe(200);
+            expect(await anonymousSignOut.json()).toEqual({ success: true });
+            expect(await sessionCount()).toBe(1);
 
             const unknownReset = await handleAuthRequest(
               auth,

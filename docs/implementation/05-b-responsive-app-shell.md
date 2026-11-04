@@ -73,6 +73,5 @@ requests to `/app-shell` and `/design-system` both returned 404.
 
 Rollback is a code and dependency revert. There is no schema, migration,
 database grant, environment variable, persistent-data, external configuration
-or deployment change. `lucide-react` is pinned for the approved shell icons and
-recorded in the workspace supply-chain exception list.
-
+or deployment change. The shell reuses the repository's pinned
+`lucide-react@1.63.0` version for its approved icons.

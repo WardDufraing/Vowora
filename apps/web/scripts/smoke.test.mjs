@@ -164,6 +164,7 @@ test(
         "/api/v1/health",
         "/api/v1/openapi.json",
         "/api/v1/auth/sign-up/email",
+        "/api/v1/auth/sign-out",
         "/api/v1/auth/sign-in/email",
         "/api/v1/auth/send-verification-email",
         "/api/v1/auth/verify-email",

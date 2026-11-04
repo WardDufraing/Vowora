@@ -237,6 +237,121 @@ test("database keeps migration helpers behind its explicit testing entrypoint", 
   );
   assert.equal(output, "");
 });
+test("feature code cannot import or call the infrastructure-only tenant transaction", async () => {
+  const imported =
+    "import { withTenantTransaction } from '@vowora/database';\nvoid withTenantTransaction;\n";
+  const authorized =
+    "import { withAuthorizedTenantTransaction } from '@vowora/database';\nvoid withAuthorizedTenantTransaction;\n";
+  const called =
+    "export async function save(): Promise<void> {\n  await withTenantTransaction();\n}\ndeclare function withTenantTransaction(): Promise<void>;\n";
+  const computed =
+    "import * as database from '@vowora/database';\nvoid database['withTenantTransaction'];\n";
+  const isBareTenantTransaction = (result) =>
+    result.messages.some(
+      (message) =>
+        message.ruleId === "no-restricted-syntax" &&
+        message.message.includes("withAuthorizedTenantTransaction"),
+    );
+
+  for (const layer of ["web", "marketing"]) {
+    const lint = new ESLint({
+      cwd: new URL(`apps/${layer}/`, root).pathname,
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const [filePath, source] of [
+      ["lib/feature-service.ts", imported],
+      ["lib/feature-service.ts", called],
+      ["lib/feature-service.ts", computed],
+      ["lib/feature-service.unit.test.ts", imported],
+      ["app/api/v1/probe/route.ts", called],
+    ]) {
+      const [result] = await lint.lintText(source, { filePath });
+      assert(
+        isBareTenantTransaction(result),
+        `${layer} ${filePath} accepted infrastructure transaction`,
+      );
+    }
+    const [allowed] = await lint.lintText(authorized, {
+      filePath: "lib/feature-service.ts",
+    });
+    assert.equal(allowed.errorCount, 0, `${layer} authorized boundary`);
+  }
+
+  const databaseLint = new ESLint({
+    overrideConfigFile: true,
+    overrideConfig: workspaceConfig("database"),
+  });
+  const relativeImport =
+    "import { withTenantTransaction } from './tenant.js';\nvoid withTenantTransaction;\n";
+  for (const filePath of [
+    "src/feature-repository.ts",
+    "packages/database/src/feature-repository.ts",
+    "src/repositories/wedding.ts",
+    "packages/database/src/repositories/wedding.ts",
+    "vitest.integration.config.ts",
+    "packages/database/vitest.integration.config.ts",
+    "packages/domain/src/tenant.unit.test.ts",
+  ]) {
+    const [result] = await databaseLint.lintText(relativeImport, { filePath });
+    assert(
+      isBareTenantTransaction(result),
+      `${filePath} accepted infrastructure transaction`,
+    );
+  }
+  const [databaseCall] = await databaseLint.lintText(called, {
+    filePath: "src/feature-repository.ts",
+  });
+  assert(isBareTenantTransaction(databaseCall), "database call");
+  const definition =
+    "export function withTenantTransaction(): Promise<void> {\n  return Promise.resolve();\n}\n";
+  const authorizedRelative =
+    "import { withAuthorizedTenantTransaction } from './tenant.js';\nvoid withAuthorizedTenantTransaction;\n";
+  for (const [filePath, source] of [
+    ["src/tenant.ts", definition],
+    ["packages/database/src/tenant.ts", definition],
+    ["src/tenant.unit.test.ts", relativeImport],
+    ["packages/database/src/tenant.unit.test.ts", relativeImport],
+    ["src/tenant-repository.integration.test.ts", relativeImport],
+    [
+      "packages/database/src/tenant-repository.integration.test.ts",
+      relativeImport,
+    ],
+    ["src/test/authorization.ts", relativeImport],
+    ["packages/database/src/test/authorization.ts", relativeImport],
+    ["src/feature-repository.ts", authorizedRelative],
+    ["packages/database/src/feature-repository.ts", authorizedRelative],
+  ]) {
+    const [result] = await databaseLint.lintText(source, { filePath });
+    assert.equal(
+      result.errorCount,
+      0,
+      `${filePath}\n${result.messages.map((message) => message.message).join("\n")}`,
+    );
+  }
+
+  for (const layer of ["domain", "contracts"]) {
+    const lint = new ESLint({
+      overrideConfigFile: true,
+      overrideConfig: workspaceConfig(layer),
+    });
+    for (const filePath of [
+      "src/feature.ts",
+      `packages/${layer}/src/feature.ts`,
+    ]) {
+      const [result] = await lint.lintText(called, { filePath });
+      assert(
+        isBareTenantTransaction(result),
+        `${layer} ${filePath} accepted infrastructure transaction`,
+      );
+    }
+    const [allowed] = await lint.lintText(
+      'export const boundary = "withTenantTransaction";\n',
+      { filePath: "src/feature.ts" },
+    );
+    assert.equal(allowed.errorCount, 0, `${layer} string mention`);
+  }
+});
 test("database integration task builds workspace dependencies on a clean checkout", () => {
   const run = JSON.parse(
     execFileSync(
@@ -261,16 +376,180 @@ test("database integration task builds workspace dependencies on a clean checkou
     "database integration depends on the domain build",
   );
 });
+test("shared TypeScript configs name Node ambient types explicitly", async () => {
+  const library = JSON.parse(
+    await readFile(new URL("packages/config/library.json", root), "utf8"),
+  );
+  const next = JSON.parse(
+    await readFile(new URL("packages/config/next.json", root), "utf8"),
+  );
+  assert.deepEqual(library.compilerOptions.lib, ["ES2022"]);
+  assert.deepEqual(library.compilerOptions.types, ["node"]);
+  assert.equal(
+    library.compilerOptions.lib.some((name) => /dom/i.test(name)),
+    false,
+  );
+  assert.deepEqual(next.compilerOptions.types, ["node"]);
+  for (const file of [
+    "packages/domain/tsconfig.json",
+    "packages/database/tsconfig.json",
+    "packages/contracts/tsconfig.json",
+    "apps/web/tsconfig.json",
+    "apps/marketing/tsconfig.json",
+    "tsconfig.test.json",
+  ]) {
+    const config = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    assert.equal(
+      Object.hasOwn(config.compilerOptions ?? {}, "types"),
+      false,
+      file,
+    );
+  }
+});
 test("root test typecheck resolves integration imports without compiled package output", async () => {
   const config = JSON.parse(
     await readFile(new URL("tsconfig.test.json", root)),
   );
   assert.deepEqual(config.compilerOptions.paths, {
-    "@vowora/contracts": ["packages/contracts/src/index.ts"],
-    "@vowora/database": ["packages/database/src/index.ts"],
-    "@vowora/database/testing": ["packages/database/src/testing.ts"],
-    "@vowora/domain": ["packages/domain/src/index.ts"],
+    "@vowora/contracts": ["./packages/contracts/src/index.ts"],
+    "@vowora/database": ["./packages/database/src/index.ts"],
+    "@vowora/database/testing": ["./packages/database/src/testing.ts"],
+    "@vowora/domain": ["./packages/domain/src/index.ts"],
   });
+  assert.equal(
+    Object.hasOwn(config.compilerOptions, "baseUrl"),
+    false,
+    "TypeScript 7 rejects baseUrl; paths are relative to this config file",
+  );
+});
+test("TypeScript 7 compiles while eslint still loads the TypeScript 6 API", async () => {
+  const nativeAlias = "npm:typescript@7.0.2";
+  const apiAlias = "npm:@typescript/typescript6@6.0.2";
+  const compilerManifests = [
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+    "packages/domain/package.json",
+    "packages/contracts/package.json",
+    "packages/database/package.json",
+  ];
+  for (const file of compilerManifests) {
+    const manifest = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    const deps = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    };
+    assert.equal(deps["@typescript/native"], nativeAlias, file);
+    assert.equal(deps.typescript, apiAlias, file);
+  }
+  const rootManifest = JSON.parse(
+    await readFile(new URL("package.json", root), "utf8"),
+  );
+  const engineCeiling = Math.max(
+    ...rootManifest.engines.node.split("||").map((range) => {
+      const match = range.match(/(\d+)\.\d+\.\d+/);
+      assert.ok(match, rootManifest.engines.node);
+      return Number(match[1]);
+    }),
+  );
+  const nodeTypeManifests = [
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+    "packages/domain/package.json",
+    "packages/contracts/package.json",
+    "packages/database/package.json",
+    "packages/config/package.json",
+  ];
+  const mustDeclareNodeTypes = new Set([
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+  ]);
+  for (const file of nodeTypeManifests) {
+    const manifest = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    const declared = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    }["@types/node"];
+    if (declared === undefined) {
+      assert.equal(mustDeclareNodeTypes.has(file), false, file);
+      continue;
+    }
+    assert.equal(
+      Number(String(declared).split(".")[0]),
+      engineCeiling,
+      `${file} @types/node must track the engines Node major ceiling`,
+    );
+  }
+  const configManifest = JSON.parse(
+    await readFile(new URL("packages/config/package.json", root), "utf8"),
+  );
+  assert.equal(configManifest.dependencies.typescript, apiAlias);
+  assert.equal(configManifest.dependencies["@typescript/native"], undefined);
+  const configRequire = createRequire(
+    new URL("../packages/config/package.json", import.meta.url),
+  );
+  const apiPackage = configRequire("typescript/package.json");
+  assert.equal(apiPackage.name, "@typescript/typescript6");
+  assert.equal(apiPackage.version, "6.0.2");
+  assert.equal(apiPackage.bin.tsc, undefined);
+  assert.equal(typeof apiPackage.bin.tsc6, "string");
+  assert.match(configRequire("typescript").version, /^6\.0\./);
+  const eslintConfigRequire = createRequire(
+    configRequire.resolve("eslint-config-next"),
+  );
+  assert.equal(
+    eslintConfigRequire("typescript-eslint/package.json").version,
+    "8.72.1",
+  );
+  assert.equal(
+    eslintConfigRequire("typescript/package.json").name,
+    "@typescript/typescript6",
+  );
+  assert.match(eslintConfigRequire("typescript").version, /^6\.0\./);
+  const eslintConfigPackage = JSON.parse(
+    await readFile(
+      new URL(
+        "packages/config/node_modules/eslint-config-next/package.json",
+        root,
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(eslintConfigPackage.version, "16.4.3");
+  const nativePackage = createRequire(
+    new URL("../package.json", import.meta.url),
+  )("@typescript/native/package.json");
+  assert.equal(nativePackage.name, "typescript");
+  assert.equal(nativePackage.version, "7.0.2");
+  assert.equal(typeof nativePackage.bin.tsc, "string");
+  for (const directory of [
+    root,
+    new URL("apps/web/", root),
+    new URL("apps/marketing/", root),
+    new URL("packages/domain/", root),
+    new URL("packages/contracts/", root),
+    new URL("packages/database/", root),
+  ]) {
+    const cwd = directory.pathname;
+    assert.equal(
+      execFileSync("pnpm", ["exec", "tsc", "--version"], {
+        cwd,
+        encoding: "utf8",
+      }).trim(),
+      "Version 7.0.2",
+      cwd,
+    );
+    assert.match(
+      execFileSync("pnpm", ["exec", "tsc6", "--version"], {
+        cwd,
+        encoding: "utf8",
+      }).trim(),
+      /^Version 6\.0\.\d+$/,
+      cwd,
+    );
+  }
 });
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {
