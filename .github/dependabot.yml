@@ -8,6 +8,12 @@ updates:
     groups:
       development-dependencies:
         dependency-type: development
+    # @types/node's major must equal the highest Node major in package.json
+    # engines (currently 24). scripts/workspace.test.mjs enforces that ceiling;
+    # see the README note added in #44. TypeScript majors are not ignored.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
