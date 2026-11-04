@@ -67,9 +67,9 @@ jobs:
               echo "Empty merge base between origin/${BASE_REF} and HEAD; frozen-source check failed closed"
               exit 1
             fi
-            # NUL records keep paths that contain quotes, backslashes, or
-            # other characters git would otherwise C-quote. A line parser
-            # misses those and would fail open.
+            # AGENTS.md lines 19-23 freeze three documents, not every file
+            # under docs/product/. NUL records keep a rename of one of those
+            # names from being hidden by C-quoting.
             diff_file="$(mktemp)"
             trap 'rm -f "$diff_file"' EXIT
             if ! git -c core.quotePath=false diff --name-status --find-renames -z "$merge_base" HEAD >"$diff_file"; then
@@ -92,10 +92,14 @@ jobs:
                 fi
               fi
               for path in "$path_a" "$path_b"; do
-                if [[ "$path" == docs/product/* ]]; then
-                  printf 'Frozen product source changed: %s\t%s\n' "$status" "$path"
-                  frozen_hit=1
-                fi
+                case "$path" in
+                  docs/product/Wedding-Platform-Product-Specification.md|\
+                  docs/product/product-architecture.md|\
+                  docs/product/UI-DESIGN-SYSTEM.md)
+                    printf 'Frozen product source changed: %s\t%s\n' "$status" "$path"
+                    frozen_hit=1
+                    ;;
+                esac
               done
             done <"$diff_file"
             if [[ "$frozen_hit" -ne 0 ]]; then

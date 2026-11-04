@@ -35,7 +35,13 @@ test("workflow job stays policy, unfiltered, and fail-closed", () => {
     policyScript,
     /git fetch --no-tags --unshallow origin "\$GITHUB_REF"/,
   );
-  assert.match(policyScript, /docs\/product\/\*/);
+  assert.match(
+    policyScript,
+    /docs\/product\/Wedding-Platform-Product-Specification\.md/,
+  );
+  assert.match(policyScript, /docs\/product\/product-architecture\.md/);
+  assert.match(policyScript, /docs\/product\/UI-DESIGN-SYSTEM\.md/);
+  assert.doesNotMatch(policyScript, /docs\/product\/\*/);
   assert.doesNotMatch(policyScript, /\bif git diff\b/);
 });
 
@@ -49,9 +55,9 @@ test("shallow checkout with a frozen file modified fails", () => {
   assertFrozenFailure(result, "docs/product/UI-DESIGN-SYSTEM.md");
 });
 
-test("shallow checkout with a frozen file added fails", () => {
+test("a new file under docs/product that is not a frozen document passes", () => {
   const result = runOnCheckout("added");
-  assertFrozenFailure(result, "docs/product/extra.md");
+  assertPassed(result);
 });
 
 test("shallow checkout with a frozen file deleted fails", () => {
@@ -64,9 +70,12 @@ test("shallow checkout with a frozen file renamed out fails", () => {
   assertFrozenFailure(result, "docs/product/UI-DESIGN-SYSTEM.md");
 });
 
-test("shallow checkout with a file renamed into docs/product fails", () => {
+test("a file renamed onto a frozen document fails", () => {
   const result = runOnCheckout("renamed-in");
-  assertFrozenFailure(result, "docs/product/from-readme.md");
+  assertFrozenFailure(
+    result,
+    "docs/product/Wedding-Platform-Product-Specification.md",
+  );
 });
 
 test("a docs/product-extra path outside the frozen directory passes", () => {
@@ -74,10 +83,9 @@ test("a docs/product-extra path outside the frozen directory passes", () => {
   assertPassed(result);
 });
 
-test("frozen paths git would quote still fail", () => {
+test("quoted paths that are not the three frozen documents pass", () => {
   const result = runOnCheckout("quoted");
-  assertFrozenFailure(result, 'docs/product/quote"name.md');
-  assertFrozenFailure(result, "docs/product/back\\slash.md");
+  assertPassed(result);
 });
 
 test("depth-1 main fetch is repaired instead of failing open", () => {
@@ -313,8 +321,18 @@ function buildFixture() {
         "docs/product/UI-DESIGN-SYSTEM.md",
         "docs/relocated-design-system.md",
       ]),
-    "renamed-in": () =>
-      git(source, ["mv", "NOTES.md", "docs/product/from-readme.md"]),
+    "renamed-in": () => {
+      git(source, [
+        "rm",
+        "-q",
+        "docs/product/Wedding-Platform-Product-Specification.md",
+      ]);
+      git(source, [
+        "mv",
+        "NOTES.md",
+        "docs/product/Wedding-Platform-Product-Specification.md",
+      ]);
+    },
     "near-miss": () =>
       writeFiles(source, { "docs/product-extra.md": "not frozen\n" }),
     quoted: () =>
