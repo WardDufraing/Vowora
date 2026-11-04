@@ -60,10 +60,11 @@ available only outside production and returns not found in production, like the
 - [Desktop dark shell](assets/05-b/app-shell-desktop-dark.png)
 - [Mobile shell](assets/05-b/app-shell-mobile.png)
 
-The implementation was verified with formatting, workspace lint and type
-checking, 217 unit/component tests, four tooling tests, 13 package-boundary
-tests, uncached preview builds for both applications, a production web build,
-16 application Chromium tests and 26 marketing Chromium tests. The 25 focused
+The current-main-integrated implementation was verified with formatting,
+workspace lint and type checking, 223 unit/component tests, 22 tooling tests,
+16 package-boundary tests, uncached preview builds for both applications, a
+production web build, 16 application Chromium tests and 26 marketing Chromium
+tests. The 25 focused
 navigation and shell tests cover exact membership status, tenant isolation,
 permission-filtered order, workspace filtering/search, direct-link denial,
 desktop/mobile keyboard behavior and semantic output. Browser coverage adds
