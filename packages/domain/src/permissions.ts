@@ -10,6 +10,7 @@ export const weddingPermissionAreas = [
   "documents",
   "notes",
   "decisions",
+  "inspiration",
 ] as const;
 
 export const weddingPermissionActions = [
