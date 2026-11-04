@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SafeSession {
   id: string;
@@ -28,12 +28,15 @@ export function SessionManager() {
   const [sessions, setSessions] = useState<SafeSession[]>([]);
   const [message, setMessage] = useState("Loading active sessions…");
   const [busy, setBusy] = useState(false);
+  const listGeneration = useRef(0);
 
   const load = useCallback(async (): Promise<boolean> => {
+    const generation = listGeneration.current;
     try {
       const response = await fetch("/api/v1/account/sessions", {
         cache: "no-store",
       });
+      if (generation !== listGeneration.current) return false;
       if (!response.ok) {
         setMessage(
           response.status === 403
@@ -43,6 +46,7 @@ export function SessionManager() {
         return false;
       }
       const body: unknown = await response.json();
+      if (generation !== listGeneration.current) return false;
       if (
         typeof body !== "object" ||
         body === null ||
@@ -56,6 +60,7 @@ export function SessionManager() {
       setMessage(body.data.length === 0 ? "No active sessions." : "");
       return true;
     } catch {
+      if (generation !== listGeneration.current) return false;
       setMessage("Sessions could not be loaded.");
       return false;
     }
@@ -65,6 +70,28 @@ export function SessionManager() {
     const pending = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(pending);
   }, [load]);
+
+  async function signOut() {
+    listGeneration.current += 1;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/v1/auth/sign-out", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        setMessage("You could not be signed out. Try again.");
+        return;
+      }
+      window.location.replace("/sign-in");
+    } catch {
+      setMessage("You could not be signed out. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function revoke(path: string) {
     setBusy(true);
@@ -90,6 +117,9 @@ export function SessionManager() {
     <section aria-labelledby="sessions-heading">
       <h2 id="sessions-heading">Active sessions</h2>
       <p>Review browsers that currently have access to your account.</p>
+      <button type="button" disabled={busy} onClick={() => void signOut()}>
+        Sign out
+      </button>
       {sessions.length > 1 ? (
         <button
           type="button"

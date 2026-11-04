@@ -145,7 +145,8 @@ export function createVoworaAuth(options: {
       "/revoke-sessions",
       "/set-password",
       "/sign-in/social",
-      "/sign-out",
+      // POST /sign-out stays enabled so a signed-in browser can end its
+      // own 30-day session. Other framework account routes stay disabled.
       "/unlink-account",
       "/update-user",
     ],
@@ -440,6 +441,7 @@ const allowedAuthRoutes = new Map<string, ReadonlySet<string>>([
   ["/api/v1/auth/get-session", new Set(["GET"])],
   ["/api/v1/auth/send-verification-email", new Set(["POST"])],
   ["/api/v1/auth/sign-in/email", new Set(["POST"])],
+  ["/api/v1/auth/sign-out", new Set(["POST"])],
   ["/api/v1/auth/sign-up/email", new Set(["POST"])],
   ["/api/v1/auth/verify-email", new Set(["GET"])],
   ["/api/v1/auth/request-password-reset", new Set(["POST"])],
@@ -477,6 +479,7 @@ const authBodySchemas = new Map<string, z.ZodType>([
       })
       .strict(),
   ],
+  ["/api/v1/auth/sign-out", z.object({}).strict()],
   [
     "/api/v1/auth/sign-up/email",
     z

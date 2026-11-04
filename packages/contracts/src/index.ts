@@ -250,6 +250,49 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/auth/sign-out": {
+      post: {
+        operationId: "signOut",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description:
+              "Current session revoked and the host-only session cookie cleared. A request with no session is acknowledged without creating one.",
+            headers: {
+              "Set-Cookie": {
+                description:
+                  "Expires the host-only, HTTP-only session cookie. No Domain attribute is set.",
+                schema: { type: "string" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: { success: { type: "boolean" } },
+                  required: ["success"],
+                },
+              },
+            },
+          },
+          "400": authenticationFailure,
+          "403": authenticationFailure,
+          "500": authenticationServiceFailure,
+        },
+      },
+    },
     "/api/v1/auth/sign-in/email": {
       post: {
         operationId: "signInWithEmail",
