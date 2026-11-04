@@ -3,6 +3,8 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review, edited]
+  push:
+    branches: [main]
   workflow_dispatch:
 concurrency:
   group: policy-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
