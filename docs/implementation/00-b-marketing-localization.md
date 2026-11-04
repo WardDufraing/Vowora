@@ -36,3 +36,5 @@ Fresh independent reviewer `/root/implement_00_b/review_00_b` returned PASS with
 ## Rollback and limitations
 
 Before merge, close the task PR. After merge, owner can revert this task; no database state/migration exists. Automated browser checks are not a claim of professional native-language proofreading or full screen-reader certification. No production deployment is claimed.
+
+**Tracker reconciliation (2026-11-04):** "Do not mark Done before owner merge" above is superseded. Owner merged [PR #6](https://github.com/WardDufraing/Vowora/pull/6) as [`64f5d93`](https://github.com/WardDufraing/Vowora/commit/64f5d93) on 2026-10-23 22:20 CEST. On 2026-11-04, `/nl`, `/fr` and `/de` returned HTTPS 200.
