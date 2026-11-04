@@ -63,4 +63,4 @@ Fresh independent read-only re-reviewer `/root/implement_01_a/review_01_a_fresh`
 
 **Tracker reconciliation (2026-11-04):** "no01-b/c work started" above is superseded for the merge. Owner merged [PR #7](https://github.com/WardDufraing/Vowora/pull/7) as [`39b27b0`](https://github.com/WardDufraing/Vowora/commit/39b27b0) on 2026-10-23 22:53 CEST. Repointing the app Vercel project remains owner-controlled and was not rechecked.
 
-**Owner statement (2026-11-04):** Supersedes "Repointing the app Vercel project remains owner-controlled and was not rechecked" above for current status. Ward stated that the app Vercel project `vowora` serves app.vowora.app. That statement closes this owner question. The reconciliation sentence stays as written.
+**Owner statement (2026-11-04):** The app Vercel project `vowora` serves app.vowora.app. The reconciliation sentence above stays in force.
