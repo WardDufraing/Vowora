@@ -45,7 +45,11 @@ jobs:
             # apply there) and the job passes without reading the diff.
             # Unshallow the advertised pull ref, fetch the base branch, and
             # fail closed on any git error.
-            if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+            if ! shallow="$(git rev-parse --is-shallow-repository)"; then
+              echo "git rev-parse failed; frozen-source check failed closed"
+              exit 1
+            fi
+            if [[ "$shallow" == "true" ]]; then
               if ! git fetch --no-tags --unshallow origin "$GITHUB_REF"; then
                 echo "git fetch --unshallow failed; frozen-source check failed closed"
                 exit 1
@@ -63,21 +67,37 @@ jobs:
               echo "Empty merge base between origin/${BASE_REF} and HEAD; frozen-source check failed closed"
               exit 1
             fi
-            if ! diff_status="$(git -c core.quotePath=false diff --name-status --find-renames "$merge_base" HEAD)"; then
+            # NUL records keep paths that contain quotes, backslashes, or
+            # other characters git would otherwise C-quote. A line parser
+            # misses those and would fail open.
+            diff_file="$(mktemp)"
+            trap 'rm -f "$diff_file"' EXIT
+            if ! git -c core.quotePath=false diff --name-status --find-renames -z "$merge_base" HEAD >"$diff_file"; then
               echo "git diff failed; frozen-source check failed closed"
               exit 1
             fi
             frozen_hit=0
-            while IFS=$'\t' read -r status path_a path_b || [[ -n "${status:-}" ]]; do
+            while IFS= read -r -d '' status || [[ -n "${status:-}" ]]; do
               [[ -z "${status:-}" ]] && continue
-              for path in "$path_a" "${path_b:-}"; do
-                [[ -z "$path" ]] && continue
+              path_a=""
+              path_b=""
+              if ! IFS= read -r -d '' path_a; then
+                echo "git diff status record was truncated; frozen-source check failed closed"
+                exit 1
+              fi
+              if [[ "$status" == R* || "$status" == C* ]]; then
+                if ! IFS= read -r -d '' path_b; then
+                  echo "git diff rename record was truncated; frozen-source check failed closed"
+                  exit 1
+                fi
+              fi
+              for path in "$path_a" "$path_b"; do
                 if [[ "$path" == docs/product/* ]]; then
                   printf 'Frozen product source changed: %s\t%s\n' "$status" "$path"
                   frozen_hit=1
                 fi
               done
-            done <<< "$diff_status"
+            done <"$diff_file"
             if [[ "$frozen_hit" -ne 0 ]]; then
               echo "Frozen product sources changed; separate controlled approval required"
               exit 1

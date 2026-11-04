@@ -74,6 +74,12 @@ test("a docs/product-extra path outside the frozen directory passes", () => {
   assertPassed(result);
 });
 
+test("frozen paths git would quote still fail", () => {
+  const result = runOnCheckout("quoted");
+  assertFrozenFailure(result, 'docs/product/quote"name.md');
+  assertFrozenFailure(result, "docs/product/back\\slash.md");
+});
+
 test("depth-1 main fetch is repaired instead of failing open", () => {
   const destination = mimicCheckout("clean");
   const broken = git(
@@ -252,7 +258,10 @@ function assertFailedClosed(result) {
 function assertFrozenFailure(result, path) {
   assertFailedClosed(result);
   assert.match(result.stdout, /Frozen product sources changed/);
-  assert.match(result.stdout, new RegExp(path.replaceAll(".", "\\.")));
+  assert.match(
+    result.stdout,
+    new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
 }
 
 function formatResult(result) {
@@ -308,6 +317,11 @@ function buildFixture() {
       git(source, ["mv", "NOTES.md", "docs/product/from-readme.md"]),
     "near-miss": () =>
       writeFiles(source, { "docs/product-extra.md": "not frozen\n" }),
+    quoted: () =>
+      writeFiles(source, {
+        'docs/product/quote"name.md': "quoted\n",
+        "docs/product/back\\slash.md": "slash\n",
+      }),
   };
 
   const refs = {};
