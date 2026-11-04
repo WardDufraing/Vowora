@@ -117,16 +117,24 @@ describe("Better Auth PostgreSQL integration", () => {
             });
             let abuseDecision: AuthAbuseDecision = { outcome: "allow" };
             let abuseFailure = false;
+            let abuseEvaluations = 0;
+            let verifiedFailures = 0;
+            let lastClientAddress: string | undefined;
             const auth = createVoworaAuth({
               baseURL,
               backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
               database: createTestDatabase(client),
               rateLimitEnabled: false,
               abuseProtection: {
-                async evaluate() {
+                async evaluate(entry: { readonly clientAddress?: string }) {
+                  abuseEvaluations += 1;
+                  lastClientAddress = entry.clientAddress;
                   if (abuseFailure)
                     throw new Error("synthetic provider failure");
                   return abuseDecision;
+                },
+                async recordVerifiedFailure() {
+                  verifiedFailures += 1;
                 },
               },
               scheduleBackgroundTask: (task) => scheduledTasks.push(task),
@@ -229,6 +237,47 @@ describe("Better Auth PostgreSQL integration", () => {
             );
             abuseFailure = false;
             abuseDecision = { outcome: "allow" };
+            const evaluationsBeforeAddress = abuseEvaluations;
+            const previousVercel = process.env.VERCEL;
+            process.env.VERCEL = "1";
+            try {
+              const missingAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", { method: "POST" }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(missingAddress?.status).toBe(503);
+              expect((await missingAddress?.json()).code).toBe(
+                "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+              );
+              const chainedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.5, 198.51.100.8" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(chainedAddress?.status).toBe(503);
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress);
+              const trustedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.10" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(trustedAddress).toBeUndefined();
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress + 1);
+              expect(lastClientAddress).toBe("203.0.113.10");
+            } finally {
+              if (previousVercel === undefined) delete process.env.VERCEL;
+              else process.env.VERCEL = previousVercel;
+            }
 
             const anonymousSession = await auth.handler(
               request("/get-session"),
@@ -378,6 +427,40 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(() =>
               problemDetailsSchema.parse(wrongPasswordBody),
             ).not.toThrow();
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const penaltiesBefore = verifiedFailures;
+            const penalizedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(penalizedGuess.status).toBe(401);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            const rightPassword = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(rightPassword.status).toBe(403);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "challenge" };
+            const unsolvedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(unsolvedGuess.status).toBe(403);
+            expect((await unsolvedGuess.json()).code).toBe(
+              "AUTHENTICATION_CHALLENGE_REQUIRED",
+            );
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
 
             const verificationUrl = deliveries[0]?.verificationUrl;
             expect(verificationUrl).toBeDefined();
@@ -388,10 +471,15 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(verify.headers.get("location")).toBe(`${baseURL}/account`);
             expect(verify.headers.get("set-cookie")).toBeNull();
 
-            const verifiedSignIn = await auth.handler(
-              post("/sign-in/email", validCredentials),
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const verifiedSignIn = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
             );
             expect(verifiedSignIn.status).toBe(200);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
             const cookie = verifiedSignIn.headers.get("set-cookie");
             expect(cookie).toContain("__Secure-vowora.session_token=");
             expect(cookie).toContain("HttpOnly");

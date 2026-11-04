@@ -56,7 +56,10 @@ export function createVoworaAuth(options: {
     (options.rateLimitEnabled === false
       ? {
           async evaluate() {
-            return { outcome: "allow" as const };
+            return { outcome: "allow" as const, challengeVerified: false };
+          },
+          async recordVerifiedFailure() {
+            return undefined;
           },
         }
       : undefined);
@@ -236,14 +239,16 @@ export async function handleAuthRequest(
     throw new Error("Authentication abuse protection is not configured");
   }
   const abuseKey = await abuseIdentityKey(request);
+  let challengeVerified = false;
   if (abuseKey) {
-    const blocked = await protectAuthAbuseRequest(
+    const gate = await openAuthAbuseGate(
       auth,
       request,
       abuseKey.key,
       abuseKey.rule,
     );
-    if (blocked) return blocked;
+    if (gate.response) return gate.response;
+    challengeVerified = gate.challengeVerified;
   }
   const credentialTarget = await credentialLockTarget(request);
   const lock = credentialLocks.get(auth);
@@ -260,6 +265,26 @@ export async function handleAuthRequest(
       detail: "The authentication request could not be completed.",
       code: "AUTHENTICATION_SERVICE_FAILURE",
     });
+  }
+  if (
+    challengeVerified &&
+    abuseKey &&
+    isFailedCredentialAttempt(request, response)
+  ) {
+    try {
+      await abuseProtection.recordVerifiedFailure({
+        route: new URL(request.url).pathname,
+        identity: abuseKey.key,
+        rule: abuseKey.rule,
+      });
+    } catch {
+      return problemResponse(request, {
+        status: 503,
+        title: "Authentication service unavailable",
+        detail: "The authentication request could not be completed.",
+        code: "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+      });
+    }
   }
   if (
     response.status >= 400 &&
@@ -359,13 +384,30 @@ async function abuseIdentityKey(request: Request) {
   return { key: `identity:${path}:${identity}`, rule };
 }
 
-export async function protectAuthAbuseRequest(
+function isFailedCredentialAttempt(
+  request: Request,
+  response: Response,
+): boolean {
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return false;
+  }
+  const pathname = new URL(request.url).pathname;
+  if (pathname === "/api/v1/auth/sign-in/email") return response.status === 401;
+  if (pathname === "/api/v1/auth/reset-password")
+    return response.status === 400;
+  return false;
+}
+
+async function openAuthAbuseGate(
   auth: ReturnType<typeof createVoworaAuth>,
   request: Request,
   identity: string,
   rule: { readonly windowSeconds: number; readonly maximumAttempts: number },
   challengeSupported = true,
-): Promise<Response | undefined> {
+): Promise<{
+  readonly response?: Response;
+  readonly challengeVerified: boolean;
+}> {
   const protection = abuseProtections.get(auth);
   if (!protection) {
     throw new Error("Authentication abuse protection is not configured");
@@ -382,7 +424,9 @@ export async function protectAuthAbuseRequest(
         request.headers.get("x-vowora-challenge-token") ?? undefined,
       rule,
     });
-    if (decision.outcome === "allow") return undefined;
+    if (decision.outcome === "allow") {
+      return { challengeVerified: decision.challengeVerified === true };
+    }
     if (decision.outcome === "challenge") {
       if (!challengeSupported) {
         const response = problemResponse(request, {
@@ -392,14 +436,17 @@ export async function protectAuthAbuseRequest(
           code: "AUTHENTICATION_RATE_LIMITED",
         });
         response.headers.set("retry-after", String(rule.windowSeconds));
-        return response;
+        return { response, challengeVerified: false };
       }
-      return problemResponse(request, {
-        status: 403,
-        title: "Additional verification required",
-        detail: "Complete the verification challenge and try again.",
-        code: "AUTHENTICATION_CHALLENGE_REQUIRED",
-      });
+      return {
+        response: problemResponse(request, {
+          status: 403,
+          title: "Additional verification required",
+          detail: "Complete the verification challenge and try again.",
+          code: "AUTHENTICATION_CHALLENGE_REQUIRED",
+        }),
+        challengeVerified: false,
+      };
     }
     const response = problemResponse(request, {
       status: 429,
@@ -408,15 +455,30 @@ export async function protectAuthAbuseRequest(
       code: "AUTHENTICATION_RATE_LIMITED",
     });
     response.headers.set("retry-after", String(decision.retryAfter));
-    return response;
+    return { response, challengeVerified: false };
   } catch {
-    return problemResponse(request, {
-      status: 503,
-      title: "Authentication service unavailable",
-      detail: "The authentication request could not be completed.",
-      code: "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
-    });
+    return {
+      response: problemResponse(request, {
+        status: 503,
+        title: "Authentication service unavailable",
+        detail: "The authentication request could not be completed.",
+        code: "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+      }),
+      challengeVerified: false,
+    };
   }
+}
+
+export async function protectAuthAbuseRequest(
+  auth: ReturnType<typeof createVoworaAuth>,
+  request: Request,
+  identity: string,
+  rule: { readonly windowSeconds: number; readonly maximumAttempts: number },
+  challengeSupported = true,
+): Promise<Response | undefined> {
+  return (
+    await openAuthAbuseGate(auth, request, identity, rule, challengeSupported)
+  ).response;
 }
 
 async function credentialLockTarget(
