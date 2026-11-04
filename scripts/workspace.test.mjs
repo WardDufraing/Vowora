@@ -296,11 +296,113 @@ test("root test typecheck resolves integration imports without compiled package 
     await readFile(new URL("tsconfig.test.json", root)),
   );
   assert.deepEqual(config.compilerOptions.paths, {
-    "@vowora/contracts": ["packages/contracts/src/index.ts"],
-    "@vowora/database": ["packages/database/src/index.ts"],
-    "@vowora/database/testing": ["packages/database/src/testing.ts"],
-    "@vowora/domain": ["packages/domain/src/index.ts"],
+    "@vowora/contracts": ["./packages/contracts/src/index.ts"],
+    "@vowora/database": ["./packages/database/src/index.ts"],
+    "@vowora/database/testing": ["./packages/database/src/testing.ts"],
+    "@vowora/domain": ["./packages/domain/src/index.ts"],
   });
+  assert.equal(
+    Object.hasOwn(config.compilerOptions, "baseUrl"),
+    false,
+    "TypeScript 7 rejects baseUrl; paths are relative to this config file",
+  );
+});
+test("TypeScript 7 compiles while eslint still loads the TypeScript 6 API", async () => {
+  const nativeAlias = "npm:typescript@7.0.2";
+  const apiAlias = "npm:@typescript/typescript6@6.0.2";
+  const compilerManifests = [
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+    "packages/domain/package.json",
+    "packages/contracts/package.json",
+    "packages/database/package.json",
+  ];
+  for (const file of compilerManifests) {
+    const manifest = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    const deps = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    };
+    assert.equal(deps["@typescript/native"], nativeAlias, file);
+    assert.equal(deps.typescript, apiAlias, file);
+  }
+  for (const file of [
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+  ]) {
+    const manifest = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    assert.equal(manifest.devDependencies["@types/node"], "26.6.6", file);
+  }
+  const configManifest = JSON.parse(
+    await readFile(new URL("packages/config/package.json", root), "utf8"),
+  );
+  assert.equal(configManifest.dependencies.typescript, apiAlias);
+  assert.equal(configManifest.dependencies["@typescript/native"], undefined);
+  const configRequire = createRequire(
+    new URL("../packages/config/package.json", import.meta.url),
+  );
+  const apiPackage = configRequire("typescript/package.json");
+  assert.equal(apiPackage.name, "@typescript/typescript6");
+  assert.equal(apiPackage.version, "6.0.2");
+  assert.equal(apiPackage.bin.tsc, undefined);
+  assert.equal(typeof apiPackage.bin.tsc6, "string");
+  assert.match(configRequire("typescript").version, /^6\.0\./);
+  const eslintConfigRequire = createRequire(
+    configRequire.resolve("eslint-config-next"),
+  );
+  assert.equal(
+    eslintConfigRequire("typescript-eslint/package.json").version,
+    "8.72.1",
+  );
+  assert.equal(
+    eslintConfigRequire("typescript/package.json").name,
+    "@typescript/typescript6",
+  );
+  assert.match(eslintConfigRequire("typescript").version, /^6\.0\./);
+  const eslintConfigPackage = JSON.parse(
+    await readFile(
+      new URL(
+        "packages/config/node_modules/eslint-config-next/package.json",
+        root,
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(eslintConfigPackage.version, "16.4.3");
+  const nativePackage = createRequire(
+    new URL("../package.json", import.meta.url),
+  )("@typescript/native/package.json");
+  assert.equal(nativePackage.name, "typescript");
+  assert.equal(nativePackage.version, "7.0.2");
+  assert.equal(typeof nativePackage.bin.tsc, "string");
+  for (const directory of [
+    root,
+    new URL("apps/web/", root),
+    new URL("apps/marketing/", root),
+    new URL("packages/domain/", root),
+    new URL("packages/contracts/", root),
+    new URL("packages/database/", root),
+  ]) {
+    const cwd = directory.pathname;
+    assert.equal(
+      execFileSync("pnpm", ["exec", "tsc", "--version"], {
+        cwd,
+        encoding: "utf8",
+      }).trim(),
+      "Version 7.0.2",
+      cwd,
+    );
+    assert.match(
+      execFileSync("pnpm", ["exec", "tsc6", "--version"], {
+        cwd,
+        encoding: "utf8",
+      }).trim(),
+      /^Version 6\.0\.\d+$/,
+      cwd,
+    );
+  }
 });
 test("Turbo app filters do not pull in the other deployable app", () => {
   for (const name of ["web", "marketing"]) {
