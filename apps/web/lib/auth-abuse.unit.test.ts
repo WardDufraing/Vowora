@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  authAbuseCounterScript,
   createUpstashAuthAbuseProtection,
   trustedVercelClientAddress,
 } from "./auth-abuse";
@@ -48,6 +49,7 @@ describe("managed authentication abuse protection", () => {
     expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({
       authorization: `Bearer ${config.redisToken}`,
     });
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
   it("requires a hostname/action-bound Turnstile challenge at elevated risk", async () => {
@@ -173,19 +175,79 @@ describe("managed authentication abuse protection", () => {
     expect(
       trustedVercelClientAddress(
         new Request("https://app.vowora.test", {
-          headers: { "x-forwarded-for": "203.0.113.5, 2001:db8::1" },
+          headers: { "x-forwarded-for": "203.0.113.5" },
         }),
         true,
       ),
-    ).toBeUndefined();
-    expect(
-      trustedVercelClientAddress(
-        new Request("https://app.vowora.test", {
-          headers: { "x-forwarded-for": "attacker-controlled" },
+    ).toBe("203.0.113.5");
+    const forwardedChain = new Request("https://app.vowora.test", {
+      headers: { "x-forwarded-for": "203.0.113.5, 2001:db8::1" },
+    });
+    const missingAddress = new Request("https://app.vowora.test");
+    const invalidAddress = new Request("https://app.vowora.test", {
+      headers: { "x-forwarded-for": "attacker-controlled" },
+    });
+    expect(trustedVercelClientAddress(forwardedChain, false)).toBeUndefined();
+    expect(trustedVercelClientAddress(missingAddress, false)).toBeUndefined();
+    expect(trustedVercelClientAddress(invalidAddress, false)).toBeUndefined();
+    for (const rejected of [forwardedChain, missingAddress, invalidAddress]) {
+      expect(() => trustedVercelClientAddress(rejected, true)).toThrow(
+        "Authentication client address unavailable",
+      );
+      try {
+        trustedVercelClientAddress(rejected, true);
+      } catch (error) {
+        expect(String(error)).not.toContain("203.0.113.5");
+        expect(String(error)).not.toContain("attacker-controlled");
+      }
+    }
+  });
+
+  it("does not let a solved Turnstile bypass a capped identity delay", async () => {
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(redisResult("block", 30))
+      .mockResolvedValueOnce(redisResult("challenge"))
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          hostname: config.expectedHostname,
+          action: "vowora-auth",
         }),
-        true,
-      ),
-    ).toBeUndefined();
+      );
+    const protection = createUpstashAuthAbuseProtection({
+      ...config,
+      fetch: request,
+    });
+    const challenged = { ...input, challengeToken: "synthetic-token" };
+    await expect(protection.evaluate(challenged)).resolves.toEqual({
+      outcome: "block",
+      retryAfter: 30,
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    await expect(protection.evaluate(challenged)).resolves.toEqual({
+      outcome: "allow",
+    });
+    expect(String(request.mock.calls.at(-1)?.[0])).toBe(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    );
+  });
+
+  it("keeps the identity delay capped, expiring, and short of a hard lockout", () => {
+    expect(authAbuseCounterScript).toContain("local identity_delay_cap = 30");
+    expect(authAbuseCounterScript).toContain(
+      "retry_after = math.min(identity_delay_cap, 2 ^ (strikes - 1))",
+    );
+    expect(authAbuseCounterScript).toContain(
+      "if remaining > identity_delay_cap then",
+    );
+    expect(authAbuseCounterScript).toContain("math.max(86400, retry_after)");
+    expect(authAbuseCounterScript).toContain(
+      "math.min(900, window * (2 ^ (strikes - 1)))",
+    );
+    expect(authAbuseCounterScript).not.toMatch(
+      /if dimension == 'identity' then\s+blocked_until = 0\s+strikes = 0/,
+    );
   });
 
   it("rejects non-HTTPS Redis endpoints and unknown key material", async () => {

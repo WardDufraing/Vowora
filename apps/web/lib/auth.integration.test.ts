@@ -117,13 +117,17 @@ describe("Better Auth PostgreSQL integration", () => {
             });
             let abuseDecision: AuthAbuseDecision = { outcome: "allow" };
             let abuseFailure = false;
+            let abuseEvaluations = 0;
+            let lastClientAddress: string | undefined;
             const auth = createVoworaAuth({
               baseURL,
               backgroundTaskHandler: (promise) => backgroundTasks.push(promise),
               database: createTestDatabase(client),
               rateLimitEnabled: false,
               abuseProtection: {
-                async evaluate() {
+                async evaluate(entry: { readonly clientAddress?: string }) {
+                  abuseEvaluations += 1;
+                  lastClientAddress = entry.clientAddress;
                   if (abuseFailure)
                     throw new Error("synthetic provider failure");
                   return abuseDecision;
@@ -229,6 +233,47 @@ describe("Better Auth PostgreSQL integration", () => {
             );
             abuseFailure = false;
             abuseDecision = { outcome: "allow" };
+            const evaluationsBeforeAddress = abuseEvaluations;
+            const previousVercel = process.env.VERCEL;
+            process.env.VERCEL = "1";
+            try {
+              const missingAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", { method: "POST" }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(missingAddress?.status).toBe(503);
+              expect((await missingAddress?.json()).code).toBe(
+                "AUTHENTICATION_ABUSE_PROTECTION_UNAVAILABLE",
+              );
+              const chainedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.5, 198.51.100.8" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(chainedAddress?.status).toBe(503);
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress);
+              const trustedAddress = await protectAuthAbuseRequest(
+                auth,
+                request("/sign-in/email", {
+                  method: "POST",
+                  headers: { "x-forwarded-for": "203.0.113.10" },
+                }),
+                "synthetic-identity",
+                { windowSeconds: 60, maximumAttempts: 5 },
+              );
+              expect(trustedAddress).toBeUndefined();
+              expect(abuseEvaluations).toBe(evaluationsBeforeAddress + 1);
+              expect(lastClientAddress).toBe("203.0.113.10");
+            } finally {
+              if (previousVercel === undefined) delete process.env.VERCEL;
+              else process.env.VERCEL = previousVercel;
+            }
 
             const anonymousSession = await auth.handler(
               request("/get-session"),

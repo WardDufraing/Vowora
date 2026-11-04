@@ -34,11 +34,19 @@ local last_seen = tonumber(values[5]) or 0
 local window = tonumber(ARGV[1])
 local maximum = tonumber(ARGV[2])
 local dimension = ARGV[3]
+local identity_delay_cap = 30
 if dimension == 'identity' then
-  blocked_until = 0
-  strikes = 0
-end
-if blocked_until > now then
+  if blocked_until > now then
+    local remaining = blocked_until - now
+    if remaining > identity_delay_cap then
+      blocked_until = 0
+    else
+      return {'block', remaining, strikes}
+    end
+  else
+    blocked_until = 0
+  end
+elseif blocked_until > now then
   return {'block', blocked_until - now, strikes}
 end
 if now - window_started >= window then
@@ -53,6 +61,9 @@ local outcome = 'allow'
 local retry_after = 0
 if dimension == 'identity' and count > maximum then
   count = maximum
+  strikes = math.min(6, strikes + 1)
+  retry_after = math.min(identity_delay_cap, 2 ^ (strikes - 1))
+  blocked_until = now + retry_after
   outcome = 'challenge'
 elseif count > maximum + 2 then
   strikes = math.min(6, strikes + 1)
@@ -92,14 +103,14 @@ export function trustedVercelClientAddress(
   vercelDeployment: boolean,
 ): string | undefined {
   if (!vercelDeployment) return undefined;
-  // Vercel documents that it overwrites this header at its public boundary to
-  // prevent spoofing. Reject proxy chains because they are outside that
-  // documented contract and must not become attacker-selected dimensions.
+  // Vercel overwrites this header at its public boundary. A missing, invalid,
+  // or multi-hop value is not a trusted client, so fail closed instead of
+  // skipping the network counter. Non-Vercel runtimes omit the dimension.
   const candidate = request.headers.get("x-forwarded-for")?.trim();
-  if (candidate?.includes(",")) return undefined;
-  return candidate && isIP(candidate) !== 0
-    ? candidate.toLowerCase()
-    : undefined;
+  if (!candidate || candidate.includes(",") || isIP(candidate) === 0) {
+    throw new Error("Authentication client address unavailable");
+  }
+  return candidate.toLowerCase();
 }
 
 export function createUpstashAuthAbuseProtection(config: {
