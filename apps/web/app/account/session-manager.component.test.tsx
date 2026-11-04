@@ -43,6 +43,47 @@ describe("session manager", () => {
     expect(screen.queryByText(/session_token/)).not.toBeInTheDocument();
   });
 
+  it("signs out through the same-origin endpoint and leaves the account page", async () => {
+    const request = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).endsWith("/sign-out")) {
+        return Response.json({ success: true });
+      }
+      return Response.json({ data: [] });
+    });
+    vi.stubGlobal("fetch", request);
+    const replace = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({
+      replace,
+    } as unknown as Location);
+    const user = userEvent.setup();
+    render(<SessionManager />);
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(request).toHaveBeenCalledWith("/api/v1/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+      credentials: "same-origin",
+    });
+    expect(replace).toHaveBeenCalledWith("/sign-in");
+  });
+
+  it("keeps the current session when sign-out is rejected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (input) =>
+        String(input).endsWith("/sign-out")
+          ? new Response(null, { status: 403 })
+          : Response.json({ data: [] }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<SessionManager />);
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "You could not be signed out. Try again.",
+    );
+  });
+
   it("asks for sign-in again when the session is no longer fresh", async () => {
     vi.stubGlobal(
       "fetch",

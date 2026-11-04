@@ -66,6 +66,27 @@ export function SessionManager() {
     return () => window.clearTimeout(pending);
   }, [load]);
 
+  async function signOut() {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/v1/auth/sign-out", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        setMessage("You could not be signed out. Try again.");
+        return;
+      }
+      window.location.replace("/sign-in");
+    } catch {
+      setMessage("You could not be signed out. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function revoke(path: string) {
     setBusy(true);
     try {
@@ -90,6 +111,9 @@ export function SessionManager() {
     <section aria-labelledby="sessions-heading">
       <h2 id="sessions-heading">Active sessions</h2>
       <p>Review browsers that currently have access to your account.</p>
+      <button type="button" disabled={busy} onClick={() => void signOut()}>
+        Sign out
+      </button>
       {sessions.length > 1 ? (
         <button
           type="button"

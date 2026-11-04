@@ -44,6 +44,7 @@ describe("API contracts", () => {
       "/api/v1/health",
       "/api/v1/openapi.json",
       "/api/v1/auth/sign-up/email",
+      "/api/v1/auth/sign-out",
       "/api/v1/auth/sign-in/email",
       "/api/v1/auth/send-verification-email",
       "/api/v1/auth/verify-email",
@@ -55,6 +56,13 @@ describe("API contracts", () => {
       "/api/v1/account/sessions/{sessionId}",
       "/api/v1/{path}",
     ]);
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-out"].post.operationId,
+    ).toBe("signOut");
+    expect("get" in openApiDocument.paths["/api/v1/auth/sign-out"]).toBe(false);
+    expect(
+      openApiDocument.paths["/api/v1/auth/sign-out"].post.responses["403"],
+    ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
     expect(openApiDocument.components.schemas.HealthResponse).toEqual(
       z.toJSONSchema(healthResponseSchema, { target: "draft-2020-12" }),
     );

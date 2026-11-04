@@ -119,6 +119,10 @@ export async function revokeAccountSession(
     if (sensitive.stale) return forbidden(request);
     const sessions = await auth.api.listSessions({ headers: request.headers });
     const selected = sessions.find((entry) => entry.id === sessionId);
+    // Ending the browser's own session is POST /api/v1/auth/sign-out, which
+    // also clears the cookie. This route keeps the reviewed 03-b contract:
+    // the current session and any unowned id share one not-found response,
+    // and revoking every other session leaves the current one in place.
     if (!selected || selected.id === sensitive.current.session.id) {
       return problemResponse(request, {
         status: 404,
