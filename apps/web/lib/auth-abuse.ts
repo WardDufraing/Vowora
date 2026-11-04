@@ -15,12 +15,13 @@ export interface AuthAbuseInput {
 }
 
 export type AuthAbuseDecision =
-  | { readonly outcome: "allow" }
+  | { readonly outcome: "allow"; readonly challengeVerified?: boolean }
   | { readonly outcome: "challenge" }
   | { readonly outcome: "block"; readonly retryAfter: number };
 
 export interface AuthAbuseProtection {
   evaluate(input: AuthAbuseInput): Promise<AuthAbuseDecision>;
+  recordVerifiedFailure(input: AuthAbuseInput): Promise<void>;
 }
 
 export const authAbuseCounterScript = `
@@ -34,20 +35,36 @@ local last_seen = tonumber(values[5]) or 0
 local window = tonumber(ARGV[1])
 local maximum = tonumber(ARGV[2])
 local dimension = ARGV[3]
+local mode = ARGV[4]
 local identity_delay_cap = 30
+if dimension == 'identity' and mode == 'penalize' then
+  if blocked_until > now then
+    local remaining = blocked_until - now
+    if remaining <= identity_delay_cap then
+      return {'block', math.floor(remaining), strikes}
+    end
+    blocked_until = 0
+  end
+  strikes = math.min(6, strikes + 1)
+  local retry_after = math.floor(math.min(identity_delay_cap, 2 ^ (strikes - 1)))
+  blocked_until = now + retry_after
+  redis.call('HSET', KEYS[1], 'count', count, 'window_started', window_started, 'strikes', strikes, 'blocked_until', blocked_until, 'last_seen', now)
+  redis.call('EXPIRE', KEYS[1], math.max(86400, retry_after))
+  return {'block', retry_after, strikes}
+end
 if dimension == 'identity' then
   if blocked_until > now then
     local remaining = blocked_until - now
     if remaining > identity_delay_cap then
       blocked_until = 0
     else
-      return {'block', remaining, strikes}
+      return {'block', math.floor(remaining), strikes}
     end
   else
     blocked_until = 0
   end
 elseif blocked_until > now then
-  return {'block', blocked_until - now, strikes}
+  return {'block', math.floor(blocked_until - now), strikes}
 end
 if now - window_started >= window then
   count = 0
@@ -61,13 +78,10 @@ local outcome = 'allow'
 local retry_after = 0
 if dimension == 'identity' and count > maximum then
   count = maximum
-  strikes = math.min(6, strikes + 1)
-  retry_after = math.min(identity_delay_cap, 2 ^ (strikes - 1))
-  blocked_until = now + retry_after
   outcome = 'challenge'
 elseif count > maximum + 2 then
   strikes = math.min(6, strikes + 1)
-  retry_after = math.min(900, window * (2 ^ (strikes - 1)))
+  retry_after = math.floor(math.min(900, window * (2 ^ (strikes - 1))))
   blocked_until = now + retry_after
   outcome = 'block'
 elseif count > maximum then
@@ -75,7 +89,7 @@ elseif count > maximum then
 end
 redis.call('HSET', KEYS[1], 'count', count, 'window_started', window_started, 'strikes', strikes, 'blocked_until', blocked_until, 'last_seen', now)
 redis.call('EXPIRE', KEYS[1], math.max(86400, retry_after))
-return {outcome, retry_after, strikes}
+return {outcome, math.floor(retry_after), strikes}
 `;
 
 interface CounterResult {
@@ -147,6 +161,7 @@ export function createUpstashAuthAbuseProtection(config: {
     dimension: "identity" | "network",
     value: string,
     input: AuthAbuseInput,
+    mode?: "penalize",
   ): Promise<CounterResult> => {
     const digest = createHmac("sha256", config.hashSecret)
       .update(`v1\0${input.route}\0${dimension}\0${value}`)
@@ -165,6 +180,7 @@ export function createUpstashAuthAbuseProtection(config: {
         String(input.rule.windowSeconds),
         String(input.rule.maximumAttempts),
         dimension,
+        ...(mode ? [mode] : []),
       ]),
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -224,25 +240,61 @@ export function createUpstashAuthAbuseProtection(config: {
       ) {
         throw new Error("Invalid authentication abuse policy");
       }
-      const decisions = [
-        await evaluateCounter("identity", input.identity, input),
-      ];
-      if (input.clientAddress) {
-        decisions.push(
-          await evaluateCounter("network", input.clientAddress, input),
+      const identity = await evaluateCounter("identity", input.identity, input);
+      const network = input.clientAddress
+        ? await evaluateCounter("network", input.clientAddress, input)
+        : undefined;
+      if (identity.outcome === "block" && identity.retryAfter > 30) {
+        throw new Error("Authentication abuse store unavailable");
+      }
+      const blocked = [identity, network].find(
+        (entry) => entry?.outcome === "block",
+      );
+      if (blocked?.outcome === "block") {
+        const retryAfter = Math.max(
+          blocked.retryAfter,
+          network?.outcome === "block" ? network.retryAfter : 0,
+          identity.outcome === "block" ? identity.retryAfter : 0,
         );
+        return { outcome: "block", retryAfter };
       }
-      const blocked = decisions.find((entry) => entry.outcome === "block");
-      if (blocked) {
-        return { outcome: "block", retryAfter: blocked.retryAfter };
-      }
-      if (decisions.some((entry) => entry.outcome === "challenge")) {
-        return input.challengeToken &&
-          (await verifyChallenge(input.challengeToken))
-          ? { outcome: "allow" }
+      if (
+        identity.outcome === "challenge" ||
+        network?.outcome === "challenge"
+      ) {
+        const verified = Boolean(
+          input.challengeToken && (await verifyChallenge(input.challengeToken)),
+        );
+        return verified
+          ? {
+              outcome: "allow",
+              challengeVerified: identity.outcome === "challenge",
+            }
           : { outcome: "challenge" };
       }
-      return { outcome: "allow" };
+      return { outcome: "allow", challengeVerified: false };
+    },
+    async recordVerifiedFailure(input) {
+      if (
+        !safeRule(input.rule) ||
+        !safeKeyPart(input.route, 160) ||
+        !safeKeyPart(input.identity, 4096)
+      ) {
+        throw new Error("Invalid authentication abuse policy");
+      }
+      const penalty = await evaluateCounter(
+        "identity",
+        input.identity,
+        input,
+        "penalize",
+      );
+      if (
+        penalty.outcome !== "block" ||
+        penalty.retryAfter < 1 ||
+        penalty.retryAfter > 30
+      ) {
+        throw new Error("Authentication abuse store unavailable");
+      }
     },
   };
 }

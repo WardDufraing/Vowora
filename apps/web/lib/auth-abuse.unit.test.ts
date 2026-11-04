@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  authAbuseCounterScript,
   createUpstashAuthAbuseProtection,
   trustedVercelClientAddress,
 } from "./auth-abuse";
@@ -37,6 +36,7 @@ describe("managed authentication abuse protection", () => {
     });
     await expect(protection.evaluate(input)).resolves.toEqual({
       outcome: "allow",
+      challengeVerified: false,
     });
     const body = String(request.mock.calls[0]?.[1]?.body);
     expect(body).toContain("vowora:auth:v1:");
@@ -73,7 +73,7 @@ describe("managed authentication abuse protection", () => {
     });
     await expect(
       protection.evaluate({ ...input, challengeToken: "synthetic-token" }),
-    ).resolves.toEqual({ outcome: "allow" });
+    ).resolves.toEqual({ outcome: "allow", challengeVerified: true });
     expect(request.mock.calls.at(-1)?.[0]).toBe(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     );
@@ -112,6 +112,7 @@ describe("managed authentication abuse protection", () => {
     const challenged = { ...input, challengeToken: "synthetic-token" };
     await expect(protection.evaluate(challenged)).resolves.toEqual({
       outcome: "allow",
+      challengeVerified: true,
     });
     await expect(protection.evaluate(challenged)).resolves.toEqual({
       outcome: "challenge",
@@ -124,12 +125,15 @@ describe("managed authentication abuse protection", () => {
   it("blocks progressively and preserves the bounded Retry-After", async () => {
     const request = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(redisResult("block", 240));
+      .mockResolvedValueOnce(redisResult("allow"))
+      .mockResolvedValueOnce(redisResult("block", 240));
     const protection = createUpstashAuthAbuseProtection({
       ...config,
       fetch: request,
     });
-    await expect(protection.evaluate(input)).resolves.toEqual({
+    await expect(
+      protection.evaluate({ ...input, clientAddress: "203.0.113.8" }),
+    ).resolves.toEqual({
       outcome: "block",
       retryAfter: 240,
     });
@@ -227,27 +231,45 @@ describe("managed authentication abuse protection", () => {
     expect(request).toHaveBeenCalledTimes(1);
     await expect(protection.evaluate(challenged)).resolves.toEqual({
       outcome: "allow",
+      challengeVerified: true,
     });
     expect(String(request.mock.calls.at(-1)?.[0])).toBe(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     );
   });
 
-  it("keeps the identity delay capped, expiring, and short of a hard lockout", () => {
-    expect(authAbuseCounterScript).toContain("local identity_delay_cap = 30");
-    expect(authAbuseCounterScript).toContain(
-      "retry_after = math.min(identity_delay_cap, 2 ^ (strikes - 1))",
-    );
-    expect(authAbuseCounterScript).toContain(
-      "if remaining > identity_delay_cap then",
-    );
-    expect(authAbuseCounterScript).toContain("math.max(86400, retry_after)");
-    expect(authAbuseCounterScript).toContain(
-      "math.min(900, window * (2 ^ (strikes - 1)))",
-    );
-    expect(authAbuseCounterScript).not.toMatch(
-      /if dimension == 'identity' then\s+blocked_until = 0\s+strikes = 0/,
-    );
+  it("does not arm a delay for unsolved challenges and arms only a verified failure", async () => {
+    const modes: string[] = [];
+    const request = vi.fn<typeof fetch>(async (url, init) => {
+      if (String(url).includes("siteverify")) {
+        return Response.json({
+          success: true,
+          hostname: config.expectedHostname,
+          action: "vowora-auth",
+        });
+      }
+      const command = JSON.parse(String(init?.body)) as string[];
+      const mode = command[7] ?? "observe";
+      modes.push(mode);
+      if (mode === "penalize") return redisResult("block", 1);
+      return redisResult("challenge");
+    });
+    const protection = createUpstashAuthAbuseProtection({
+      ...config,
+      fetch: request,
+    });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(protection.evaluate(input)).resolves.toEqual({
+        outcome: "challenge",
+      });
+    }
+    await expect(
+      protection.evaluate({ ...input, challengeToken: "synthetic-token" }),
+    ).resolves.toEqual({ outcome: "allow", challengeVerified: true });
+    expect(modes.every((mode) => mode === "observe")).toBe(true);
+    await protection.recordVerifiedFailure(input);
+    expect(modes.at(-1)).toBe("penalize");
+    expect(modes.filter((mode) => mode === "penalize")).toHaveLength(1);
   });
 
   it("rejects non-HTTPS Redis endpoints and unknown key material", async () => {

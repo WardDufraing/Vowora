@@ -118,6 +118,7 @@ describe("Better Auth PostgreSQL integration", () => {
             let abuseDecision: AuthAbuseDecision = { outcome: "allow" };
             let abuseFailure = false;
             let abuseEvaluations = 0;
+            let verifiedFailures = 0;
             let lastClientAddress: string | undefined;
             const auth = createVoworaAuth({
               baseURL,
@@ -131,6 +132,9 @@ describe("Better Auth PostgreSQL integration", () => {
                   if (abuseFailure)
                     throw new Error("synthetic provider failure");
                   return abuseDecision;
+                },
+                async recordVerifiedFailure() {
+                  verifiedFailures += 1;
                 },
               },
               scheduleBackgroundTask: (task) => scheduledTasks.push(task),
@@ -420,6 +424,40 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(() =>
               problemDetailsSchema.parse(wrongPasswordBody),
             ).not.toThrow();
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const penaltiesBefore = verifiedFailures;
+            const penalizedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(penalizedGuess.status).toBe(401);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            const rightPassword = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
+            );
+            expect(rightPassword.status).toBe(403);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "challenge" };
+            const unsolvedGuess = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", {
+                ...signInBody(validCredentials),
+                password: "wrong-password-value",
+              }),
+              baseURL,
+            );
+            expect(unsolvedGuess.status).toBe(403);
+            expect((await unsolvedGuess.json()).code).toBe(
+              "AUTHENTICATION_CHALLENGE_REQUIRED",
+            );
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
 
             const verificationUrl = deliveries[0]?.verificationUrl;
             expect(verificationUrl).toBeDefined();
@@ -430,10 +468,15 @@ describe("Better Auth PostgreSQL integration", () => {
             expect(verify.headers.get("location")).toBe(`${baseURL}/account`);
             expect(verify.headers.get("set-cookie")).toBeNull();
 
-            const verifiedSignIn = await auth.handler(
-              post("/sign-in/email", validCredentials),
+            abuseDecision = { outcome: "allow", challengeVerified: true };
+            const verifiedSignIn = await handleAuthRequest(
+              auth,
+              post("/sign-in/email", signInBody(validCredentials)),
+              baseURL,
             );
             expect(verifiedSignIn.status).toBe(200);
+            expect(verifiedFailures).toBe(penaltiesBefore + 1);
+            abuseDecision = { outcome: "allow" };
             const cookie = verifiedSignIn.headers.get("set-cookie");
             expect(cookie).toContain("__Secure-vowora.session_token=");
             expect(cookie).toContain("HttpOnly");

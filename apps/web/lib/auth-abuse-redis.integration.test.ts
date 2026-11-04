@@ -90,6 +90,7 @@ async function evaluate(
   dimension: "identity" | "network",
   windowSeconds = 60,
   maximumAttempts = 5,
+  mode = "",
 ) {
   const result = await redisCommand([
     "EVAL",
@@ -99,6 +100,7 @@ async function evaluate(
     String(windowSeconds),
     String(maximumAttempts),
     dimension,
+    ...(mode ? [mode] : []),
   ]);
   if (!Array.isArray(result)) throw new Error("Unexpected Redis test result");
   return { outcome: String(result[0]), retryAfter: Number(result[1]) };
@@ -119,100 +121,24 @@ async function hashNumber(key: string, field: string): Promise<number> {
 }
 
 redisDescribe("authentication abuse Lua policy", () => {
-  it("grows a capped identity delay and returns to a solvable challenge", async () => {
-    const curveKey = `vowora:test:identity:${randomUUID()}`;
-    const expiryKey = `vowora:test:identity:${randomUUID()}`;
-    const corruptKey = `vowora:test:identity:${randomUUID()}`;
+  it("keeps unsolved identity traffic at a challenge and arms a capped delay only on penalize", async () => {
+    const key = `vowora:test:identity:${randomUUID()}`;
     const concurrentKey = `vowora:test:identity:${randomUUID()}`;
-    const persistKey = `vowora:test:identity:${randomUUID()}`;
     try {
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        expect(await evaluate(curveKey, "identity")).toEqual({
-          outcome: "allow",
-          retryAfter: 0,
-        });
+      const unsolved = [];
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        unsolved.push(await evaluate(key, "identity"));
       }
-      const delays: number[] = [];
-      for (let step = 0; step < 8; step += 1) {
-        const armed = await evaluate(curveKey, "identity");
-        expect(armed.outcome).toBe("challenge");
-        expect(armed.retryAfter).toBeGreaterThan(0);
-        expect(armed.retryAfter).toBeLessThanOrEqual(30);
-        delays.push(armed.retryAfter);
-        const now = await redisTime();
-        await redisCommand([
-          "HSET",
-          curveKey,
-          "blocked_until",
-          String(now + 30),
-        ]);
-        const held = await evaluate(curveKey, "identity");
-        const heldAgain = await evaluate(curveKey, "identity");
-        expect(held.outcome).toBe("block");
-        expect(held.retryAfter).toBeGreaterThan(0);
-        expect(held.retryAfter).toBeLessThanOrEqual(30);
-        expect(heldAgain.outcome).toBe("block");
-        expect(heldAgain.retryAfter).toBeLessThanOrEqual(held.retryAfter);
-        expect(await hashNumber(curveKey, "strikes")).toBe(
-          Math.min(6, step + 1),
-        );
-        await redisCommand(["HSET", curveKey, "blocked_until", "0"]);
-      }
-      expect(delays).toEqual([1, 2, 4, 8, 16, 30, 30, 30]);
-      expect(await hashNumber(curveKey, "count")).toBe(5);
-
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        expect(await evaluate(expiryKey, "identity")).toMatchObject({
-          outcome: "allow",
-        });
-      }
-      const armed = await evaluate(expiryKey, "identity");
-      expect(armed).toEqual({ outcome: "challenge", retryAfter: 1 });
-      const blockedUntil = await hashNumber(expiryKey, "blocked_until");
-      expect(blockedUntil - (await redisTime())).toBeLessThanOrEqual(1);
-      const held = await evaluate(expiryKey, "identity");
-      if (held.outcome === "block") {
-        expect(held.retryAfter).toBeGreaterThan(0);
-        expect(held.retryAfter).toBeLessThanOrEqual(30);
-        const deadline = Date.now() + 3_000;
-        while ((await redisTime()) <= blockedUntil) {
-          if (Date.now() > deadline) {
-            throw new Error("Identity delay did not expire");
-          }
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-        const released = await evaluate(expiryKey, "identity");
-        expect(released.outcome).toBe("challenge");
-        expect(released.retryAfter).toBeLessThanOrEqual(30);
-      } else {
-        expect(held).toMatchObject({ outcome: "challenge" });
-        expect(held.retryAfter).toBeLessThanOrEqual(30);
-      }
-      const ttl = await redisCommand(["TTL", expiryKey]);
-      expect(Number(ttl)).toBeGreaterThan(86_390);
-      expect(Number(ttl)).toBeLessThanOrEqual(86_400);
-
-      const corruptNow = await redisTime();
-      await redisCommand([
-        "HSET",
-        corruptKey,
-        "blocked_until",
-        String(corruptNow + 10_000),
-        "count",
-        "5",
-        "strikes",
-        "6",
-        "window_started",
-        String(corruptNow),
-        "last_seen",
-        String(corruptNow),
-      ]);
-      const repaired = await evaluate(corruptKey, "identity");
-      expect(repaired.outcome).not.toBe("block");
-      expect(repaired.retryAfter).toBeLessThanOrEqual(30);
-      expect(await hashNumber(corruptKey, "blocked_until")).toBeLessThanOrEqual(
-        (await redisTime()) + 30,
-      );
+      expect(
+        unsolved.filter(({ outcome }) => outcome === "allow"),
+      ).toHaveLength(5);
+      expect(
+        unsolved.filter(({ outcome }) => outcome === "challenge"),
+      ).toHaveLength(25);
+      expect(unsolved.some(({ outcome }) => outcome === "block")).toBe(false);
+      expect(unsolved.every(({ retryAfter }) => retryAfter === 0)).toBe(true);
+      expect(await hashNumber(key, "strikes")).toBe(0);
+      expect(await hashNumber(key, "blocked_until")).toBe(0);
 
       const concurrent = await Promise.all(
         Array.from({ length: 20 }, () => evaluate(concurrentKey, "identity")),
@@ -220,50 +146,59 @@ redisDescribe("authentication abuse Lua policy", () => {
       expect(
         concurrent.filter(({ outcome }) => outcome === "allow"),
       ).toHaveLength(5);
-      expect(concurrent.some(({ outcome }) => outcome === "challenge")).toBe(
-        true,
-      );
-      expect(concurrent.every(({ retryAfter }) => retryAfter <= 30)).toBe(true);
-      expect(
-        concurrent
-          .filter(({ outcome }) => outcome === "block")
-          .every(({ retryAfter }) => retryAfter >= 1 && retryAfter <= 30),
-      ).toBe(true);
+      expect(concurrent.some(({ outcome }) => outcome === "block")).toBe(false);
+      expect(concurrent.every(({ retryAfter }) => retryAfter === 0)).toBe(true);
 
-      expect(await evaluate(persistKey, "identity", 30, 1)).toMatchObject({
-        outcome: "allow",
-      });
-      expect(await evaluate(persistKey, "identity", 30, 1)).toEqual({
+      const delays: number[] = [];
+      for (let step = 0; step < 8; step += 1) {
+        const armed = await evaluate(key, "identity", 60, 5, "penalize");
+        expect(armed.outcome).toBe("block");
+        expect(Number.isInteger(armed.retryAfter)).toBe(true);
+        expect(armed.retryAfter).toBeGreaterThan(0);
+        expect(armed.retryAfter).toBeLessThanOrEqual(30);
+        delays.push(armed.retryAfter);
+        const strikes = await hashNumber(key, "strikes");
+        const now = await redisTime();
+        await redisCommand(["HSET", key, "blocked_until", String(now + 30)]);
+        const deadline = await hashNumber(key, "blocked_until");
+        const repeat = await evaluate(key, "identity", 60, 5, "penalize");
+        const observe = await evaluate(key, "identity");
+        expect(repeat.outcome).toBe("block");
+        expect(observe.outcome).toBe("block");
+        expect(repeat.retryAfter).toBeLessThanOrEqual(30);
+        expect(observe.retryAfter).toBeLessThanOrEqual(30);
+        expect(await hashNumber(key, "blocked_until")).toBe(deadline);
+        expect(await hashNumber(key, "strikes")).toBe(strikes);
+        expect(strikes).toBe(Math.min(6, step + 1));
+        await redisCommand(["HSET", key, "blocked_until", "0"]);
+      }
+      expect(delays).toEqual([1, 2, 4, 8, 16, 30, 30, 30]);
+
+      const expiredAt = await redisTime();
+      await redisCommand(["HSET", key, "blocked_until", String(expiredAt - 1)]);
+      expect(await evaluate(key, "identity")).toEqual({
         outcome: "challenge",
-        retryAfter: 1,
+        retryAfter: 0,
       });
-      const persistedAt = await redisTime();
+      expect(await hashNumber(key, "blocked_until")).toBe(0);
+      expect(await hashNumber(key, "strikes")).toBe(6);
+
+      const corruptNow = await redisTime();
       await redisCommand([
         "HSET",
-        persistKey,
+        key,
         "blocked_until",
-        "0",
-        "window_started",
-        String(persistedAt - 30),
-        "last_seen",
-        String(persistedAt - 1),
+        String(corruptNow + 10_000),
       ]);
-      expect(await evaluate(persistKey, "identity", 30, 1)).toMatchObject({
-        outcome: "allow",
-      });
-      expect(await evaluate(persistKey, "identity", 30, 1)).toEqual({
-        outcome: "challenge",
-        retryAfter: 2,
-      });
+      const repaired = await evaluate(key, "identity");
+      expect(repaired).toEqual({ outcome: "challenge", retryAfter: 0 });
+      expect(await hashNumber(key, "blocked_until")).toBe(0);
+
+      const ttl = await redisCommand(["TTL", key]);
+      expect(Number(ttl)).toBeGreaterThan(86_390);
+      expect(Number(ttl)).toBeLessThanOrEqual(86_400);
     } finally {
-      await redisCommand([
-        "DEL",
-        curveKey,
-        expiryKey,
-        corruptKey,
-        concurrentKey,
-        persistKey,
-      ]);
+      await redisCommand(["DEL", key, concurrentKey]);
     }
   });
 
