@@ -38,8 +38,8 @@
 | 04-a | Permission vocabulary and role model | 03-c | Done | [Brief](steps/04-a.md) |
 | 04-b | Server authorization enforcement | 04-a | Done | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Done | [Brief](steps/04-c.md) |
-| 05-a | Semantic tokens and themes | 04-c | In review | [Brief](steps/05-a.md) |
-| 05-b | Responsive app shell and navigation | 05-a | Not started | [Brief](steps/05-b.md) |
+| 05-a | Semantic tokens and themes | 04-c | Done | [Brief](steps/05-a.md) |
+| 05-b | Responsive app shell and navigation | 05-a | In review | [Brief](steps/05-b.md) |
 | 05-c | Shared forms, tables and localization | 05-b | Not started | [Brief](steps/05-c.md) |
 | 06-a | Wedding creation and workspace settings | 05-c | Not started | [Brief](steps/06-a.md) |
 | 06-b | Partner invitations and claim lifecycle | 06-a | Not started | [Brief](steps/06-b.md) |
@@ -96,6 +96,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-10-30 — Owner merged 05-a [PR #35](https://github.com/WardDufraing/Vowora/pull/35) as `f625bc5`; fresh implementer `/root/implement_05_b` started the responsive permission-aware shell from that integrated main, with continuation `/root/continue_05_b` preserving the same branch after environment recovery. Exact active wedding memberships drive desktop/sidebar and mobile/More navigation, workspace choices and direct-link denial; the synthetic `/app-shell` review fixture remains non-production until 06/07 authoritative loaders exist. Format, lint, types, 217 unit/component tests, four tooling tests, 13 boundary tests, both preview builds, the production web build, 16 web browser tests and 26 marketing browser tests pass. [Implementation evidence](implementation/05-b-responsive-app-shell.md); independent review and PR evidence remain required. No schema, migration, persistent database, external configuration or deployment changed.
 
 - 2026-10-29 — Owner merged 04-b [PR #33](https://github.com/WardDufraing/Vowora/pull/33) as `ab54805`. Fresh implementer `/root/implement_04_c` started 04-c from that integrated main with no competing open PR. The implementation adds exact-tenant permission-scope change audit/invalidation capture, optimistic version-change transaction regressions, and the complete default role/resource/action denial matrix without introducing the future 06/07 membership schema. Scope and executed evidence are recorded in [the 04-c handoff](implementation/04-c-permission-change-audit.md); independent review remains required before owner merge.
 
