@@ -327,13 +327,45 @@ test("TypeScript 7 compiles while eslint still loads the TypeScript 6 API", asyn
     assert.equal(deps["@typescript/native"], nativeAlias, file);
     assert.equal(deps.typescript, apiAlias, file);
   }
-  for (const file of [
+  const rootManifest = JSON.parse(
+    await readFile(new URL("package.json", root), "utf8"),
+  );
+  const engineCeiling = Math.max(
+    ...rootManifest.engines.node.split("||").map((range) => {
+      const match = range.match(/(\d+)\.\d+\.\d+/);
+      assert.ok(match, rootManifest.engines.node);
+      return Number(match[1]);
+    }),
+  );
+  const nodeTypeManifests = [
     "package.json",
     "apps/web/package.json",
     "apps/marketing/package.json",
-  ]) {
+    "packages/domain/package.json",
+    "packages/contracts/package.json",
+    "packages/database/package.json",
+    "packages/config/package.json",
+  ];
+  const mustDeclareNodeTypes = new Set([
+    "package.json",
+    "apps/web/package.json",
+    "apps/marketing/package.json",
+  ]);
+  for (const file of nodeTypeManifests) {
     const manifest = JSON.parse(await readFile(new URL(file, root), "utf8"));
-    assert.equal(manifest.devDependencies["@types/node"], "26.6.6", file);
+    const declared = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    }["@types/node"];
+    if (declared === undefined) {
+      assert.equal(mustDeclareNodeTypes.has(file), false, file);
+      continue;
+    }
+    assert.equal(
+      Number(String(declared).split(".")[0]),
+      engineCeiling,
+      `${file} @types/node must track the engines Node major ceiling`,
+    );
   }
   const configManifest = JSON.parse(
     await readFile(new URL("packages/config/package.json", root), "utf8"),
