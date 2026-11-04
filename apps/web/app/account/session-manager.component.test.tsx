@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -91,11 +91,16 @@ describe("session manager", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "You could not be signed out. Try again.",
     );
-    releaseList(Response.json({ data: [] }));
-    await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "You could not be signed out. Try again.",
-      ),
+    await act(async () => {
+      releaseList(Response.json({ data: [] }));
+      await pendingList;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "You could not be signed out. Try again.",
+    );
+    expect(screen.getByRole("status")).not.toHaveTextContent(
+      "No active sessions.",
     );
   });
 
