@@ -19,7 +19,11 @@ const actorId = "019a1f5e-70a0-7000-8000-000000000001";
 const weddingId = "019a1f5e-70a0-7000-8000-000000000002";
 const otherWeddingId = "019a1f5e-70a0-7000-8000-000000000003";
 
-function createReviewModel(role: "partner" | "coordinator", requested: string) {
+function createReviewModel(
+  role: "partner" | "coordinator",
+  requested: string,
+  singleWorkspace: boolean,
+) {
   try {
     return resolveWeddingShellNavigation({
       actorId,
@@ -62,7 +66,7 @@ function createReviewModel(role: "partner" | "coordinator", requested: string) {
             permissionOverrides: [],
           },
         },
-      ],
+      ].slice(0, singleWorkspace ? 1 : 2),
       requestedPath: `/weddings/${weddingId}/${requested}`,
       evaluatedAt: new Date("2026-10-30T10:00:00.000Z"),
     });
@@ -85,7 +89,7 @@ export default async function AppShellReviewPage({
     weddingNavigationDestinationIds.includes(query.destination as never)
       ? query.destination
       : "dashboard";
-  const model = createReviewModel(role, requested);
+  const model = createReviewModel(role, requested, query.single === "true");
   return (
     <AppShell model={model}>
       <p className="eyebrow">Responsive shell review · synthetic content</p>

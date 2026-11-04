@@ -12,6 +12,7 @@ import {
   FileText,
   Gauge,
   HeartHandshake,
+  Heart,
   Lightbulb,
   MoreHorizontal,
   PiggyBank,
@@ -28,6 +29,8 @@ import type {
   WeddingNavigationGroup,
   WeddingShellNavigation,
 } from "../lib/workspace-navigation";
+import { selectMobilePrimaryDestinations } from "../lib/workspace-navigation";
+import { ThemePreferenceControl } from "./theme-preference";
 
 const icons: Readonly<Record<WeddingNavigationDestinationId, LucideIcon>> = {
   dashboard: Gauge,
@@ -78,9 +81,19 @@ function WorkspaceContext({
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const [query, setQuery] = useState("");
+  const compactContext = (
+    <span
+      aria-hidden="true"
+      className="workspace-context__compact"
+      title={`Current workspace: ${model.weddingName}`}
+    >
+      <Heart aria-hidden="true" size={20} strokeWidth={1.8} />
+    </span>
+  );
   if (model.workspaceOptions.length === 1) {
     return (
       <div className="workspace-context" aria-label="Current wedding workspace">
+        {compactContext}
         <strong>{model.weddingName}</strong>
         <span>
           {model.weddingDateLabel} · {model.roleLabel}
@@ -94,6 +107,7 @@ function WorkspaceContext({
   return (
     <details className="workspace-switcher" ref={detailsRef}>
       <summary>
+        {compactContext}
         <span className="screen-reader-only">
           Switch wedding workspace. Current:
         </span>
@@ -172,16 +186,23 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
     { id: "reports", label: "Reports" },
   ];
   const settings = remaining.find(({ id }) => id === "settings");
+  const activeInMore = remaining.some(
+    ({ id }) => id === model.activeDestination,
+  );
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <button
-          aria-label="More workspace navigation"
+          aria-current={activeInMore ? "page" : undefined}
           className="mobile-more-trigger"
           type="button"
         >
           <MoreHorizontal aria-hidden="true" size={22} />
           <span>More</span>
+          {activeInMore ? (
+            <span className="mobile-current-label">Current</span>
+          ) : null}
+          <span className="screen-reader-only">workspace navigation</span>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -236,6 +257,10 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
               </p>
             ) : null}
           </nav>
+          <section aria-labelledby="more-appearance">
+            <h2 id="more-appearance">Appearance</h2>
+            <ThemePreferenceControl id="app-theme-mobile" />
+          </section>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -250,9 +275,7 @@ export function AppShell({
   readonly children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const primaryMobile = model.destinations.filter(
-    ({ mobile }) => mobile === "primary",
-  );
+  const primaryMobile = selectMobilePrimaryDestinations(model.destinations);
   const settings = model.destinations.find(({ id }) => id === "settings");
   return (
     <div className="app-shell" data-sidebar-collapsed={collapsed || undefined}>

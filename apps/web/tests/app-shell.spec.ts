@@ -50,14 +50,21 @@ test.describe("responsive permission-aware application shell", () => {
     await expect(navigation.getByRole("link")).toHaveText([
       "Dashboard",
       "Timeline",
-      "Budget",
       "Guests",
+      "Budget",
     ]);
-    const more = navigation.getByRole("button", {
-      name: "More workspace navigation",
-    });
-    await more.click();
+    await page.goto("/app-shell?destination=vendors");
+    const currentMore = page
+      .getByRole("navigation", { name: "Primary wedding navigation" })
+      .getByRole("button", { name: /More.*workspace navigation/ });
+    await expect(currentMore).toHaveAttribute("aria-current", "page");
+    await expect(currentMore).toContainText("Current");
+    await currentMore.click();
     const dialog = page.getByRole("dialog", { name: "More" });
+    await expect(dialog.getByRole("link", { name: "Vendors" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     await expect(
       dialog.getByRole("heading", { name: "Planning" }),
     ).toBeVisible();
@@ -65,8 +72,11 @@ test.describe("responsive permission-aware application shell", () => {
     await expect(
       dialog.getByRole("heading", { name: "Reports" }),
     ).toBeVisible();
+    const appearance = dialog.getByRole("combobox", { name: "Appearance" });
+    await appearance.selectOption("dark");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.keyboard.press("Escape");
-    await expect(more).toBeFocused();
+    await expect(currentMore).toBeFocused();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -127,6 +137,24 @@ test.describe("responsive permission-aware application shell", () => {
     await switcher.getByRole("button", { name: /Jordan & Alex/ }).click();
     await expect(switcher).not.toHaveAttribute("open", "");
     expect(page.url()).toBe(before);
+  });
+
+  test("keeps visible wedding identity in collapsed single and multi-workspace rails", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const search of ["", "?single=true"]) {
+      await page.goto(`/app-shell${search}`);
+      await page.getByRole("button", { name: "Collapse sidebar" }).click();
+      const compact = page
+        .getByRole("complementary", { name: "Wedding workspace sidebar" })
+        .getByTitle("Current workspace: Jordan & Alex");
+      await expect(compact).toBeVisible();
+      await expect(compact).toHaveAttribute(
+        "title",
+        "Current workspace: Jordan & Alex",
+      );
+    }
   });
 
   test("reflows with long labels, large text, safe targets and both themes", async ({

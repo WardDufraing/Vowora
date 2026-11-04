@@ -8,7 +8,7 @@ import {
   type ThemePreference,
 } from "../lib/theme-preference";
 
-export function ThemePreferenceControl() {
+export function ThemePreferenceControl({ id = "app-theme" }: { id?: string }) {
   const preference = useSyncExternalStore(
     (notify) => {
       window.addEventListener("storage", notify);
@@ -24,9 +24,9 @@ export function ThemePreferenceControl() {
 
   return (
     <div className="theme-preference">
-      <label htmlFor="app-theme">Appearance</label>
+      <label htmlFor={id}>Appearance</label>
       <select
-        id="app-theme"
+        id={id}
         value={preference}
         onChange={(event) => {
           const next = event.target.value as ThemePreference;

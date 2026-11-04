@@ -25,6 +25,13 @@ export const weddingNavigationDestinationIds = [
 export type WeddingNavigationDestinationId =
   (typeof weddingNavigationDestinationIds)[number];
 
+export const mobilePrimaryDestinationIds = [
+  "dashboard",
+  "timeline",
+  "guests",
+  "budget",
+] as const satisfies readonly WeddingNavigationDestinationId[];
+
 export type WeddingNavigationGroup = "planning" | "people" | "reports";
 
 export interface WeddingNavigationDestination {
@@ -52,6 +59,17 @@ export interface WeddingShellNavigation {
   readonly weddingDateLabel: string;
   readonly roleLabel: string;
   readonly workspaceOptions: readonly WeddingWorkspaceOption[];
+}
+
+export function selectMobilePrimaryDestinations(
+  destinations: readonly WeddingNavigationDestination[],
+): readonly WeddingNavigationDestination[] {
+  return mobilePrimaryDestinationIds.flatMap((id) => {
+    const destination = destinations.find(
+      (candidate) => candidate.id === id && candidate.mobile === "primary",
+    );
+    return destination ? [destination] : [];
+  });
 }
 
 export class WeddingNavigationAccessError extends Error {
@@ -296,7 +314,11 @@ export function resolveWeddingShellNavigation(input: {
           weddingId: workspace.weddingId,
           name: workspace.name,
           dateLabel: workspace.weddingDate ?? "Date not set",
-          roleLabel: roleLabel(workspace.membership.role),
+          roleLabel: roleLabel(
+            workspace.weddingId === input.weddingId
+              ? membership.role
+              : workspace.membership.role,
+          ),
           href: `/weddings/${workspace.weddingId}/dashboard`,
           current: workspace.weddingId === input.weddingId,
         }),

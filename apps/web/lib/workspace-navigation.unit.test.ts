@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertWeddingShellDestination,
   resolveWeddingShellNavigation,
+  selectMobilePrimaryDestinations,
   WeddingNavigationAccessError,
 } from "./workspace-navigation";
 
@@ -108,10 +109,8 @@ describe("authoritative wedding shell navigation", () => {
       "inspiration",
     ]);
     expect(
-      helper.destinations
-        .filter(({ mobile }) => mobile === "primary")
-        .map(({ id }) => id),
-    ).toEqual(["dashboard", "timeline", "budget", "guests"]);
+      selectMobilePrimaryDestinations(helper.destinations).map(({ id }) => id),
+    ).toEqual(["dashboard", "timeline", "guests", "budget"]);
     expect(helper.destinations.some(({ id }) => id === "reports")).toBe(false);
     expect(helper.destinations.some(({ id }) => id === "settings")).toBe(false);
   });
@@ -231,6 +230,37 @@ describe("authoritative wedding shell navigation", () => {
     expect(ordered.workspaceOptions.map(({ weddingId }) => weddingId)).toEqual([
       otherWeddingId,
       weddingId,
+    ]);
+  });
+
+  it("uses the authorized current membership for the displayed current role", () => {
+    const current = resolveWeddingShellNavigation({
+      actorId,
+      weddingId,
+      membership: membership("coordinator"),
+      workspaces: [
+        {
+          ...workspaces[0],
+          membership: membership("helper", [
+            {
+              area: "budget",
+              action: "view",
+              effect: "allow",
+              scope: "explicitly_shared",
+            },
+          ]),
+        },
+      ],
+      evaluatedAt: now,
+    });
+
+    expect(current.roleLabel).toBe("Coordinator");
+    expect(current.workspaceOptions[0]?.roleLabel).toBe("Coordinator");
+    expect(current.destinations.map(({ id }) => id)).toEqual([
+      "dashboard",
+      "timeline",
+      "schedule",
+      "contacts",
     ]);
   });
 });

@@ -4,12 +4,17 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { WeddingShellNavigation } from "../lib/workspace-navigation";
+import type {
+  WeddingNavigationDestinationId,
+  WeddingShellNavigation,
+} from "../lib/workspace-navigation";
 import { AppShell } from "./app-shell";
 
 const weddingId = "019a1f5e-70a0-7000-8000-000000000002";
 
-function model(): WeddingShellNavigation {
+function model(
+  activeDestination: WeddingNavigationDestinationId = "timeline",
+): WeddingShellNavigation {
   const destinations = [
     { id: "dashboard", label: "Dashboard", mobile: "primary" },
     { id: "timeline", label: "Timeline", mobile: "primary" },
@@ -34,7 +39,7 @@ function model(): WeddingShellNavigation {
     { id: "settings", label: "Workspace settings", mobile: "more" },
   ] as const;
   return {
-    activeDestination: "timeline",
+    activeDestination,
     weddingId,
     weddingName: "Jordan & Alex",
     weddingDateLabel: "2027-06-12",
@@ -122,13 +127,43 @@ describe("responsive application shell", () => {
     expect(
       screen.getAllByRole("link", { name: "Timeline" }).length,
     ).toBeGreaterThan(0);
+    expect(
+      within(
+        screen.getByRole("complementary", {
+          name: "Wedding workspace sidebar",
+        }),
+      ).getByTitle("Current workspace: Jordan & Alex"),
+    ).toHaveClass("workspace-context__compact");
+  });
+
+  it("keeps compact workspace identity for a single-workspace collapsed rail", async () => {
+    const user = userEvent.setup();
+    const singleWorkspace = model();
+    render(
+      <AppShell
+        model={{
+          ...singleWorkspace,
+          workspaceOptions: [singleWorkspace.workspaceOptions[0]!],
+        }}
+      >
+        Content
+      </AppShell>,
+    );
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    expect(
+      within(
+        screen.getByRole("complementary", {
+          name: "Wedding workspace sidebar",
+        }),
+      ).getByTitle("Current workspace: Jordan & Alex"),
+    ).toHaveClass("workspace-context__compact");
   });
 
   it("groups More destinations, hides empty groups and restores focus on Escape", async () => {
     const user = userEvent.setup();
     render(<AppShell model={model()}>Content</AppShell>);
     const trigger = screen.getByRole("button", {
-      name: "More workspace navigation",
+      name: /More.*workspace navigation/,
     });
     await user.click(trigger);
     const dialog = screen.getByRole("dialog", { name: "More" });
@@ -146,5 +181,24 @@ describe("responsive application shell", () => {
     ).toBeVisible();
     await user.keyboard("{Escape}");
     expect(trigger).toHaveFocus();
+  });
+
+  it("marks More current and exposes the synchronized mobile appearance control", async () => {
+    const user = userEvent.setup();
+    render(<AppShell model={model("decisions")}>Content</AppShell>);
+    const trigger = screen.getByRole("button", {
+      name: /More.*workspace navigation/,
+    });
+    expect(trigger).toHaveAttribute("aria-current", "page");
+    expect(trigger).toHaveTextContent("Current");
+    await user.click(trigger);
+    expect(
+      within(screen.getByRole("dialog", { name: "More" })).getByRole("link", {
+        name: "Decisions",
+      }),
+    ).toHaveAttribute("aria-current", "page");
+    const appearance = screen.getByRole("combobox", { name: "Appearance" });
+    await user.selectOptions(appearance, "dark");
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
   });
 });

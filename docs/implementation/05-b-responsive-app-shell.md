@@ -61,10 +61,10 @@ available only outside production and returns not found in production, like the
 - [Mobile shell](assets/05-b/app-shell-mobile.png)
 
 The current-main-integrated implementation was verified with formatting,
-workspace lint and type checking, 223 unit/component tests, 22 tooling tests,
+workspace lint and type checking, 226 unit/component tests, 22 tooling tests,
 16 package-boundary tests, uncached preview builds for both applications, a
-production web build, 16 application Chromium tests and 26 marketing Chromium
-tests. The 25 focused
+production web build, 17 application Chromium tests and 26 marketing Chromium
+tests. The 28 focused
 navigation and shell tests cover exact membership status, tenant isolation,
 permission-filtered order, workspace filtering/search, direct-link denial,
 desktop/mobile keyboard behavior and semantic output. Browser coverage adds
@@ -78,5 +78,15 @@ or deployment change. The shell reuses the repository's pinned
 `lucide-react@1.63.0` version for its approved icons.
 
 Implementation and current-main integration are in
-[PR #54](https://github.com/WardDufraing/Vowora/pull/54). Independent review is
-pending, so the pull request remains draft.
+[PR #54](https://github.com/WardDufraing/Vowora/pull/54). Initial fresh reviewer
+`/root/continue_05_b/review_05_b` found four material medium gaps: the mobile
+primary order followed desktop order, More did not retain an active indication,
+the collapsed rail hid wedding identity, and duplicate current-membership facts
+could display a role different from the authorized membership. It also found
+that mobile users could not reach the appearance control. The correction adds a
+separate approved mobile order, a visible and semantic More current state, a
+compact wedding icon/title for single and multiple workspace rails, derives the
+current role from the authorized membership, and exposes the synchronized
+Light/Dark/System control in More with a distinct control id. Unit, component,
+browser and screenshot evidence covers each correction. Different fresh
+re-review is pending, so the pull request remains draft.
