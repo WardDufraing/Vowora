@@ -24,6 +24,7 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           EVENT_NAME: ${{ github.event_name }}
           ACTOR: ${{ github.actor }}
+          GITHUB_REF: ${{ github.ref }}
         shell: bash
         run: |
           set -euo pipefail
@@ -38,8 +39,46 @@ jobs:
               echo "Expected feat|fix|chore/<task-id>-<description> or chore/agent-workflow-<description>"
               exit 1
             fi
-            git fetch --no-tags origin main --depth=1
-            if git diff --name-only origin/main...HEAD | grep -E '^docs/product/(Wedding-Platform-Product-Specification|product-architecture|UI-DESIGN-SYSTEM)\.md$'; then
+            # checkout@v7 fetches the pull request merge commit at depth 1, so a
+            # depth-1 fetch of main has no merge base with HEAD. Putting that
+            # diff in an if-condition swallows the git error (set -e does not
+            # apply there) and the job passes without reading the diff.
+            # Unshallow the advertised pull ref, fetch the base branch, and
+            # fail closed on any git error.
+            if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+              if ! git fetch --no-tags --unshallow origin "$GITHUB_REF"; then
+                echo "git fetch --unshallow failed; frozen-source check failed closed"
+                exit 1
+              fi
+            fi
+            if ! git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"; then
+              echo "git fetch of ${BASE_REF} failed; frozen-source check failed closed"
+              exit 1
+            fi
+            if ! merge_base="$(git merge-base "origin/${BASE_REF}" HEAD)"; then
+              echo "No merge base between origin/${BASE_REF} and HEAD; frozen-source check failed closed"
+              exit 1
+            fi
+            if [[ -z "$merge_base" ]]; then
+              echo "Empty merge base between origin/${BASE_REF} and HEAD; frozen-source check failed closed"
+              exit 1
+            fi
+            if ! diff_status="$(git -c core.quotePath=false diff --name-status --find-renames "$merge_base" HEAD)"; then
+              echo "git diff failed; frozen-source check failed closed"
+              exit 1
+            fi
+            frozen_hit=0
+            while IFS=$'\t' read -r status path_a path_b || [[ -n "${status:-}" ]]; do
+              [[ -z "${status:-}" ]] && continue
+              for path in "$path_a" "${path_b:-}"; do
+                [[ -z "$path" ]] && continue
+                if [[ "$path" == docs/product/* ]]; then
+                  printf 'Frozen product source changed: %s\t%s\n' "$status" "$path"
+                  frozen_hit=1
+                fi
+              done
+            done <<< "$diff_status"
+            if [[ "$frozen_hit" -ne 0 ]]; then
               echo "Frozen product sources changed; separate controlled approval required"
               exit 1
             fi
