@@ -2,12 +2,11 @@
   "extends": "@vowora/config/next.json",
   "compilerOptions": {
     "incremental": false,
-    "baseUrl": ".",
     "paths": {
-      "@vowora/contracts": ["packages/contracts/src/index.ts"],
-      "@vowora/database": ["packages/database/src/index.ts"],
-      "@vowora/database/testing": ["packages/database/src/testing.ts"],
-      "@vowora/domain": ["packages/domain/src/index.ts"]
+      "@vowora/contracts": ["./packages/contracts/src/index.ts"],
+      "@vowora/database": ["./packages/database/src/index.ts"],
+      "@vowora/database/testing": ["./packages/database/src/testing.ts"],
+      "@vowora/domain": ["./packages/domain/src/index.ts"]
     }
   },
   "include": [
