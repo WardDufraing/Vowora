@@ -39,8 +39,8 @@
 | 04-b | Server authorization enforcement | 04-a | Done | [Brief](steps/04-b.md) |
 | 04-c | Permission changes, audit and regression suite | 04-b | Done | [Brief](steps/04-c.md) |
 | 05-a | Semantic tokens and themes | 04-c | Done | [Brief](steps/05-a.md) |
-| 05-b | Responsive app shell and navigation | 05-a | In review | [Brief](steps/05-b.md) |
-| 05-c | Shared forms, tables and localization | 05-b | Not started | [Brief](steps/05-c.md) |
+| 05-b | Responsive app shell and navigation | 05-a | Done | [Brief](steps/05-b.md) |
+| 05-c | Shared forms, tables and localization | 05-b | In review | [Brief](steps/05-c.md) |
 | 06-a | Wedding creation and workspace settings | 05-c | Not started | [Brief](steps/06-a.md) |
 | 06-b | Partner invitations and claim lifecycle | 06-a | Not started | [Brief](steps/06-b.md) |
 | 06-c | Workspace switching and deep links | 06-b | Not started | [Brief](steps/06-c.md) |
@@ -98,6 +98,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-11-05 — Task 05-c implements the shared product localization and interaction foundation after the owner merged 05-b [PR #54](https://github.com/WardDufraing/Vowora/pull/54) as `0f51a50`. Strict EN/NL/FR/DE catalogs, locale and IANA timezone parsing, date-only and instant contracts, accessible form feedback and confirmation, and responsive table/mobile records are demonstrated by a synthetic no-index `/shared-patterns` fixture that returns 404 in production. Formatting, workspace lint and types, 235 unit/component tests, 38 tooling/boundary tests, uncached preview and production web builds, an uncached preview marketing build, 26 web and 26 marketing Chromium tests pass. Production requests to all three review fixtures return 404. [PR #55](https://github.com/WardDufraing/Vowora/pull/55); [implementation evidence](implementation/05-c-shared-patterns.md). Independent review and owner merge remain; no schema, migration, persistent data, external configuration or deployment changed.
 
 - 2026-11-04 — Task 05-b resumed after environment recovery, preserving the implementation begun from owner-merged 05-a [PR #35](https://github.com/WardDufraing/Vowora/pull/35) at `f625bc5` and integrating current main `f405b59`. Exact active wedding memberships drive desktop/sidebar and mobile/More navigation, workspace choices and direct-link denial; the synthetic `/app-shell` review fixture remains non-production until 06/07 authoritative loaders exist. Initial fresh review found four material medium navigation/context issues and an unreachable mobile appearance control; all are corrected with separate approved mobile ordering, persistent More state, compact collapsed wedding identity, an authorized current-role source, and a synchronized mobile theme control. On integrated current main, format, lint, types, 226 unit/component tests, 22 tooling tests, 16 boundary tests, both uncached preview builds, a production web build, 17 web browser tests and 26 marketing browser tests pass; production-only preview fixtures return 404. Different fresh re-reviewer `/root/continue_05_b/rereview_05_b` passed the complete corrected diff at `371f270` with no blocking, high or material medium findings; all hosted checks pass at the reviewed commit. [PR #54](https://github.com/WardDufraing/Vowora/pull/54); [implementation evidence](implementation/05-b-responsive-app-shell.md). Owner merge is the remaining gate. No schema, migration, persistent database, external configuration or deployment changed.
 
