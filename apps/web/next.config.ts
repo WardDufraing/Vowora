@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 import { readApplicationEnvironment } from "./lib/env";
 
 readApplicationEnvironment();
 
 const config: NextConfig = { poweredByHeader: false };
-export default config;
+export default createNextIntlPlugin("./i18n/request.ts")(config);
