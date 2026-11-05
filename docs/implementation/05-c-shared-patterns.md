@@ -66,5 +66,7 @@ Rollback is a code and dependency-lock revert. The web app pins the same
 database grant, persistent-data, environment-variable, external-configuration
 or deployment change.
 
-Independent review and the pull-request link will be recorded after the review
-gate completes. Owner merge is required before the task is Done.
+Implementation is in
+[PR #55](https://github.com/WardDufraing/Vowora/pull/55). Independent review
+will be recorded after its gate completes. Owner merge is required before the
+task is Done.
