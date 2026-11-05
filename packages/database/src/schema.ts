@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -224,3 +225,119 @@ export const verification = pgTable(
     index("auth_verification_expires_idx").on(table.expiresAt),
   ],
 );
+
+/** Authoritative wedding workspace. Claim/invitation lifecycle state is owned
+ * by 06-b; creation mode only records which approved bootstrap path was used. */
+export const weddings = pgTable(
+  "weddings",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    name: text("name").notNull(),
+    weddingDate: date("wedding_date", { mode: "string" }),
+    timeZone: text("time_zone").notNull(),
+    creationMode: text("creation_mode").notNull(),
+    creatorActorId: uuid("creator_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    creationRequestId: uuid("creation_request_id").notNull(),
+    creationRequestFingerprint: text("creation_request_fingerprint").notNull(),
+    settingsVersion: integer("settings_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "weddings_name_length",
+      sql`char_length(btrim(${table.name})) BETWEEN 1 AND 120`,
+    ),
+    check(
+      "weddings_time_zone_length",
+      sql`char_length(${table.timeZone}) BETWEEN 1 AND 64`,
+    ),
+    check(
+      "weddings_creation_mode",
+      sql`${table.creationMode} IN ('couple', 'planner')`,
+    ),
+    check(
+      "weddings_creation_request_fingerprint",
+      sql`${table.creationRequestFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "weddings_settings_version_positive",
+      sql`${table.settingsVersion} > 0`,
+    ),
+    uniqueIndex("weddings_creator_request_unique_idx").on(
+      table.creatorActorId,
+      table.creationRequestId,
+    ),
+    index("weddings_creator_idx").on(table.creatorActorId),
+  ],
+);
+
+export const weddingMemberships = pgTable(
+  "wedding_memberships",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("active"),
+    accessExpiresAt: timestamp("access_expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    permissionOverrides: jsonb("permission_overrides").notNull().default([]),
+    permissionScopeVersion: integer("permission_scope_version")
+      .notNull()
+      .default(1),
+    lastOpenedAt: timestamp("last_opened_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_memberships_role",
+      sql`${table.role} IN ('partner', 'planner', 'coordinator', 'helper', 'read_only_guest')`,
+    ),
+    check(
+      "wedding_memberships_status",
+      sql`${table.status} IN ('active', 'revoked')`,
+    ),
+    check(
+      "wedding_memberships_scope_version_positive",
+      sql`${table.permissionScopeVersion} > 0`,
+    ),
+    check(
+      "wedding_memberships_partner_no_expiry",
+      sql`${table.role} <> 'partner' OR ${table.accessExpiresAt} IS NULL`,
+    ),
+    uniqueIndex("wedding_memberships_wedding_actor_unique_idx").on(
+      table.weddingId,
+      table.actorId,
+    ),
+    index("wedding_memberships_actor_idx").on(table.actorId),
+    index("wedding_memberships_wedding_idx").on(table.weddingId),
+  ],
+);
+
+export type Wedding = typeof weddings.$inferSelect;
+export type NewWedding = typeof weddings.$inferInsert;
+export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
+export type NewWeddingMembership = typeof weddingMemberships.$inferInsert;

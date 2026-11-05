@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(3);
+      expect(journal.rowCount).toBe(4);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
@@ -200,6 +200,47 @@ describe("persistent migration workflow", () => {
         [userId],
       );
       await runtime.query("DELETE FROM auth_user WHERE id = $1", [userId]);
+      await runtime.query(
+        `INSERT INTO auth_user
+          (id, name, email, email_verified, created_at, updated_at)
+         VALUES ($1, 'Wedding creator', 'creator@example.invalid', false, now(), now())`,
+        [userId],
+      );
+      const weddingId = "019a27f0-67b7-7000-8000-000000000002";
+      await runtime.query(
+        `INSERT INTO weddings
+          (id, name, wedding_date, time_zone, creation_mode, creator_actor_id,
+           creation_request_id, creation_request_fingerprint)
+         VALUES ($1, 'Synthetic wedding', '2027-06-12', 'Europe/Brussels',
+           'couple', $2, $3, $4)`,
+        [weddingId, userId, randomUUID(), "a".repeat(64)],
+      );
+      await runtime.query(
+        `INSERT INTO wedding_memberships
+          (id, wedding_id, actor_id, role, status, permission_overrides)
+         VALUES ($1, $2, $3, 'partner', 'active', '[]'::jsonb)`,
+        ["019a27f0-67b7-7000-8000-000000000007", weddingId, userId],
+      );
+      await expect(
+        runtime.query(
+          "UPDATE wedding_memberships SET status = 'revoked' WHERE wedding_id = $1",
+          [weddingId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await runtime.query(
+        "UPDATE weddings SET name = 'Updated wedding', settings_version = 2 WHERE id = $1",
+        [weddingId],
+      );
+      expect(
+        (
+          await runtime.query("SELECT name FROM weddings WHERE id = $1", [
+            weddingId,
+          ])
+        ).rows[0]?.name,
+      ).toBe("Updated wedding");
+      await expect(
+        runtime.query("DELETE FROM weddings WHERE id = $1", [weddingId]),
+      ).rejects.toThrow(/permission denied/);
       await runtime.query(
         `INSERT INTO audit_events
           (event_id, event_type, schema_version, occurred_at, actor_id,

@@ -1,7 +1,6 @@
 import {
   account,
   type AuthCredentialLock,
-  createRuntimeDatabase,
   createUuidV7,
   session,
   user,
@@ -20,6 +19,7 @@ import {
   type SendVerificationEmail,
 } from "./verification-email";
 import { correlationIdFor, problemResponse } from "./api";
+import { getRuntimeDatabase } from "./database";
 import {
   type AuthAbuseProtection,
   createUpstashAuthAbuseProtection,
@@ -164,9 +164,7 @@ let runtimeAuth: ReturnType<typeof createVoworaAuth> | undefined;
 export function getAuth() {
   if (runtimeAuth) return runtimeAuth;
   const environment = readAuthEnvironment();
-  const { database, withAuthCredentialLock } = createRuntimeDatabase(
-    process.env,
-  );
+  const { database, withAuthCredentialLock } = getRuntimeDatabase();
   runtimeAuth = createVoworaAuth({
     baseURL: environment.NEXT_PUBLIC_APP_URL,
     backgroundTaskHandler: (promise) => after(() => promise),

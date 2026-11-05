@@ -22,6 +22,13 @@
       "when": 1793008378673,
       "tag": "0002_cool_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793901382784,
+      "tag": "0003_real_joystick",
+      "breakpoints": true
     }
   ]
 }

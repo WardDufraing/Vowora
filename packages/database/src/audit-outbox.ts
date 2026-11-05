@@ -1,4 +1,4 @@
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
   assertAuditEventEnvelope,
@@ -21,10 +21,9 @@ type AuditOutboxSchema = {
   outboxEvents: typeof outboxEvents;
 };
 
-export type AuditOutboxSession = Pick<
-  NodePgDatabase<AuditOutboxSchema>,
-  "insert"
->;
+export type AuditOutboxSession<
+  HKT extends PgQueryResultHKT = PgQueryResultHKT,
+> = Pick<PgDatabase<HKT, AuditOutboxSchema>, "insert">;
 
 function assertEnvelopeScope(
   authorization: AuthorizationContext,
@@ -43,9 +42,9 @@ function assertEnvelopeScope(
 
 /** Package-internal primitive shared by authorized business and permission
  * change transaction boundaries. It is not exported from the package root. */
-export async function appendAuthorizedAuditEvent(
+export async function appendAuthorizedAuditEvent<HKT extends PgQueryResultHKT>(
   authorization: AuthorizationContext,
-  session: AuditOutboxSession,
+  session: AuditOutboxSession<HKT>,
   event: AuditEventEnvelope,
 ): Promise<void> {
   assertAuditEventEnvelope(event);
@@ -57,9 +56,9 @@ export async function appendAuthorizedAuditEvent(
 }
 
 /** Package-internal counterpart for transactionally captured outbox events. */
-export async function appendAuthorizedOutboxEvent(
+export async function appendAuthorizedOutboxEvent<HKT extends PgQueryResultHKT>(
   authorization: AuthorizationContext,
-  session: AuditOutboxSession,
+  session: AuditOutboxSession<HKT>,
   event: OutboxEventEnvelope,
 ): Promise<void> {
   assertOutboxEventEnvelope(event);
@@ -73,8 +72,8 @@ export async function appendAuthorizedOutboxEvent(
 /** The sole application write interface for audit events. It intentionally
  * exposes no update/delete methods. */
 export class AuditEventWriter {
-  async append(
-    call: AuthorizedTenantTransaction<AuditOutboxSession>,
+  async append<HKT extends PgQueryResultHKT>(
+    call: AuthorizedTenantTransaction<AuditOutboxSession<HKT>>,
     event: AuditEventEnvelope,
   ): Promise<void> {
     assertActiveAuthorizedRepositoryCall(call);
@@ -86,8 +85,8 @@ export class AuditEventWriter {
 /** Captures an event on the caller-owned business transaction. Dispatch and
  * delivery state are deliberately deferred to task 16-a. */
 export class OutboxEventWriter {
-  async enqueue(
-    call: AuthorizedTenantTransaction<AuditOutboxSession>,
+  async enqueue<HKT extends PgQueryResultHKT>(
+    call: AuthorizedTenantTransaction<AuditOutboxSession<HKT>>,
     event: OutboxEventEnvelope,
   ): Promise<void> {
     assertActiveAuthorizedRepositoryCall(call);
