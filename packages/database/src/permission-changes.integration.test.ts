@@ -46,6 +46,7 @@ const actorId = "019a1f5e-70a0-7000-8000-000000000001";
 const targetActorId = "019a1f5e-70a0-7000-8000-000000000002";
 const weddingId = "019a1f5e-70a0-7000-8000-000000000010";
 const membershipId = "019a1f5e-70a0-7000-8000-000000000030";
+const dayInMilliseconds = 24 * 60 * 60 * 1_000;
 
 function syntheticUuid(index: number): string {
   return `019a1f5e-70a0-7000-8000-${index.toString().padStart(12, "0")}`;
@@ -158,13 +159,15 @@ function revokeCommand() {
   };
 }
 
-function restoreCommand() {
+function restoreCommand(
+  accessExpiresAt = new Date(Date.now() + 30 * dayInMilliseconds).toISOString(),
+) {
   return {
     correlationId: randomUUID(),
     membershipId,
     mutation: {
       kind: "access_restored" as const,
-      accessExpiresAt: "2026-11-05T09:00:00.000Z",
+      accessExpiresAt,
     },
     weddingId,
   };
@@ -315,22 +318,26 @@ describe("mandatory audited permission change transaction", () => {
 
   it("restores an expired helper only with a new future expiry and records expansion", async () => {
     await withDatabase("permission-change-restore", async (database) => {
+      const evaluatedAt = new Date();
+      const previousExpiry = new Date(
+        evaluatedAt.getTime() - 2 * dayInMilliseconds,
+      ).toISOString();
+      const rejectedExpiry = new Date(
+        evaluatedAt.getTime() - dayInMilliseconds,
+      ).toISOString();
+      const restoredExpiry = new Date(
+        evaluatedAt.getTime() + 30 * dayInMilliseconds,
+      ).toISOString();
       await seed(database, {
         ...helperMembership("revoked"),
-        accessExpiresAt: "2026-10-20T09:00:00.000Z",
+        accessExpiresAt: previousExpiry,
       });
       await expect(
         authorizeWeddingPermissionChange(
           { actorId },
-          {
-            ...restoreCommand(),
-            mutation: {
-              kind: "access_restored",
-              accessExpiresAt: "2026-10-28T09:00:00.000Z",
-            },
-          },
+          restoreCommand(rejectedExpiry),
           state(database),
-          new Date("2026-10-29T09:00:00.000Z"),
+          evaluatedAt,
         ),
       ).rejects.toMatchObject({ failure: "access_denied" });
       expect(await database.select().from(auditEvents)).toEqual([]);
@@ -338,9 +345,9 @@ describe("mandatory audited permission change transaction", () => {
 
       const operation = await authorizeWeddingPermissionChange(
         { actorId },
-        restoreCommand(),
+        restoreCommand(restoredExpiry),
         state(database),
-        new Date("2026-10-29T09:00:00.000Z"),
+        evaluatedAt,
       );
       await withAuditedWeddingPermissionChange(
         host(database),
@@ -355,7 +362,7 @@ describe("mandatory audited permission change transaction", () => {
             version: "membership:2",
             membership: {
               status: "active",
-              accessExpiresAt: "2026-11-05T09:00:00.000Z",
+              accessExpiresAt: restoredExpiry,
             },
           },
         ],
