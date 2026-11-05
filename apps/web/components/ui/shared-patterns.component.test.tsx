@@ -59,8 +59,8 @@ describe("shared application patterns", () => {
     const user = userEvent.setup();
     renderEnglish(<ResponsiveDataView />);
     expect(screen.getByText("1 record selected")).toBeVisible();
-    const sorts = screen.getAllByRole("button", { name: /Sort by task/ });
-    await user.click(sorts[0]!);
+    const sort = screen.getByRole("button", { name: /Sort by task/ });
+    await user.click(sort);
     expect(screen.getByRole("columnheader", { name: /Task/ })).toHaveAttribute(
       "aria-sort",
       "descending",
@@ -71,6 +71,10 @@ describe("shared application patterns", () => {
     await user.click(selects[0]!);
     expect(screen.getByText("2 records selected")).toBeVisible();
     expect(selects[1]).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(screen.getByText("No records selected")).toBeVisible();
+    expect(selects[0]).not.toBeChecked();
+    expect(selects[1]).not.toBeChecked();
   });
 
   it("announces truthful loading, empty, error and permission states", () => {

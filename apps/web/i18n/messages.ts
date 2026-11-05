@@ -45,6 +45,7 @@ const en = {
     confirmed: "Confirmed",
     selectedCount:
       "{count, plural, =0 {No records selected} one {# record selected} other {# records selected}}",
+    clearSelection: "Clear selection",
     statesTitle: "Truthful view states",
     loadingTitle: "Loading records",
     loadingBody: "The records are still loading.",
@@ -112,6 +113,7 @@ const nl: AppMessages = {
     confirmed: "Bevestigd",
     selectedCount:
       "{count, plural, =0 {Geen records geselecteerd} one {# record geselecteerd} other {# records geselecteerd}}",
+    clearSelection: "Selectie wissen",
     statesTitle: "Eerlijke weergavestaten",
     loadingTitle: "Records laden",
     loadingBody: "De records worden nog geladen.",
@@ -176,6 +178,7 @@ const fr: AppMessages = {
     confirmed: "Confirmé",
     selectedCount:
       "{count, plural, =0 {Aucun enregistrement sélectionné} one {# enregistrement sélectionné} other {# enregistrements sélectionnés}}",
+    clearSelection: "Effacer la sélection",
     statesTitle: "États d’affichage fidèles",
     loadingTitle: "Chargement des enregistrements",
     loadingBody: "Les enregistrements sont encore en cours de chargement.",
@@ -240,6 +243,7 @@ const de: AppMessages = {
     confirmed: "Bestätigt",
     selectedCount:
       "{count, plural, =0 {Keine Datensätze ausgewählt} one {# Datensatz ausgewählt} other {# Datensätze ausgewählt}}",
+    clearSelection: "Auswahl aufheben",
     statesTitle: "Wahrheitsgemäße Ansichtsstatus",
     loadingTitle: "Datensätze werden geladen",
     loadingBody: "Die Datensätze werden noch geladen.",

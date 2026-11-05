@@ -2,6 +2,13 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 test.describe("shared forms, data and localization patterns", () => {
+  const dialogTitles = {
+    en: "Confirm this example",
+    nl: "Bevestig dit voorbeeld",
+    fr: "Confirmer cet exemple",
+    de: "Dieses Beispiel bestätigen",
+  } as const;
+
   for (const locale of ["en", "nl", "fr", "de"] as const) {
     test(`${locale} messages and wedding-local formats render without fallback keys`, async ({
       page,
@@ -15,6 +22,18 @@ test.describe("shared forms, data and localization patterns", () => {
       await expect(page.getByRole("link", { name: "English" })).toBeVisible();
       await expect(page.locator(".long-label-example")).not.toBeEmpty();
       await expect(page.locator(".localized-date-example dd")).toHaveCount(2);
+      const trigger = page.getByRole("button", {
+        name: dialogTitles[locale],
+      });
+      await trigger.click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toHaveAttribute("lang", locale);
+      await expect(dialog).toHaveAttribute("dir", "ltr");
+      await expect(
+        dialog.getByRole("heading", { name: dialogTitles[locale] }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(trigger).toBeFocused();
     });
   }
 
@@ -77,6 +96,9 @@ test.describe("shared forms, data and localization patterns", () => {
       .check();
     await expect(page.getByText("2 records selected")).toBeVisible();
     await page.setViewportSize({ width: 320, height: 720 });
+    await expect(
+      page.getByRole("button", { name: /Sort by task/ }),
+    ).toBeVisible();
 
     const tableFacts = await page
       .locator("table tbody tr")
@@ -111,6 +133,8 @@ test.describe("shared forms, data and localization patterns", () => {
         }),
       );
     expect(mobileFacts).toEqual(tableFacts);
+    await page.getByRole("button", { name: "Clear selection" }).click();
+    await expect(page.getByText("No records selected")).toBeVisible();
   });
 
   test("truthful states, reflow, forced colors and targets remain usable", async ({

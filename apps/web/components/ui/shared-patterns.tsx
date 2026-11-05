@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   cloneElement,
   useEffect,
@@ -133,6 +133,7 @@ export function ConfirmationDialog({
   readonly risk?: "standard" | "destructive";
   readonly onConfirm?: () => void;
 }) {
+  const locale = useLocale();
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -140,7 +141,7 @@ export function ConfirmationDialog({
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog__overlay" />
-        <Dialog.Content className="dialog__content">
+        <Dialog.Content className="dialog__content" dir="ltr" lang={locale}>
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>{description}</Dialog.Description>
           <div className="button-row">
@@ -231,9 +232,27 @@ export function ResponsiveDataView() {
 
   return (
     <div className="shared-data-view">
-      <p aria-live="polite" className="selection-summary">
-        {t("selectedCount", { count: selected.length })}
-      </p>
+      <div className="shared-data-toolbar">
+        <p aria-live="polite" className="selection-summary">
+          {t("selectedCount", { count: selected.length })}
+        </p>
+        <div className="button-row">
+          <Button
+            aria-label={t("sortByTask", {
+              direction: t(descending ? "descending" : "ascending"),
+            })}
+            onClick={() => setDescending((value) => !value)}
+            variant="secondary"
+          >
+            {t("task")} <span aria-hidden="true">{descending ? "↓" : "↑"}</span>
+          </Button>
+          {selected.length > 0 ? (
+            <Button onClick={() => setSelected([])} variant="ghost">
+              {t("clearSelection")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
       <div className="table-shell" tabIndex={0} aria-label={t("recordsTitle")}>
         <table>
           <caption>{t("recordsDescription")}</caption>
@@ -244,17 +263,7 @@ export function ResponsiveDataView() {
                 aria-sort={descending ? "descending" : "ascending"}
                 scope="col"
               >
-                <button
-                  aria-label={t("sortByTask", {
-                    direction: t(descending ? "descending" : "ascending"),
-                  })}
-                  className="table-sort"
-                  onClick={() => setDescending((value) => !value)}
-                  type="button"
-                >
-                  {t("task")}{" "}
-                  <span aria-hidden="true">{descending ? "↓" : "↑"}</span>
-                </button>
+                {t("task")}
               </th>
               <th scope="col">{t("owner")}</th>
               <th scope="col">{t("status")}</th>
@@ -291,16 +300,12 @@ export function ResponsiveDataView() {
           </tbody>
         </table>
       </div>
-      <div
-        aria-label={t("recordsTitle")}
-        className="shared-mobile-records"
-        role="list"
-      >
+      <ul aria-label={t("recordsTitle")} className="shared-mobile-records">
         {records.map((record) => {
           const isSelected = selected.includes(record.id);
           const title = t(record.titleKey);
           return (
-            <article
+            <li
               aria-label={title}
               className={
                 isSelected
@@ -308,7 +313,6 @@ export function ResponsiveDataView() {
                   : "shared-mobile-record"
               }
               key={record.id}
-              role="listitem"
             >
               <label>
                 <input
@@ -333,10 +337,10 @@ export function ResponsiveDataView() {
                   <dd>{t(isSelected ? "selected" : "notSelected")}</dd>
                 </div>
               </dl>
-            </article>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }
