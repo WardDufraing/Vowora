@@ -53,7 +53,11 @@ and invalid inputs; error-summary focus and accessible descriptions; dialog
 keyboard behavior; table sorting, selection and mobile fact parity; and all
 truthful states. Browser coverage adds all locales, light/dark/system semantics,
 axe, reduced motion, forced colors, 200% zoom and 400% reflow, 44px targets,
-date keyboard access and screenshot evidence.
+date keyboard access and screenshot evidence. The mobile suite starts at the
+narrow breakpoint, changes sort order through the still-visible localized
+control, compares every table/mobile fact, clears multiple selected records,
+and runs axe against the German mobile list. Portaled dialogs carry the active
+locale and return focus after Escape.
 
 The complete verified baseline is formatting, workspace lint and types, 235
 unit/component tests, 38 tooling and package-boundary tests, uncached preview
@@ -67,6 +71,22 @@ database grant, persistent-data, environment-variable, external-configuration
 or deployment change.
 
 Implementation is in
-[PR #55](https://github.com/WardDufraing/Vowora/pull/55). Independent review
-will be recorded after its gate completes. Owner merge is required before the
-task is Done.
+[PR #55](https://github.com/WardDufraing/Vowora/pull/55). Initial independent
+reviewer `/root/continue_05_c/review_05_c` found four material gaps at
+`5a60e10`: mobile sorting was hidden, the portaled dialog lost its locale,
+selection had no clear action, and the mobile list used an invalid ARIA role.
+The corrected implementation at `97ad5f9`, with browser coverage completed at
+`3d4e942`, resolves all four. Different fresh reviewer
+`/root/finalize_05_c/rereview_05_c` passed the complete corrected diff with no
+blocking, high or material-medium findings and independently passed nine
+focused unit/component tests, nine Chromium tests and the diff check.
+
+The final Playwright-only commit exposed an unrelated expired fixed date in an
+04-c database integration fixture. Separately reviewed
+[PR #56](https://github.com/WardDufraing/Vowora/pull/56) made that test expiry
+time-relative without changing production authorization. After the owner
+merged #56, current `main` was merged cleanly into this branch at `2aa64d5`;
+the reviewed 05-c code was unchanged. Post-integration checks passed 19 focused
+tests, formatting and diff checks, and the hosted policy, secret scan,
+marketing, disposable database and Vercel gates. Owner merge is required
+before the task is Done.
