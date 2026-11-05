@@ -85,17 +85,28 @@ test.describe("shared forms, data and localization patterns", () => {
   test("sorting, selection and mobile records preserve every displayed fact", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 320, height: 720 });
     await page.goto("/shared-patterns?locale=en");
+    const mobileRecords = page
+      .getByRole("list", { name: "Responsive records" })
+      .getByRole("listitem");
+    await expect(mobileRecords.locator("strong")).toHaveText([
+      "Confirm venue details",
+      "Review guest list",
+    ]);
     await page
       .getByRole("button", { name: /Sort by task, currently ascending/ })
       .click();
-    await expect(page.locator('th[aria-sort="descending"]')).toBeVisible();
+    await expect(page.locator('th[aria-sort="descending"]')).toHaveCount(1);
+    await expect(mobileRecords.locator("strong")).toHaveText([
+      "Review guest list",
+      "Confirm venue details",
+    ]);
     await page
       .getByRole("checkbox", { name: "Select Review guest list" })
       .first()
       .check();
     await expect(page.getByText("2 records selected")).toBeVisible();
-    await page.setViewportSize({ width: 320, height: 720 });
     await expect(
       page.getByRole("button", { name: /Sort by task/ }),
     ).toBeVisible();
@@ -146,6 +157,7 @@ test.describe("shared forms, data and localization patterns", () => {
       page.getByRole("alert", { name: /Datensätze konnten/ }),
     ).toBeVisible();
     await expect(page.getByText(/Zugriff umfasst/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
