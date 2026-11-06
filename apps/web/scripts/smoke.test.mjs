@@ -174,6 +174,8 @@ test(
         "/api/v1/auth/reset-password/{token}",
         "/api/v1/account/sessions",
         "/api/v1/account/sessions/{sessionId}",
+        "/api/v1/weddings",
+        "/api/v1/weddings/{weddingId}",
         "/api/v1/{path}",
       ]);
       assert.deepEqual(
