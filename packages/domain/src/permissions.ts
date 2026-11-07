@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const weddingPermissionAreas = [
+  "settings",
   "tasks",
   "schedule",
   "guests",

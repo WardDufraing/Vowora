@@ -2,13 +2,18 @@ import "@testing-library/jest-dom/vitest";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   WeddingNavigationDestinationId,
   WeddingShellNavigation,
 } from "../lib/workspace-navigation";
 import { AppShell } from "./app-shell";
+import { WeddingForm } from "../app/weddings/wedding-form";
+import { weddingMessages } from "../lib/wedding-messages";
+
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const weddingId = "019a1f5e-70a0-7000-8000-000000000002";
 
@@ -200,5 +205,119 @@ describe("responsive application shell", () => {
     const appearance = screen.getByRole("combobox", { name: "Appearance" });
     await user.selectOptions(appearance, "dark");
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+  });
+
+  it("protects dirty settings with Stay, failed Save, successful Save and refresh handling", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { id: weddingId, settingsVersion: 2 } }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    push.mockClear();
+    const user = userEvent.setup();
+    render(
+      <AppShell model={model("settings")}>
+        <WeddingForm
+          endpoint={`/api/v1/weddings/${weddingId}`}
+          initial={{
+            name: "Jordan & Alex",
+            weddingDate: "2027-06-12",
+            timeZone: "Europe/Brussels",
+            settingsVersion: 1,
+          }}
+          messages={weddingMessages("en")}
+          mode="settings"
+        />
+      </AppShell>,
+    );
+    const name = screen.getByLabelText("Wedding name");
+    await user.clear(name);
+    await user.type(name, "Changed wedding");
+    const refresh = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(refresh);
+    expect(refresh.defaultPrevented).toBe(true);
+
+    const switcher = screen.getAllByRole("group")[0]!;
+    await user.click(switcher.querySelector("summary")!);
+    await user.click(
+      within(switcher).getByRole("button", { name: /Jordan & Alex/ }),
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "Unsaved changes" }),
+    ).toBeNull();
+    expect(name).toHaveValue("Changed wedding");
+    await user.click(switcher.querySelector("summary")!);
+    const otherWedding = within(switcher).getByRole("link", {
+      name: /Morgan & Riley/,
+    });
+    await user.click(otherWedding);
+    let dialog = screen.getByRole("dialog", { name: "Unsaved changes" });
+    expect(within(dialog).getByRole("button", { name: "Save" })).toHaveFocus();
+    await user.click(within(dialog).getByRole("button", { name: "Stay" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Unsaved changes" }),
+    ).toBeNull();
+    expect(name).toHaveValue("Changed wedding");
+
+    await user.click(otherWedding);
+    dialog = screen.getByRole("dialog", { name: "Unsaved changes" });
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    const failedDialog = await screen.findByRole("dialog", {
+      name: "Unsaved changes",
+    });
+    expect(within(failedDialog).getByRole("alert")).toHaveTextContent(
+      "could not be saved",
+    );
+    expect(push).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Unsaved changes" })).getByRole(
+        "button",
+        { name: "Save" },
+      ),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(push).toHaveBeenCalledWith(
+      "/weddings/019a1f5e-70a0-7000-8000-000000000003/dashboard",
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("discards dirty edits for link and browser-back navigation", async () => {
+    push.mockClear();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const forward = vi
+      .spyOn(window.history, "forward")
+      .mockImplementation(() => {});
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <AppShell model={model("settings")}>
+        <WeddingForm
+          endpoint={`/api/v1/weddings/${weddingId}`}
+          initial={{
+            name: "Jordan & Alex",
+            weddingDate: null,
+            timeZone: "Europe/Brussels",
+            settingsVersion: 1,
+          }}
+          messages={weddingMessages("en")}
+          mode="settings"
+        />
+      </AppShell>,
+    );
+    await user.type(screen.getByLabelText("Wedding name"), " changed");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(forward).toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Unsaved changes",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Discard" }));
+    expect(go).toHaveBeenCalledWith(-2);
+    unmount();
+    back.mockRestore();
+    forward.mockRestore();
+    go.mockRestore();
   });
 });

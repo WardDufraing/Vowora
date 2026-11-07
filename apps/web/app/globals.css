@@ -112,6 +112,34 @@
   color-scheme: light;
 }
 
+.wedding-settings-form {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 42rem;
+  margin-top: var(--space-6);
+}
+
+.language-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.language-links a {
+  border-radius: var(--radius-control);
+  padding: 0.35rem 0.6rem;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.language-links a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
 :root[data-theme="dark"] {
   --background: var(--palette-forest-950);
   --foreground: var(--palette-ivory-100);
@@ -660,6 +688,12 @@ tr[aria-selected="true"] {
   background: var(--popover);
   color: var(--popover-foreground);
   box-shadow: var(--shadow-overlay);
+}
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-5);
 }
 
 .app-shell {

@@ -21,7 +21,16 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   WeddingNavigationDestination,
@@ -46,6 +55,39 @@ const icons: Readonly<Record<WeddingNavigationDestinationId, LucideIcon>> = {
   reports: FileText,
   settings: Settings,
 };
+
+interface NavigationGuardLabels {
+  readonly title: string;
+  readonly description: string;
+  readonly save: string;
+  readonly discard: string;
+  readonly stay: string;
+  readonly saveFailed: string;
+}
+
+interface WorkspaceNavigationGuard {
+  readonly register: (input: {
+    readonly save: () => Promise<boolean>;
+    readonly labels: NavigationGuardLabels;
+  }) => () => void;
+  readonly setDirty: (dirty: boolean) => void;
+}
+
+const NavigationGuardContext = createContext<WorkspaceNavigationGuard | null>(
+  null,
+);
+const defaultNavigationGuardLabels: NavigationGuardLabels = {
+  title: "Unsaved changes",
+  description: "Save your changes before leaving this wedding workspace?",
+  save: "Save",
+  discard: "Discard",
+  stay: "Stay",
+  saveFailed: "Your changes could not be saved. Try again before leaving.",
+};
+
+export function useWorkspaceNavigationGuard() {
+  return useContext(NavigationGuardContext);
+}
 
 function NavigationLink({
   destination,
@@ -274,90 +316,278 @@ export function AppShell({
   readonly model: WeddingShellNavigation;
   readonly children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<
+    | { readonly kind: "link"; readonly href: string }
+    | { readonly kind: "back" }
+    | null
+  >(null);
+  const [savingNavigation, setSavingNavigation] = useState(false);
+  const [navigationSaveFailed, setNavigationSaveFailed] = useState(false);
+  const [guardLabels, setGuardLabels] = useState(defaultNavigationGuardLabels);
+  const saveRef = useRef<(() => Promise<boolean>) | null>(null);
+  const historyGuardRef = useRef(false);
+  const bypassHistoryRef = useRef(false);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const register = useCallback<WorkspaceNavigationGuard["register"]>(
+    (input) => {
+      saveRef.current = input.save;
+      setGuardLabels(input.labels);
+      return () => {
+        saveRef.current = null;
+        setDirty(false);
+      };
+    },
+    [],
+  );
+  const guard = useMemo(() => ({ register, setDirty }), [register]);
+
+  useEffect(() => {
+    if (dirty && !historyGuardRef.current) {
+      window.history.pushState(
+        { ...window.history.state, voworaUnsavedGuard: true },
+        "",
+        window.location.href,
+      );
+      historyGuardRef.current = true;
+    } else if (!dirty && historyGuardRef.current && !pendingNavigation) {
+      bypassHistoryRef.current = true;
+      window.history.back();
+      historyGuardRef.current = false;
+    }
+  }, [dirty, pendingNavigation]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    const captureLink = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const target = event.target;
+      const anchor =
+        target instanceof Element
+          ? target.closest<HTMLAnchorElement>("a[href]")
+          : null;
+      if (!anchor || anchor.target || anchor.hasAttribute("download")) return;
+      const url = new URL(anchor.href, window.location.href);
+      if (
+        url.origin !== window.location.origin ||
+        url.href === window.location.href
+      )
+        return;
+      event.preventDefault();
+      returnFocusRef.current = anchor;
+      setNavigationSaveFailed(false);
+      setPendingNavigation({
+        kind: "link",
+        href: `${url.pathname}${url.search}${url.hash}`,
+      });
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", captureLink, true);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("click", captureLink, true);
+    };
+  }, [dirty]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (bypassHistoryRef.current) {
+        bypassHistoryRef.current = false;
+        return;
+      }
+      if (!dirty || !historyGuardRef.current) return;
+      returnFocusRef.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      window.history.forward();
+      setNavigationSaveFailed(false);
+      setPendingNavigation({ kind: "back" });
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [dirty]);
+
+  const proceed = useCallback(
+    (pending: NonNullable<typeof pendingNavigation>) => {
+      setDirty(false);
+      setPendingNavigation(null);
+      if (pending.kind === "back") {
+        bypassHistoryRef.current = true;
+        historyGuardRef.current = false;
+        window.history.go(-2);
+      } else {
+        if (historyGuardRef.current) {
+          bypassHistoryRef.current = true;
+          window.history.back();
+        }
+        historyGuardRef.current = false;
+        window.setTimeout(() => router.push(pending.href), 0);
+      }
+    },
+    [router],
+  );
+  const saveAndProceed = useCallback(async () => {
+    if (!pendingNavigation || !saveRef.current) return;
+    setSavingNavigation(true);
+    setNavigationSaveFailed(false);
+    const saved = await saveRef.current();
+    setSavingNavigation(false);
+    if (saved) proceed(pendingNavigation);
+    else setNavigationSaveFailed(true);
+  }, [pendingNavigation, proceed]);
   const primaryMobile = selectMobilePrimaryDestinations(model.destinations);
   const settings = model.destinations.find(({ id }) => id === "settings");
   return (
-    <div className="app-shell" data-sidebar-collapsed={collapsed || undefined}>
-      <aside
-        className="app-shell__sidebar"
-        aria-label="Wedding workspace sidebar"
+    <NavigationGuardContext.Provider value={guard}>
+      <div
+        className="app-shell"
+        data-sidebar-collapsed={collapsed || undefined}
       >
-        <WorkspaceContext model={model} />
-        <nav aria-label="Wedding workspace">
-          {model.destinations
-            .filter(({ id }) => id !== "settings")
-            .map((destination) => (
-              <NavigationLink
-                active={model.activeDestination === destination.id}
-                compact={collapsed}
-                destination={destination}
-                key={destination.id}
-              />
-            ))}
-        </nav>
-        <div className="app-shell__sidebar-footer">
-          {settings ? (
-            <NavigationLink
-              active={model.activeDestination === settings.id}
-              compact={collapsed}
-              destination={settings}
-            />
-          ) : null}
-          <button
-            aria-expanded={!collapsed}
-            className="sidebar-collapse"
-            onClick={() => setCollapsed((value) => !value)}
-            type="button"
-          >
-            {collapsed ? (
-              <ChevronRight aria-hidden="true" />
-            ) : (
-              <ChevronLeft aria-hidden="true" />
-            )}
-            <span>{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
-          </button>
-        </div>
-      </aside>
-
-      <header className="app-shell__header">
-        <div className="app-shell__mobile-context">
+        <aside
+          className="app-shell__sidebar"
+          aria-label="Wedding workspace sidebar"
+        >
           <WorkspaceContext model={model} />
-        </div>
-        <nav className="breadcrumbs" aria-label="Breadcrumb">
-          <span>{model.weddingName}</span>
-          <span aria-hidden="true">/</span>
-          <strong>
-            {
-              model.destinations.find(
-                ({ id }) => id === model.activeDestination,
-              )?.label
-            }
-          </strong>
+          <nav aria-label="Wedding workspace">
+            {model.destinations
+              .filter(({ id }) => id !== "settings")
+              .map((destination) => (
+                <NavigationLink
+                  active={model.activeDestination === destination.id}
+                  compact={collapsed}
+                  destination={destination}
+                  key={destination.id}
+                />
+              ))}
+          </nav>
+          <div className="app-shell__sidebar-footer">
+            {settings ? (
+              <NavigationLink
+                active={model.activeDestination === settings.id}
+                compact={collapsed}
+                destination={settings}
+              />
+            ) : null}
+            <button
+              aria-expanded={!collapsed}
+              className="sidebar-collapse"
+              onClick={() => setCollapsed((value) => !value)}
+              type="button"
+            >
+              {collapsed ? (
+                <ChevronRight aria-hidden="true" />
+              ) : (
+                <ChevronLeft aria-hidden="true" />
+              )}
+              <span>{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
+            </button>
+          </div>
+        </aside>
+
+        <header className="app-shell__header">
+          <div className="app-shell__mobile-context">
+            <WorkspaceContext model={model} />
+          </div>
+          <nav className="breadcrumbs" aria-label="Breadcrumb">
+            <span>{model.weddingName}</span>
+            <span aria-hidden="true">/</span>
+            <strong>
+              {
+                model.destinations.find(
+                  ({ id }) => id === model.activeDestination,
+                )?.label
+              }
+            </strong>
+          </nav>
+          <a className="account-link" href="/account">
+            <CircleUserRound aria-hidden="true" size={20} />
+            <span>Account</span>
+          </a>
+        </header>
+
+        <main className="app-shell__main" id="main-content" tabIndex={-1}>
+          {children}
+        </main>
+
+        <nav
+          className="mobile-bottom-nav"
+          aria-label="Primary wedding navigation"
+        >
+          {primaryMobile.map((destination) => (
+            <NavigationLink
+              active={model.activeDestination === destination.id}
+              destination={destination}
+              key={destination.id}
+            />
+          ))}
+          <MoreNavigation model={model} />
         </nav>
-        <a className="account-link" href="/account">
-          <CircleUserRound aria-hidden="true" size={20} />
-          <span>Account</span>
-        </a>
-      </header>
-
-      <main className="app-shell__main" id="main-content" tabIndex={-1}>
-        {children}
-      </main>
-
-      <nav
-        className="mobile-bottom-nav"
-        aria-label="Primary wedding navigation"
+      </div>
+      <Dialog.Root
+        open={pendingNavigation !== null}
+        onOpenChange={(open) => {
+          if (!open && !savingNavigation) setPendingNavigation(null);
+        }}
       >
-        {primaryMobile.map((destination) => (
-          <NavigationLink
-            active={model.activeDestination === destination.id}
-            destination={destination}
-            key={destination.id}
-          />
-        ))}
-        <MoreNavigation model={model} />
-      </nav>
-    </div>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog__overlay" />
+          <Dialog.Content
+            className="dialog__content"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              returnFocusRef.current?.focus();
+            }}
+          >
+            <Dialog.Title>{guardLabels.title}</Dialog.Title>
+            <Dialog.Description>{guardLabels.description}</Dialog.Description>
+            {navigationSaveFailed ? (
+              <p className="field__error" role="alert">
+                {guardLabels.saveFailed}
+              </p>
+            ) : null}
+            <div className="dialog__actions">
+              <button
+                className="button button--primary"
+                disabled={savingNavigation}
+                onClick={() => void saveAndProceed()}
+                type="button"
+              >
+                {guardLabels.save}
+              </button>
+              <button
+                className="button button--secondary"
+                disabled={savingNavigation}
+                onClick={() => pendingNavigation && proceed(pendingNavigation)}
+                type="button"
+              >
+                {guardLabels.discard}
+              </button>
+              <Dialog.Close asChild>
+                <button
+                  className="button button--ghost"
+                  disabled={savingNavigation}
+                  type="button"
+                >
+                  {guardLabels.stay}
+                </button>
+              </Dialog.Close>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </NavigationGuardContext.Provider>
   );
 }

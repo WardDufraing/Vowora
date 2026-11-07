@@ -34,8 +34,9 @@ export function emptyResponse(correlationId: string, status = 204) {
 export function problemResponse(
   request: Request,
   input: Pick<ProblemDetails, "status" | "title" | "detail" | "code">,
+  resolvedCorrelationId?: string,
 ) {
-  const correlationId = correlationIdFor(request);
+  const correlationId = resolvedCorrelationId ?? correlationIdFor(request);
   const body = problemDetailsSchema.parse({
     type: `https://vowora.app/problems/${input.code.toLowerCase().replaceAll("_", "-")}`,
     ...input,

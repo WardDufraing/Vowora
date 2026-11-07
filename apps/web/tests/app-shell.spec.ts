@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+const weddingId = "019a1f5e-70a0-7000-8000-000000000002";
+
 test.describe("responsive permission-aware application shell", () => {
   test("renders the approved desktop order and active deep-link state", async ({
     page,
@@ -155,6 +157,40 @@ test.describe("responsive permission-aware application shell", () => {
         "Current workspace: Jordan & Alex",
       );
     }
+  });
+
+  test("protects dirty settings on mobile links, refresh and keyboard focus", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/app-shell?dirty=true&destination=settings");
+    const name = page.getByRole("textbox", { name: "Wedding name" });
+    await name.fill("Changed wedding");
+
+    const refreshProtected = await page.evaluate(() => {
+      const event = new Event("beforeunload", { cancelable: true });
+      return !window.dispatchEvent(event) && event.defaultPrevented;
+    });
+    expect(refreshProtected).toBe(true);
+    await expect(name).toHaveValue("Changed wedding");
+
+    const timeline = page
+      .getByRole("navigation", { name: "Primary wedding navigation" })
+      .getByRole("link", { name: "Timeline" });
+    await timeline.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Unsaved changes" });
+    await expect(dialog.getByRole("button", { name: "Save" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(timeline).toBeFocused();
+    await expect(name).toHaveValue("Changed wedding");
+
+    await page.keyboard.press("Enter");
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("alert")).toContainText("could not be saved");
+    await dialog.getByRole("button", { name: "Discard" }).click();
+    await page.waitForURL(`**/weddings/${weddingId}/timeline`);
   });
 
   test("reflows with long labels, large text, safe targets and both themes", async ({

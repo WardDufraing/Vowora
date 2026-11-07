@@ -87,6 +87,53 @@ export const accountSessionsResponseSchema = z
   .strict()
   .describe("Active account sessions response");
 
+const supportedTimeZoneSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: value }).format();
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Unsupported IANA time zone");
+
+export const createWeddingRequestSchema = z
+  .strictObject({
+    name: z.string().trim().min(1).max(120),
+    weddingDate: z.iso.date().nullable(),
+    timeZone: supportedTimeZoneSchema,
+  })
+  .describe("Couple self-service wedding workspace creation request");
+
+export const updateWeddingSettingsRequestSchema = z
+  .strictObject({
+    expectedVersion: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120),
+    weddingDate: z.iso.date().nullable(),
+    timeZone: supportedTimeZoneSchema,
+  })
+  .describe("Optimistic wedding workspace settings update");
+
+export const weddingSchema = z
+  .strictObject({
+    id: z.uuidv7(),
+    name: z.string().min(1).max(120),
+    weddingDate: z.iso.date().nullable(),
+    timeZone: supportedTimeZoneSchema,
+    settingsVersion: z.number().int().positive(),
+  })
+  .describe("Wedding workspace settings");
+
+export const weddingResponseSchema = z
+  .strictObject({
+    data: weddingSchema,
+    meta: responseMetadataSchema.extend({ replayed: z.boolean().optional() }),
+  })
+  .describe("Wedding workspace response");
+
 export type ApiRootResponse = z.infer<typeof apiRootResponseSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ProblemDetails = z.infer<typeof problemDetailsSchema>;
@@ -94,6 +141,11 @@ export type AccountSession = z.infer<typeof accountSessionSchema>;
 export type AccountSessionsResponse = z.infer<
   typeof accountSessionsResponseSchema
 >;
+export type CreateWeddingRequest = z.infer<typeof createWeddingRequestSchema>;
+export type UpdateWeddingSettingsRequest = z.infer<
+  typeof updateWeddingSettingsRequestSchema
+>;
+export type WeddingResponse = z.infer<typeof weddingResponseSchema>;
 
 const problemResponse = (description: string) => ({
   description,
@@ -570,6 +622,79 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/weddings": {
+      post: {
+        operationId: "createWeddingWorkspace",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateWeddingRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Wedding workspace created or safely replayed.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/WeddingResponse" },
+              },
+            },
+          },
+          "400": problemResponse("The creation request is invalid."),
+          "401": authenticationFailure,
+          "409": problemResponse("The idempotency key conflicts."),
+          "503": authenticationServiceFailure,
+        },
+      },
+    },
+    "/api/v1/weddings/{weddingId}": {
+      parameters: [
+        {
+          name: "weddingId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      patch: {
+        operationId: "updateWeddingWorkspaceSettings",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/UpdateWeddingSettingsRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated wedding workspace settings.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/WeddingResponse" },
+              },
+            },
+          },
+          "400": problemResponse("The settings request is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("The settings request is not permitted."),
+          "409": problemResponse("The settings changed before the update."),
+          "503": authenticationServiceFailure,
+        },
+      },
+    },
     "/api/v1/{path}": {
       parameters: [
         {
@@ -641,6 +766,16 @@ export const openApiDocument = {
         target: "draft-2020-12",
       }),
       AccountSessionsResponse: z.toJSONSchema(accountSessionsResponseSchema, {
+        target: "draft-2020-12",
+      }),
+      CreateWeddingRequest: z.toJSONSchema(createWeddingRequestSchema, {
+        target: "draft-2020-12",
+      }),
+      UpdateWeddingSettingsRequest: z.toJSONSchema(
+        updateWeddingSettingsRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingResponse: z.toJSONSchema(weddingResponseSchema, {
         target: "draft-2020-12",
       }),
     },

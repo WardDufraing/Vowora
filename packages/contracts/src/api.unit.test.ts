@@ -3,16 +3,46 @@ import { z } from "zod";
 import {
   accountSessionsResponseSchema,
   apiRootResponseSchema,
+  createWeddingRequestSchema,
   healthResponseSchema,
   openApiDocument,
   passwordRecoveryAcknowledgementSchema,
   passwordResetResponseSchema,
   problemDetailsSchema,
+  updateWeddingSettingsRequestSchema,
 } from "./index.js";
 
 const correlationId = "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2";
 
 describe("API contracts", () => {
+  it("keeps wedding tenant and role authority out of client payloads", () => {
+    const valid = {
+      name: "Jordan & Alex",
+      weddingDate: "2027-06-12",
+      timeZone: "Europe/Brussels",
+    };
+    expect(createWeddingRequestSchema.safeParse(valid).success).toBe(true);
+    expect(
+      createWeddingRequestSchema.safeParse({
+        ...valid,
+        creationMode: "planner",
+      }).success,
+    ).toBe(false);
+    expect(
+      updateWeddingSettingsRequestSchema.safeParse({
+        ...valid,
+        expectedVersion: 1,
+        weddingId: "019a1f5e-70a0-7000-8000-000000000002",
+      }).success,
+    ).toBe(false);
+    expect(
+      createWeddingRequestSchema.safeParse({
+        ...valid,
+        timeZone: "Mars/Olympus",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts the stable v1 root and health envelopes", () => {
     expect(
       apiRootResponseSchema.parse({
@@ -54,6 +84,8 @@ describe("API contracts", () => {
       "/api/v1/auth/reset-password/{token}",
       "/api/v1/account/sessions",
       "/api/v1/account/sessions/{sessionId}",
+      "/api/v1/weddings",
+      "/api/v1/weddings/{weddingId}",
       "/api/v1/{path}",
     ]);
     expect(

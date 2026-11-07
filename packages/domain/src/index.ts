@@ -78,6 +78,17 @@ export {
   consumeAuthorizedServerOperation,
   ServerAuthorizationError,
 } from "./server-authorization.js";
+export {
+  assertAuthorizedCoupleWeddingCreation,
+  authorizeCoupleWeddingCreation,
+  consumeAuthorizedCoupleWeddingCreation,
+  WeddingCreationAuthorizationError,
+} from "./wedding-creation.js";
+export type {
+  AuthorizedCoupleWeddingCreation,
+  ConsumedCoupleWeddingCreation,
+  CoupleWeddingCreationInput,
+} from "./wedding-creation.js";
 export type {
   AuthenticatedActor,
   AuthorizedServerOperation,
