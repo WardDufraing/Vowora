@@ -337,7 +337,86 @@ export const weddingMemberships = pgTable(
   ],
 );
 
+/** Single-use authorization to join a wedding. Only a SHA-256 digest of the
+ * bearer secret is persisted; acceptance additionally requires the signed-in
+ * account to own the normalized, verified invited email address. */
+export const weddingInvitations = pgTable(
+  "wedding_invitations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "cascade" }),
+    invitedEmail: text("invited_email").notNull(),
+    role: text("role").notNull(),
+    tokenDigest: text("token_digest").notNull(),
+    status: text("status").notNull().default("pending"),
+    issuedByActorId: uuid("issued_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    acceptedByActorId: uuid("accepted_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    reminderAt: timestamp("reminder_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "date" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    replacedByInvitationId: uuid("replaced_by_invitation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_invitations_email_normalized",
+      sql`${table.invitedEmail} = lower(btrim(${table.invitedEmail}))`,
+    ),
+    check("wedding_invitations_role", sql`${table.role} IN ('partner')`),
+    check(
+      "wedding_invitations_status",
+      sql`${table.status} IN ('pending', 'accepted', 'revoked', 'replaced')`,
+    ),
+    check(
+      "wedding_invitations_token_digest",
+      sql`${table.tokenDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "wedding_invitations_deadlines",
+      sql`${table.reminderAt} < ${table.expiresAt}`,
+    ),
+    check(
+      "wedding_invitations_acceptance_consistent",
+      sql`(${table.status} = 'accepted') = (${table.acceptedAt} IS NOT NULL AND ${table.acceptedByActorId} IS NOT NULL)`,
+    ),
+    uniqueIndex("wedding_invitations_token_digest_unique_idx").on(
+      table.tokenDigest,
+    ),
+    uniqueIndex("wedding_invitations_one_pending_partner_idx")
+      .on(table.weddingId)
+      .where(sql`${table.status} = 'pending' AND ${table.role} = 'partner'`),
+    index("wedding_invitations_wedding_status_idx").on(
+      table.weddingId,
+      table.status,
+    ),
+    index("wedding_invitations_reminder_idx").on(
+      table.reminderAt,
+      table.status,
+    ),
+  ],
+);
+
 export type Wedding = typeof weddings.$inferSelect;
 export type NewWedding = typeof weddings.$inferInsert;
 export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
 export type NewWeddingMembership = typeof weddingMemberships.$inferInsert;
+export type WeddingInvitationRow = typeof weddingInvitations.$inferSelect;
+export type NewWeddingInvitation = typeof weddingInvitations.$inferInsert;

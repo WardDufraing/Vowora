@@ -15,6 +15,7 @@ export {
   verification,
   weddings,
   weddingMemberships,
+  weddingInvitations,
 } from "./schema.js";
 export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";
@@ -45,6 +46,17 @@ export {
   WeddingSettingsConflictError,
   WeddingSettingsValidationError,
 } from "./weddings.js";
+export {
+  acceptPartnerInvitation,
+  issuePartnerInvitation,
+  revokePartnerInvitation,
+  WeddingInvitationConflictError,
+  WeddingInvitationUnavailableError,
+} from "./wedding-invitations.js";
+export type {
+  InvitationDatabase,
+  WeddingInvitationView,
+} from "./wedding-invitations.js";
 export type {
   AuthorizedWeddingSettingsView,
   AccessibleWeddingWorkspace,

@@ -84,6 +84,12 @@ export {
   consumeAuthorizedCoupleWeddingCreation,
   WeddingCreationAuthorizationError,
 } from "./wedding-creation.js";
+export {
+  authorizeWeddingInvitationClaim,
+  consumeAuthorizedWeddingInvitationClaim,
+  WeddingInvitationClaimAuthorizationError,
+} from "./wedding-invitations.js";
+export type { AuthorizedWeddingInvitationClaim } from "./wedding-invitations.js";
 export type {
   AuthorizedCoupleWeddingCreation,
   ConsumedCoupleWeddingCreation,
