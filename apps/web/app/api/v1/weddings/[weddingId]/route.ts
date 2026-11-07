@@ -1,7 +1,7 @@
 import { updateWeddingSettingsRequestSchema } from "@vowora/contracts";
 import { z } from "zod";
 
-import { correlationIdFor, problemResponse } from "../../../../../lib/api";
+import { jsonResponse, problemResponse } from "../../../../../lib/api";
 import { getAuth, isSafeStateChangingRequest } from "../../../../../lib/auth";
 import { readAuthEnvironment } from "../../../../../lib/env";
 import {
@@ -52,30 +52,39 @@ export async function PATCH(
     weddingId.data,
   );
   if (!authorized.authorized) return authorized.response;
+  const correlationId = authorized.operation.authorization.correlationId;
 
   try {
     const updated = await updateWeddingWorkspace(
       authorized.operation,
       patch.data,
     );
-    return Response.json({
-      data: updated,
-      meta: { correlationId: correlationIdFor(request) },
-    });
+    return jsonResponse(
+      { data: updated, meta: { correlationId } },
+      correlationId,
+    );
   } catch (error) {
     if (isWeddingSettingsConflict(error)) {
-      return problemResponse(request, {
-        status: 409,
-        title: "Settings changed",
-        detail: "Reload the latest settings before saving again.",
-        code: "WEDDING_SETTINGS_CONFLICT",
-      });
+      return problemResponse(
+        request,
+        {
+          status: 409,
+          title: "Settings changed",
+          detail: "Reload the latest settings before saving again.",
+          code: "WEDDING_SETTINGS_CONFLICT",
+        },
+        correlationId,
+      );
     }
-    return problemResponse(request, {
-      status: 503,
-      title: "Settings update unavailable",
-      detail: "The settings were not changed.",
-      code: "WEDDING_SETTINGS_UNAVAILABLE",
-    });
+    return problemResponse(
+      request,
+      {
+        status: 503,
+        title: "Settings update unavailable",
+        detail: "The settings were not changed.",
+        code: "WEDDING_SETTINGS_UNAVAILABLE",
+      },
+      correlationId,
+    );
   }
 }

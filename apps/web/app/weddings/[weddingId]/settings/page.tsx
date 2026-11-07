@@ -42,15 +42,7 @@ export default async function WeddingSettingsPage({
       actorId: session.user.id,
       weddingId: weddingId.data,
       membership: loaded.membership,
-      workspaces: [
-        {
-          weddingId: weddingId.data,
-          name: loaded.wedding.name,
-          weddingDate: loaded.wedding.weddingDate,
-          lastOpenedAt: loaded.lastOpenedAt,
-          membership: loaded.membership,
-        },
-      ],
+      workspaces: loaded.workspaces,
       requestedPath: `/weddings/${weddingId.data}/settings`,
     });
     pageData = { loaded, navigation };

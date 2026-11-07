@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 
 import { AppShell } from "../../components/app-shell";
 import { readServerEnvironment } from "../../lib/env";
+import { weddingMessages } from "../../lib/wedding-messages";
 import {
   resolveWeddingShellNavigation,
   WeddingNavigationAccessError,
   weddingNavigationDestinationIds,
 } from "../../lib/workspace-navigation";
+import { WeddingForm } from "../weddings/wedding-form";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -104,6 +106,19 @@ export default async function AppShellReviewPage({
         responsive behavior. Feature data and workflows remain intentionally
         absent.
       </p>
+      {query.dirty === "true" ? (
+        <WeddingForm
+          endpoint={`/api/v1/weddings/${weddingId}`}
+          initial={{
+            name: "Jordan & Alex",
+            weddingDate: "2027-06-12",
+            timeZone: "Europe/Brussels",
+            settingsVersion: 1,
+          }}
+          messages={weddingMessages("en")}
+          mode="settings"
+        />
+      ) : null}
       <section
         className="shell-placeholder"
         aria-labelledby="shell-state-heading"

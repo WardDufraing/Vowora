@@ -25,6 +25,7 @@ import { createUuidV7 } from "./uuid.js";
 import {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  listAccessibleWeddingWorkspaces,
   updateWeddingSettings,
   WeddingCreationConflictError,
   WeddingSettingsConflictError,
@@ -166,6 +167,93 @@ describe("wedding workspace persistence", () => {
         } finally {
           await pool.end();
         }
+      },
+    );
+  });
+
+  it("lists exact-actor active workspaces by personal recency and records the opened wedding", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `wedding-workspaces-${randomUUID()}`,
+      async ({ client }) => {
+        const database = drizzle(client, {
+          casing: "snake_case",
+          schema: {
+            auditEvents,
+            outboxEvents,
+            user,
+            weddingMemberships,
+            weddings,
+          },
+        });
+        const actorId = createUuidV7();
+        const otherActorId = createUuidV7();
+        await database.insert(user).values([
+          { id: actorId, name: "Jordan", email: `${actorId}@example.test` },
+          {
+            id: otherActorId,
+            name: "Other",
+            email: `${otherActorId}@example.test`,
+          },
+        ]);
+        const older = await createCoupleWedding(
+          database,
+          command({ actorId, name: "Older accessible" }),
+        );
+        const opened = await createCoupleWedding(
+          database,
+          command({ actorId, name: "Just opened" }),
+        );
+        const revoked = await createCoupleWedding(
+          database,
+          command({ actorId, name: "Revoked" }),
+        );
+        const expired = await createCoupleWedding(
+          database,
+          command({ actorId, name: "Expired" }),
+        );
+        await createCoupleWedding(
+          database,
+          command({ actorId: otherActorId, name: "Other actor" }),
+        );
+        await database
+          .update(weddingMemberships)
+          .set({ lastOpenedAt: new Date("2026-01-04T00:00:00.000Z") })
+          .where(eq(weddingMemberships.weddingId, older.wedding.id));
+        await database
+          .update(weddingMemberships)
+          .set({ lastOpenedAt: new Date("2026-01-01T00:00:00.000Z") })
+          .where(eq(weddingMemberships.weddingId, opened.wedding.id));
+        await database
+          .update(weddingMemberships)
+          .set({ status: "revoked" })
+          .where(eq(weddingMemberships.weddingId, revoked.wedding.id));
+        await database
+          .update(weddingMemberships)
+          .set({
+            role: "coordinator",
+            accessExpiresAt: new Date("2026-01-02T00:00:00.000Z"),
+          })
+          .where(eq(weddingMemberships.weddingId, expired.wedding.id));
+
+        const now = new Date("2026-01-05T00:00:00.000Z");
+        const workspaces = await listAccessibleWeddingWorkspaces(database, {
+          actorId,
+          openedWeddingId: opened.wedding.id,
+          now,
+        });
+        expect(workspaces.map(({ name }) => name)).toEqual([
+          "Just opened",
+          "Older accessible",
+        ]);
+        expect(workspaces[0]).toMatchObject({
+          weddingId: opened.wedding.id,
+          lastOpenedAt: now.toISOString(),
+          membership: { actorId, status: "active" },
+        });
+        expect(
+          workspaces.every(({ membership }) => membership.actorId === actorId),
+        ).toBe(true);
       },
     );
   });

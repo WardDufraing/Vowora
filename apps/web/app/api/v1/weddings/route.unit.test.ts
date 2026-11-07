@@ -27,12 +27,17 @@ vi.mock("../../../../lib/env", () => ({
 
 import { POST } from "./route";
 
-function request(body: unknown, idempotencyKey = crypto.randomUUID()) {
+function request(
+  body: unknown,
+  idempotencyKey = crypto.randomUUID(),
+  correlationId?: string,
+) {
   return new Request("https://app.test/api/v1/weddings", {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "idempotency-key": idempotencyKey,
+      ...(correlationId ? { "x-correlation-id": correlationId } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -78,14 +83,19 @@ describe("wedding creation API", () => {
         settingsVersion: 1,
       },
     });
-    const response = await POST(request(valid));
+    const correlationId = "fd901f2e-3f91-4e12-a32e-cf48c853fd44";
+    const response = await POST(
+      request(valid, crypto.randomUUID(), correlationId),
+    );
     expect(response.status).toBe(201);
     expect(authorize).toHaveBeenCalledWith(
       expect.objectContaining({ actorId, ...valid }),
     );
     expect(await response.json()).toMatchObject({
-      meta: { replayed: false },
+      meta: { correlationId, replayed: false },
       data: { name: valid.name, settingsVersion: 1 },
     });
+    expect(response.headers.get("x-correlation-id")).toBe(correlationId);
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });

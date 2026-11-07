@@ -8,13 +8,17 @@ The transaction inserts the wedding, an active non-expiring `partner` membership
 
 Partners can update the wedding name, date and time zone at `/weddings/{weddingId}/settings`. The server loads the authoritative membership, checks the `settings:edit` permission, then revalidates membership status, expiry, tenant and permission-scope version inside the write transaction. `settings_version` provides optimistic concurrency; stale writes return `409`. The update and its audit/outbox facts commit or roll back together. Cross-wedding, revoked and expired membership failures use privacy-safe access responses.
 
+The persisted settings route loads every exact-actor active, unexpired wedding membership for the shell. It records only the opened membership's personal recency timestamp and orders the switcher most recently opened first. Revoked, expired and other-actor memberships never enter the projection. Dirty settings intercept internal links and browser Back with localized Save, Discard and Stay choices; Save must succeed before navigation, Stay preserves the fields and focus, and refresh/close uses the browser's native unload protection.
+
+Successful creation and settings responses are non-cacheable and expose the same correlation ID in the response header and body. Settings authorization, audit, outbox, conflict and unavailable responses reuse that single authorization-issued ID instead of generating a second value.
+
 Product decisions allow professional planners to create a workspace before the partners register, but the current model has no authoritative professional or organization identity source. The public request therefore has no planner creation mode and cannot mint a planner membership. That path remains fail closed until its owning persistence can issue a trusted server capability. Invitation, email verification, partner claim and ownership transfer belong to 06-b.
 
 The settings form is available in English, Dutch, French and German. It uses the persisted application shell and exposes associated descriptions, inline errors, an error summary, busy state and live success/error status.
 
 ## Migration and grants
 
-Migration `0003_real_joystick.sql` adds `weddings` and `wedding_memberships`, with the Drizzle snapshot and journal entry. The persistent migration manifest grants the runtime role `SELECT`, `INSERT` and `UPDATE` on `weddings`, and only `SELECT` and `INSERT` on `wedding_memberships`. It grants no membership update, `DELETE`, `TRUNCATE`, schema mutation, journal access or future-object privilege. Partner removal remains unavailable to runtime SQL and protected by the domain membership policy.
+Migration `0003_real_joystick.sql` adds `weddings` and `wedding_memberships`, with the Drizzle snapshot and journal entry. The persistent migration manifest grants the runtime role `SELECT`, `INSERT` and `UPDATE` on `weddings`, `SELECT` and `INSERT` on `wedding_memberships`, and column-level `UPDATE` only on membership `last_opened_at` and `updated_at`. It grants no update of role, status, expiry, overrides, scope version or tenant identity; no `DELETE`, `TRUNCATE`, schema mutation, journal access or future-object privilege. Partner removal remains unavailable to runtime SQL and protected by the domain membership policy.
 
 Vercel builds must never run migrations. After this PR is merged, the owner applies the migration manually with the direct migration connection and the established workflow:
 

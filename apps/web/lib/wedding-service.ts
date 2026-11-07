@@ -5,6 +5,7 @@ import type {
 import {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  listAccessibleWeddingWorkspaces,
   readWeddingSettings,
   updateWeddingSettings,
   WeddingCreationConflictError,
@@ -112,5 +113,11 @@ export async function loadWeddingSettingsForActor(input: {
     },
     new DatabaseWeddingAuthorizationState(database),
   );
-  return readWeddingSettings(database, operation);
+  const settings = await readWeddingSettings(database, operation);
+  if (!settings) return undefined;
+  const workspaces = await listAccessibleWeddingWorkspaces(database, {
+    actorId: input.actorId,
+    openedWeddingId: input.weddingId,
+  });
+  return Object.freeze({ ...settings, workspaces });
 }

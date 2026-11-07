@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -234,6 +234,84 @@ export interface AuthorizedWeddingSettingsView {
     readonly permissionOverrides: unknown;
   };
   readonly lastOpenedAt: string;
+}
+
+export interface AccessibleWeddingWorkspace {
+  readonly weddingId: string;
+  readonly name: string;
+  readonly weddingDate: string | null;
+  readonly lastOpenedAt: string;
+  readonly membership: AuthorizedWeddingSettingsView["membership"];
+}
+
+/**
+ * Lists only the actor's currently usable wedding memberships and records the
+ * wedding they just opened. The update is deliberately limited to personal
+ * recency metadata; membership authority fields are never changed here.
+ */
+export async function listAccessibleWeddingWorkspaces<
+  HKT extends PgQueryResultHKT,
+>(
+  database: WeddingDatabase<HKT>,
+  input: {
+    readonly actorId: string;
+    readonly openedWeddingId: string;
+    readonly now?: Date;
+  },
+): Promise<readonly AccessibleWeddingWorkspace[]> {
+  const now = input.now ?? new Date();
+  return database.transaction(async (transaction) => {
+    await transaction
+      .update(weddingMemberships)
+      .set({ lastOpenedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(weddingMemberships.actorId, input.actorId),
+          eq(weddingMemberships.weddingId, input.openedWeddingId),
+          eq(weddingMemberships.status, "active"),
+          or(
+            isNull(weddingMemberships.accessExpiresAt),
+            gt(weddingMemberships.accessExpiresAt, now),
+          ),
+        ),
+      );
+
+    const rows = await transaction
+      .select({ wedding: weddings, membership: weddingMemberships })
+      .from(weddingMemberships)
+      .innerJoin(weddings, eq(weddings.id, weddingMemberships.weddingId))
+      .where(
+        and(
+          eq(weddingMemberships.actorId, input.actorId),
+          eq(weddingMemberships.status, "active"),
+          or(
+            isNull(weddingMemberships.accessExpiresAt),
+            gt(weddingMemberships.accessExpiresAt, now),
+          ),
+        ),
+      )
+      .orderBy(desc(weddingMemberships.lastOpenedAt), weddings.id);
+
+    return Object.freeze(
+      rows.map((row) =>
+        Object.freeze({
+          weddingId: row.wedding.id,
+          name: row.wedding.name,
+          weddingDate: row.wedding.weddingDate,
+          lastOpenedAt: row.membership.lastOpenedAt.toISOString(),
+          membership: Object.freeze({
+            actorId: row.membership.actorId,
+            weddingId: row.membership.weddingId,
+            role: row.membership.role,
+            status: row.membership.status,
+            accessExpiresAt:
+              row.membership.accessExpiresAt?.toISOString() ?? null,
+            permissionOverrides: row.membership.permissionOverrides,
+          }),
+        }),
+      ),
+    );
+  });
 }
 
 export async function readWeddingSettings<HKT extends PgQueryResultHKT>(

@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button, TextField } from "../../components/ui/foundation";
+import { useWorkspaceNavigationGuard } from "../../components/app-shell";
 import type { WeddingFormMessages } from "../../lib/wedding-messages";
 
 interface FormValues {
@@ -25,6 +26,8 @@ export function WeddingForm({
   readonly mode: "create" | "settings";
 }) {
   const router = useRouter();
+  const navigationGuard = useWorkspaceNavigationGuard();
+  const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
   const [requestError, setRequestError] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -35,15 +38,53 @@ export function WeddingForm({
   const retry = useRef<{ fingerprint: string; key: string } | undefined>(
     undefined,
   );
+  const baseline = useRef({
+    name: initial.name,
+    weddingDate: initial.weddingDate ?? "",
+    timeZone: initial.timeZone,
+  });
+  const saveCurrentRef = useRef<() => Promise<boolean>>(async () => false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
+    if (mode !== "settings" || !navigationGuard) return;
+    return navigationGuard.register({
+      save: () => saveCurrentRef.current(),
+      labels: {
+        title: messages.unsavedTitle,
+        description: messages.unsavedDescription,
+        save: messages.unsavedSave,
+        discard: messages.unsavedDiscard,
+        stay: messages.unsavedStay,
+      },
+    });
+  }, [messages, mode, navigationGuard]);
+
+  function values(formElement: HTMLFormElement) {
+    const form = new FormData(formElement);
+    return {
+      name: String(form.get("name") ?? "").trim(),
+      weddingDate: String(form.get("weddingDate") ?? ""),
+      timeZone: String(form.get("timeZone") ?? "").trim(),
+    };
+  }
+
+  function trackDirty(formElement: HTMLFormElement) {
+    if (mode !== "settings") return;
+    const current = values(formElement);
+    navigationGuard?.setDirty(
+      current.name !== baseline.current.name ||
+        current.weddingDate !== baseline.current.weddingDate ||
+        current.timeZone !== baseline.current.timeZone,
+    );
+    setSaved(false);
+  }
+
+  async function save(formElement: HTMLFormElement): Promise<boolean> {
     setSaved(false);
     setRequestError(false);
-    const form = new FormData(event.currentTarget);
-    const name = String(form.get("name") ?? "").trim();
-    const weddingDateValue = String(form.get("weddingDate") ?? "");
-    const timeZone = String(form.get("timeZone") ?? "").trim();
+    const current = values(formElement);
+    const { name, timeZone } = current;
+    const weddingDateValue = current.weddingDate;
     const nextErrors: Record<string, string> = {};
     if (!name || name.length > 120) nextErrors.name = messages.invalidName;
     if (weddingDateValue && !/^\d{4}-\d{2}-\d{2}$/.test(weddingDateValue)) {
@@ -55,7 +96,7 @@ export function WeddingForm({
       nextErrors.timeZone = messages.invalidTimeZone;
     }
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) return false;
 
     const body = {
       name,
@@ -87,17 +128,36 @@ export function WeddingForm({
         router.push(`/weddings/${payload.data.id}/settings`);
       } else {
         setSettingsVersion(payload.data.settingsVersion);
+        baseline.current = current;
+        navigationGuard?.setDirty(false);
         setSaved(true);
       }
+      return true;
     } catch {
       setRequestError(true);
+      return false;
     } finally {
       setBusy(false);
     }
   }
+  useEffect(() => {
+    saveCurrentRef.current = () =>
+      formRef.current ? save(formRef.current) : Promise.resolve(false);
+  });
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await save(event.currentTarget);
+  }
 
   return (
-    <form className="wedding-settings-form" onSubmit={submit} noValidate>
+    <form
+      className="wedding-settings-form"
+      onChange={(event) => trackDirty(event.currentTarget)}
+      onSubmit={submit}
+      ref={formRef}
+      noValidate
+    >
       {Object.keys(errors).length > 0 ? (
         <div className="error-summary" role="alert" tabIndex={-1}>
           <h2>{messages.errorTitle}</h2>

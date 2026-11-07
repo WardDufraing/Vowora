@@ -38,6 +38,7 @@ export {
 export {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  listAccessibleWeddingWorkspaces,
   readWeddingSettings,
   updateWeddingSettings,
   WeddingCreationConflictError,
@@ -46,6 +47,7 @@ export {
 } from "./weddings.js";
 export type {
   AuthorizedWeddingSettingsView,
+  AccessibleWeddingWorkspace,
   WeddingDatabase,
   WeddingSettingsPatch,
   WeddingView,

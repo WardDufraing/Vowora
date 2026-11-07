@@ -1,7 +1,11 @@
 import { createWeddingRequestSchema } from "@vowora/contracts";
 import { z } from "zod";
 
-import { correlationIdFor, problemResponse } from "../../../../lib/api";
+import {
+  correlationIdFor,
+  jsonResponse,
+  problemResponse,
+} from "../../../../lib/api";
 import { getAuth, isSafeStateChangingRequest } from "../../../../lib/auth";
 import { readAuthEnvironment } from "../../../../lib/env";
 import {
@@ -69,39 +73,48 @@ export async function POST(request: Request) {
   const requestId = z.uuid().safeParse(request.headers.get("idempotency-key"));
   if (!parsed.success || !requestId.success) return invalid(request);
 
+  const correlationId = correlationIdFor(request);
   try {
-    const correlationId = correlationIdFor(request);
     const result = await createWeddingWorkspace({
       actorId: session.user.id,
       correlationId,
       creationRequestId: requestId.data,
       request: parsed.data,
     });
-    return Response.json(
+    return jsonResponse(
       {
         data: result.wedding,
         meta: { correlationId, replayed: result.replayed },
       },
-      { status: 201 },
+      correlationId,
+      201,
     );
   } catch (error) {
     if (isWeddingCreationConflict(error)) {
-      return problemResponse(request, {
-        status: 409,
-        title: "Idempotency key conflict",
-        detail: "Use a new idempotency key for a different creation request.",
-        code: "IDEMPOTENCY_KEY_CONFLICT",
-      });
+      return problemResponse(
+        request,
+        {
+          status: 409,
+          title: "Idempotency key conflict",
+          detail: "Use a new idempotency key for a different creation request.",
+          code: "IDEMPOTENCY_KEY_CONFLICT",
+        },
+        correlationId,
+      );
     }
     if (isWeddingCreationAuthorizationFailure(error)) {
       return invalid(request);
     }
-    return problemResponse(request, {
-      status: 503,
-      title: "Wedding creation unavailable",
-      detail:
-        "The wedding workspace was not created. Try again safely with the same key.",
-      code: "WEDDING_CREATION_UNAVAILABLE",
-    });
+    return problemResponse(
+      request,
+      {
+        status: 503,
+        title: "Wedding creation unavailable",
+        detail:
+          "The wedding workspace was not created. Try again safely with the same key.",
+        code: "WEDDING_CREATION_UNAVAILABLE",
+      },
+      correlationId,
+    );
   }
 }

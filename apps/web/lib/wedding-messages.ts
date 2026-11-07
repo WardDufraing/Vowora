@@ -23,6 +23,11 @@ export interface WeddingFormMessages {
   readonly requestError: string;
   readonly saved: string;
   readonly language: string;
+  readonly unsavedTitle: string;
+  readonly unsavedDescription: string;
+  readonly unsavedSave: string;
+  readonly unsavedDiscard: string;
+  readonly unsavedStay: string;
 }
 
 const en: WeddingFormMessages = {
@@ -49,6 +54,11 @@ const en: WeddingFormMessages = {
     "Your changes could not be saved. Review the details and try again.",
   saved: "Wedding settings saved.",
   language: "Language",
+  unsavedTitle: "Unsaved changes",
+  unsavedDescription: "Save your wedding settings before leaving this page?",
+  unsavedSave: "Save",
+  unsavedDiscard: "Discard",
+  unsavedStay: "Stay",
 };
 
 const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
@@ -79,6 +89,12 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
       "Je wijzigingen konden niet worden opgeslagen. Controleer de gegevens en probeer opnieuw.",
     saved: "De trouwinstellingen zijn opgeslagen.",
     language: "Taal",
+    unsavedTitle: "Niet-opgeslagen wijzigingen",
+    unsavedDescription:
+      "Wil je de trouwinstellingen opslaan voordat je deze pagina verlaat?",
+    unsavedSave: "Opslaan",
+    unsavedDiscard: "Negeren",
+    unsavedStay: "Blijven",
   },
   fr: {
     ...en,
@@ -109,6 +125,12 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
       "Vos modifications n’ont pas été enregistrées. Vérifiez les informations et réessayez.",
     saved: "Les paramètres du mariage sont enregistrés.",
     language: "Langue",
+    unsavedTitle: "Modifications non enregistrées",
+    unsavedDescription:
+      "Enregistrer les paramètres du mariage avant de quitter cette page ?",
+    unsavedSave: "Enregistrer",
+    unsavedDiscard: "Ignorer",
+    unsavedStay: "Rester",
   },
   de: {
     ...en,
@@ -138,6 +160,12 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
       "Die Änderungen konnten nicht gespeichert werden. Prüft die Angaben und versucht es erneut.",
     saved: "Die Hochzeitseinstellungen wurden gespeichert.",
     language: "Sprache",
+    unsavedTitle: "Nicht gespeicherte Änderungen",
+    unsavedDescription:
+      "Möchtet ihr die Hochzeitseinstellungen speichern, bevor ihr diese Seite verlasst?",
+    unsavedSave: "Speichern",
+    unsavedDiscard: "Verwerfen",
+    unsavedStay: "Bleiben",
   },
 };
 

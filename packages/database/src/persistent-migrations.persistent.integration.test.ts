@@ -228,6 +228,10 @@ describe("persistent migration workflow", () => {
         ),
       ).rejects.toThrow(/permission denied/);
       await runtime.query(
+        "UPDATE wedding_memberships SET last_opened_at = now(), updated_at = now() WHERE wedding_id = $1",
+        [weddingId],
+      );
+      await runtime.query(
         "UPDATE weddings SET name = 'Updated wedding', settings_version = 2 WHERE id = $1",
         [weddingId],
       );

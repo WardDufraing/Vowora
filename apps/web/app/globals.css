@@ -689,6 +689,12 @@ tr[aria-selected="true"] {
   color: var(--popover-foreground);
   box-shadow: var(--shadow-overlay);
 }
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-5);
+}
 
 .app-shell {
   min-height: 100vh;

@@ -74,7 +74,11 @@ function expectedTablePrivileges(schemaName: string, tableName: string) {
   return new Set<string>();
 }
 
-function expectedColumnPrivileges(schemaName: string, tableName: string) {
+function expectedColumnPrivileges(
+  schemaName: string,
+  tableName: string,
+  columnName: string,
+) {
   if (schemaName !== "public") return new Set<string>();
   if ((authTables as readonly string[]).includes(tableName)) {
     return new Set(["SELECT", "INSERT", "UPDATE"]);
@@ -86,7 +90,13 @@ function expectedColumnPrivileges(schemaName: string, tableName: string) {
     return new Set(["SELECT", "INSERT", "UPDATE"]);
   }
   if ((weddingMembershipTables as readonly string[]).includes(tableName)) {
-    return new Set(["SELECT", "INSERT"]);
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...(["last_opened_at", "updated_at"].includes(columnName)
+        ? ["UPDATE"]
+        : []),
+    ]);
   }
   return new Set<string>();
 }
@@ -291,6 +301,9 @@ async function reconcileRuntimeGrants(
       `GRANT SELECT, INSERT ON TABLE ${memberships} TO ${role}`,
     );
     await client.query(
+      `GRANT UPDATE ("last_opened_at", "updated_at") ON TABLE ${memberships} TO ${role}`,
+    );
+    await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
     );
     await client.query(
@@ -442,11 +455,13 @@ async function verifyRuntimeGrants(
   const columns = await client.query<{
     relation_oid: number;
     attribute_number: number;
+    column_name: string;
     schema_name: string;
     relation_name: string;
   }>(
     `SELECT relation.oid AS relation_oid,
             attribute.attnum AS attribute_number,
+            attribute.attname AS column_name,
             namespace.nspname AS schema_name,
             relation.relname AS relation_name
        FROM pg_class relation
@@ -462,6 +477,7 @@ async function verifyRuntimeGrants(
     const expected = expectedColumnPrivileges(
       column.schema_name,
       column.relation_name,
+      column.column_name,
     );
     for (const privilege of columnPrivileges) {
       const result = await client.query<{ allowed: boolean }>(
