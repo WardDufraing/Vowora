@@ -62,6 +62,7 @@ interface NavigationGuardLabels {
   readonly save: string;
   readonly discard: string;
   readonly stay: string;
+  readonly saveFailed: string;
 }
 
 interface WorkspaceNavigationGuard {
@@ -81,6 +82,7 @@ const defaultNavigationGuardLabels: NavigationGuardLabels = {
   save: "Save",
   discard: "Discard",
   stay: "Stay",
+  saveFailed: "Your changes could not be saved. Try again before leaving.",
 };
 
 export function useWorkspaceNavigationGuard() {
@@ -323,6 +325,7 @@ export function AppShell({
     | null
   >(null);
   const [savingNavigation, setSavingNavigation] = useState(false);
+  const [navigationSaveFailed, setNavigationSaveFailed] = useState(false);
   const [guardLabels, setGuardLabels] = useState(defaultNavigationGuardLabels);
   const saveRef = useRef<(() => Promise<boolean>) | null>(null);
   const historyGuardRef = useRef(false);
@@ -384,6 +387,7 @@ export function AppShell({
         return;
       event.preventDefault();
       returnFocusRef.current = anchor;
+      setNavigationSaveFailed(false);
       setPendingNavigation({
         kind: "link",
         href: `${url.pathname}${url.search}${url.hash}`,
@@ -409,6 +413,7 @@ export function AppShell({
           ? document.activeElement
           : null;
       window.history.forward();
+      setNavigationSaveFailed(false);
       setPendingNavigation({ kind: "back" });
     };
     window.addEventListener("popstate", onPopState);
@@ -437,9 +442,11 @@ export function AppShell({
   const saveAndProceed = useCallback(async () => {
     if (!pendingNavigation || !saveRef.current) return;
     setSavingNavigation(true);
+    setNavigationSaveFailed(false);
     const saved = await saveRef.current();
     setSavingNavigation(false);
     if (saved) proceed(pendingNavigation);
+    else setNavigationSaveFailed(true);
   }, [pendingNavigation, proceed]);
   const primaryMobile = selectMobilePrimaryDestinations(model.destinations);
   const settings = model.destinations.find(({ id }) => id === "settings");
@@ -546,6 +553,11 @@ export function AppShell({
           >
             <Dialog.Title>{guardLabels.title}</Dialog.Title>
             <Dialog.Description>{guardLabels.description}</Dialog.Description>
+            {navigationSaveFailed ? (
+              <p className="field__error" role="alert">
+                {guardLabels.saveFailed}
+              </p>
+            ) : null}
             <div className="dialog__actions">
               <button
                 className="button button--primary"

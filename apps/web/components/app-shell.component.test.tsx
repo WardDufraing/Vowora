@@ -264,9 +264,12 @@ describe("responsive application shell", () => {
     await user.click(otherWedding);
     dialog = screen.getByRole("dialog", { name: "Unsaved changes" });
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(
-      await screen.findByRole("dialog", { name: "Unsaved changes" }),
-    ).toBeVisible();
+    const failedDialog = await screen.findByRole("dialog", {
+      name: "Unsaved changes",
+    });
+    expect(within(failedDialog).getByRole("alert")).toHaveTextContent(
+      "could not be saved",
+    );
     expect(push).not.toHaveBeenCalled();
     await user.click(
       within(screen.getByRole("dialog", { name: "Unsaved changes" })).getByRole(

@@ -188,9 +188,7 @@ test.describe("responsive permission-aware application shell", () => {
     await page.keyboard.press("Enter");
     await dialog.getByRole("button", { name: "Save" }).click();
     await expect(dialog).toBeVisible();
-    await expect(
-      page.locator(".wedding-settings-form .field__error"),
-    ).toContainText("could not be saved");
+    await expect(dialog.getByRole("alert")).toContainText("could not be saved");
     await dialog.getByRole("button", { name: "Discard" }).click();
     await page.waitForURL(`**/weddings/${weddingId}/timeline`);
   });

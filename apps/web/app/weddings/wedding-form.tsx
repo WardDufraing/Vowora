@@ -55,6 +55,7 @@ export function WeddingForm({
         save: messages.unsavedSave,
         discard: messages.unsavedDiscard,
         stay: messages.unsavedStay,
+        saveFailed: messages.requestError,
       },
     });
   }, [messages, mode, navigationGuard]);
