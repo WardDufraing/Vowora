@@ -41,7 +41,7 @@
 | 05-a | Semantic tokens and themes | 04-c | Done | [Brief](steps/05-a.md) |
 | 05-b | Responsive app shell and navigation | 05-a | Done | [Brief](steps/05-b.md) |
 | 05-c | Shared forms, tables and localization | 05-b | In review | [Brief](steps/05-c.md) |
-| 06-a | Wedding creation and workspace settings | 05-c | Not started | [Brief](steps/06-a.md) |
+| 06-a | Wedding creation and workspace settings | 05-c | In review | [Brief](steps/06-a.md) |
 | 06-b | Partner invitations and claim lifecycle | 06-a | Not started | [Brief](steps/06-b.md) |
 | 06-c | Workspace switching and deep links | 06-b | Not started | [Brief](steps/06-c.md) |
 | 07-a | Organization and staff memberships | 06-c | Not started | [Brief](steps/07-a.md) |
