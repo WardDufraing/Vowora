@@ -2,15 +2,15 @@
 
 ## Delivered boundary
 
-An authorized wedding administrator can create one pending second-partner invitation from Workspace Settings. The server derives the actor and wedding from the authenticated session and central `settings:edit` authorization. The client submits only the normalized recipient email. A wedding cannot have more than two active partners, cannot invite an email that already belongs to an active wedding member, and cannot have multiple pending partner invitations.
+An authorized wedding administrator can create one pending second-partner invitation from Workspace Settings. The server derives the actor and wedding from the authenticated session and central `settings:edit` authorization. The client submits the recipient email and one of the four supported presentation locales. A wedding cannot have more than two active partners, cannot invite an email that already belongs to an active wedding member, and cannot have multiple pending partner invitations.
 
-Each invitation receives a random 256-bit bearer token. Only its SHA-256 digest is stored in `wedding_invitations`; the raw token is returned once as a same-origin secure link. Invitations expire exactly 14 days after issuance and record one email-reminder deadline three days before expiry. Issuance, expiry/reminder facts, audit history and outbox capture commit atomically. Task 16 owns outbox dispatch and task 16-c owns Resend delivery, so request handling never performs an external email call or a migration.
+Each invitation receives a random 256-bit bearer token. Only its SHA-256 digest is stored in `wedding_invitations`; the raw token is returned once as a same-origin secure link. The durable outbox handoff uses a separate non-secret invitation-ID path with the chosen locale. That path still requires an authenticated account with the verified exact invited email and explicit acceptance, so the email link alone grants no access. The bearer token is absent from the invitation row, audit metadata and outbox payload. Invitations expire exactly 14 days after issuance and record one email-reminder deadline three days before expiry. Issuance, expiry/reminder facts, audit history and outbox capture commit atomically. Task 16 owns outbox dispatch and task 16-c owns Resend delivery, so request handling never performs an external email call or a migration.
 
 Acceptance requires an authenticated account, an explicit confirmation request, and an authoritative `auth_user` row whose verified normalized email exactly matches the invited address. The transaction locks the invitation and wedding, rejects expired/revoked/replaced/wrong-account tokens, enforces the two-partner limit, inserts an active non-expiring `partner` membership and records audit/outbox facts. Exact retries by the accepting actor are idempotent; concurrent acceptance serializes under the invitation row lock. Wrong-email and invalid-token responses are intentionally indistinguishable.
 
-An authorized administrator can revoke a pending invitation immediately. An expired invitation can be renewed only to its original authorized email; renewal atomically marks the old token replaced and gives the new invitation its own 14-day validity and reminder deadline. These transitions preserve equal partner authority and never let either partner remove an existing partner.
+An authorized administrator can reload the pending invitation without recovering its bearer token, inspect the invited address and exact deadline, and revoke it immediately. A replacement share link therefore requires revoke-and-create. An expired invitation can be renewed only to its original authorized email; renewal atomically marks the old token replaced and gives the new invitation its own 14-day validity and reminder deadline. These transitions preserve equal partner authority and never let either partner remove an existing partner.
 
-The issue, revoke and claim screens are responsive semantic forms with busy, success and privacy-safe error states in English, Dutch, French and German. The OpenAPI document covers issue, revoke and explicit acceptance.
+The issue, revoke and claim screens are responsive semantic forms with busy, success, exact-deadline, expired/replacement and privacy-safe error states in English, Dutch, French and German. Invitation continuations survive sign-up verification and sign-in through a validated same-origin path. The OpenAPI document covers listing, issue, revoke, bearer acceptance and verified-email acceptance.
 
 ## Migration and runtime grants
 
@@ -30,9 +30,11 @@ node --test scripts/quality.test.mjs scripts/agent-policy.test.mjs
 node --test scripts/workspace.test.mjs
 node scripts/migration-safety.mjs packages/database/drizzle
 pnpm build
+pnpm --filter @vowora/web test
+pnpm --filter @vowora/web test:e2e
 ```
 
-Results: all eight type/build dependency tasks, six lint tasks, 43 unit/component files with 259 tests, 22 quality/agent-policy tests, 16 boundary tests, migration drift and five-file additive safety, and both Next.js production builds passed. The build used synthetic local public app/Turnstile values and the canonical `https://vowora.app` marketing URL; no credentials or external provider calls were used.
+Results after the initial review fixes: all eight type/build dependency tasks, six lint tasks, 46 unit/component files with 276 tests, 22 quality/agent-policy tests, 16 boundary tests, the production smoke test, 27 Chromium web tests, migration drift and five-file additive safety, and both Next.js production builds passed. The build used synthetic local public app values and the canonical `https://vowora.app` marketing URL; no credentials or external provider calls were used. The web browser suite used a temporary untracked port override because stale cloud-runner servers occupied its standard port; the override was removed after the run.
 
 A disposable loopback PostgreSQL 17 container named `vowora-06b-postgres` ran:
 
@@ -46,7 +48,11 @@ DATABASE_MIGRATION_URL=postgresql://vowora_migrator:<synthetic-password>@127.0.0
 ../../node_modules/.bin/vitest run --config vitest.persistent.config.ts
 ```
 
-All 23 integration tests and seven persistent workflow/grant tests passed. A final focused invitation run passed all three lifecycle tests after revocation was added. The container was removed. No Neon or persistent database was accessed.
+All 23 integration tests and seven persistent workflow/grant tests passed after the review corrections. Coverage includes both verified-email and bearer acceptance under concurrency, token-free outbox storage, exact deadlines, replay/expiry, equal second-partner settings authority, operation-specific denial and cross-wedding revocation isolation. The container was removed. No Neon or persistent database was accessed.
+
+## Independent review
+
+The first fresh reviewer `/root/implement_06_b/review_06_b` reviewed pushed head `355469a` and found two high and two medium gaps: auth continuation was dropped, the outbox lacked a usable privacy-safe delivery path and sender management disappeared after reload, exact expiry/localization states were incomplete, and equal-control/isolation/revocation coverage was missing. The corrections above address every finding. The same review also identified a hosted workspace failure; the production smoke test still expected the pre-06-b OpenAPI path list. That assertion now includes all invitation endpoints and passes locally. A different fresh independent re-review is required on the corrected head before the PR can leave draft.
 
 ## Approved limits and follow-up
 

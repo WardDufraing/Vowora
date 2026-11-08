@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { create, conflict, correlation } = vi.hoisted(() => ({
+const { authorize, create, conflict, correlation, load } = vi.hoisted(() => ({
+  authorize: vi.fn(),
   create: vi.fn(),
   conflict: vi.fn(() => false),
   correlation: vi.fn(),
+  load: vi.fn(),
 }));
 
 vi.mock("../../../../../../lib/auth", () => ({
@@ -15,11 +17,13 @@ vi.mock("../../../../../../lib/env", () => ({
 }));
 vi.mock("../../../../../../lib/wedding-service", () => ({
   createPartnerInvitation: create,
+  authorizeWeddingSettingsApiOperation: authorize,
   isWeddingInvitationConflict: conflict,
+  loadPartnerInvitations: load,
   partnerInvitationCorrelationId: correlation,
 }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 const weddingId = "019a1f5e-70a0-7000-8000-000000000002";
 const correlationId = "fd901f2e-3f91-4e12-a32e-cf48c853fd44";
@@ -30,7 +34,7 @@ function request() {
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "partner@example.test" }),
+      body: JSON.stringify({ email: "partner@example.test", locale: "fr" }),
     },
   );
 }
@@ -40,6 +44,8 @@ beforeEach(() => {
   conflict.mockReset();
   conflict.mockReturnValue(false);
   correlation.mockReset();
+  authorize.mockReset();
+  load.mockReset();
 });
 
 describe("partner invitation API", () => {
@@ -67,7 +73,22 @@ describe("partner invitation API", () => {
     expect(response.status).toBe(201);
     expect(response.headers.get("x-correlation-id")).toBe(correlationId);
     expect(await response.json()).toMatchObject({
-      data: { acceptancePath: "/invitations/one-time-secret" },
+      data: { acceptancePath: "/invitations/one-time-secret?locale=fr" },
+      meta: { correlationId },
+    });
+  });
+
+  it("lists only invitations returned by the centrally authorized operation", async () => {
+    const operation = { authorization: { correlationId } };
+    authorize.mockResolvedValue({ authorized: true, operation });
+    load.mockResolvedValue([{ id: "pending-id" }]);
+    const response = await GET(request(), {
+      params: Promise.resolve({ weddingId }),
+    });
+    expect(response.status).toBe(200);
+    expect(load).toHaveBeenCalledWith(operation);
+    expect(await response.json()).toMatchObject({
+      data: [{ id: "pending-id" }],
       meta: { correlationId },
     });
   });

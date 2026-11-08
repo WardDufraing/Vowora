@@ -135,7 +135,10 @@ export const weddingResponseSchema = z
   .describe("Wedding workspace response");
 
 export const createPartnerInvitationRequestSchema = z
-  .strictObject({ email: z.email().max(320) })
+  .strictObject({
+    email: z.email().max(320),
+    locale: z.enum(["en", "nl", "fr", "de"]),
+  })
   .describe("Issue a single-use second-partner invitation");
 
 export const weddingInvitationSchema = z.strictObject({
@@ -153,6 +156,11 @@ export const partnerInvitationResponseSchema = z.strictObject({
   data: weddingInvitationSchema.extend({
     acceptancePath: z.string().startsWith("/invitations/"),
   }),
+  meta: responseMetadataSchema,
+});
+
+export const partnerInvitationsResponseSchema = z.strictObject({
+  data: z.array(weddingInvitationSchema),
   meta: responseMetadataSchema,
 });
 
@@ -774,6 +782,24 @@ export const openApiDocument = {
           "503": authenticationServiceFailure,
         },
       },
+      get: {
+        operationId: "listPartnerInvitations",
+        responses: {
+          "200": {
+            description: "Pending partner invitations.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/PartnerInvitationsResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Invitation management is not permitted."),
+          "503": authenticationServiceFailure,
+        },
+      },
     },
     "/api/v1/weddings/{weddingId}/invitations/{invitationId}": {
       parameters: [
@@ -825,6 +851,48 @@ export const openApiDocument = {
         responses: {
           "200": {
             description: "Invitation accepted or safely replayed.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/AcceptPartnerInvitationResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("Explicit acceptance is required."),
+          "401": authenticationFailure,
+          "403": problemResponse("Email verification is required."),
+          "404": problemResponse("The invitation is unavailable."),
+          "409": problemResponse("The wedding already has both partners."),
+          "410": problemResponse("The invitation expired."),
+          "503": authenticationServiceFailure,
+        },
+      },
+    },
+    "/api/v1/invitations/pending/{invitationId}/accept": {
+      parameters: [
+        {
+          name: "invitationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      post: {
+        operationId: "acceptPartnerInvitationByVerifiedEmail",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/AcceptPartnerInvitationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Email invitation accepted or safely replayed.",
             content: {
               "application/json": {
                 schema: {
@@ -932,6 +1000,10 @@ export const openApiDocument = {
       ),
       PartnerInvitationResponse: z.toJSONSchema(
         partnerInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      PartnerInvitationsResponse: z.toJSONSchema(
+        partnerInvitationsResponseSchema,
         { target: "draft-2020-12" },
       ),
       AcceptPartnerInvitationRequest: z.toJSONSchema(

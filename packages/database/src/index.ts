@@ -49,6 +49,8 @@ export {
 export {
   acceptPartnerInvitation,
   issuePartnerInvitation,
+  listPartnerInvitations,
+  readPartnerInvitationForActor,
   revokePartnerInvitation,
   WeddingInvitationConflictError,
   WeddingInvitationUnavailableError,

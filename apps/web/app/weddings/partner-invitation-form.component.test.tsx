@@ -14,11 +14,14 @@ describe("partner invitation form", () => {
     const invitationId = "019a1f5e-70a0-7000-8000-000000000003";
     const fetch = vi
       .fn()
+      .mockResolvedValueOnce(Response.json({ data: [] }))
       .mockResolvedValueOnce(
         Response.json({
           data: {
             acceptancePath: "/invitations/secret-token",
             id: invitationId,
+            invitedEmail: "partner@example.test",
+            expiresAt: "2026-11-21T12:00:00.000Z",
           },
         }),
       )
@@ -28,6 +31,7 @@ describe("partner invitation form", () => {
     render(
       <PartnerInvitationForm
         endpoint="/api/v1/weddings/wedding-id/invitations"
+        locale="nl"
         messages={weddingMessages("nl")}
       />,
     );
@@ -39,8 +43,9 @@ describe("partner invitation form", () => {
       screen.getByRole("button", { name: "Uitnodiging aanmaken" }),
     );
     await screen.findByRole("status");
-    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body))).toEqual({
       email: "partner@example.test",
+      locale: "nl",
     });
     expect(
       screen.getByRole("button", { name: "Uitnodigingslink kopiëren" }),
@@ -55,6 +60,38 @@ describe("partner invitation form", () => {
     expect(await screen.findByText("Uitnodiging ingetrokken.")).toBeVisible();
   });
 
+  it("recovers a pending invitation after reload without recovering its bearer link", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: [
+            {
+              id: "019a1f5e-70a0-7000-8000-000000000003",
+              invitedEmail: "partner@example.test",
+              expiresAt: "2026-11-21T12:00:00.000Z",
+            },
+          ],
+        }),
+      ),
+    );
+    render(
+      <PartnerInvitationForm
+        endpoint="/api"
+        locale="en"
+        messages={weddingMessages("en")}
+      />,
+    );
+    expect(await screen.findByText("partner@example.test")).toBeVisible();
+    expect(screen.getByText(/November 21, 2026/)).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Copy invitation link" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Revoke invitation" }),
+    ).toBeVisible();
+  });
+
   it("announces an error and keeps the form available", async () => {
     vi.stubGlobal(
       "fetch",
@@ -64,6 +101,7 @@ describe("partner invitation form", () => {
     render(
       <PartnerInvitationForm
         endpoint="/api"
+        locale="de"
         messages={weddingMessages("de")}
       />,
     );

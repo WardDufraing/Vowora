@@ -25,8 +25,10 @@ describe("invitation acceptance", () => {
     const user = userEvent.setup();
     render(
       <InvitationAcceptance
+        endpoint="/api/v1/invitations/safe-token/accept"
+        expiresAt="2026-11-21T12:00:00.000Z"
+        locale="fr"
         messages={weddingMessages("fr")}
-        token="safe-token"
       />,
     );
     expect(fetch).not.toHaveBeenCalled();
@@ -51,13 +53,60 @@ describe("invitation acceptance", () => {
     const user = userEvent.setup();
     render(
       <InvitationAcceptance
+        endpoint="/api/v1/invitations/safe-token/accept"
+        locale="en"
         messages={weddingMessages("en")}
-        token="safe-token"
       />,
     );
     await user.click(screen.getByRole("button", { name: "Accept invitation" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This invitation cannot be accepted with this account.",
     );
+  });
+
+  it("renders a specific localized replacement instruction for an expired invitation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ code: "INVITATION_EXPIRED" }, { status: 410 }),
+        ),
+    );
+    const user = userEvent.setup();
+    render(
+      <InvitationAcceptance
+        endpoint="/api/v1/invitations/pending/id/accept"
+        locale="de"
+        messages={weddingMessages("de")}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Einladung annehmen" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Diese Einladung ist abgelaufen.",
+    );
+  });
+
+  it("shows a known expired invitation before acceptance and makes no request", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <InvitationAcceptance
+        endpoint="/api/v1/invitations/pending/id/accept"
+        expiresAt="2026-11-01T12:00:00.000Z"
+        initiallyExpired
+        locale="nl"
+        messages={weddingMessages("nl")}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Deze uitnodiging is verlopen.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Uitnodiging accepteren" }),
+    ).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

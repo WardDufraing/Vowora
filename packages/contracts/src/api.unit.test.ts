@@ -89,6 +89,7 @@ describe("API contracts", () => {
       "/api/v1/weddings/{weddingId}/invitations",
       "/api/v1/weddings/{weddingId}/invitations/{invitationId}",
       "/api/v1/invitations/{token}/accept",
+      "/api/v1/invitations/pending/{invitationId}/accept",
       "/api/v1/{path}",
     ]);
     expect(

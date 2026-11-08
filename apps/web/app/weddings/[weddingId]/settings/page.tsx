@@ -76,6 +76,7 @@ export default async function WeddingSettingsPage({
         />
         <PartnerInvitationForm
           endpoint={`/api/v1/weddings/${weddingId.data}/invitations`}
+          locale={locale}
           messages={messages}
         />
       </div>

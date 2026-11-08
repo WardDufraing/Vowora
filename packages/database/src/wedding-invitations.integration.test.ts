@@ -24,11 +24,13 @@ import { createUuidV7 } from "./uuid.js";
 import {
   acceptPartnerInvitation,
   issuePartnerInvitation,
+  readPartnerInvitationForActor,
   revokePartnerInvitation,
 } from "./wedding-invitations.js";
 import {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  updateWeddingSettings,
 } from "./weddings.js";
 
 const config = parseTestMigrationConfig(process.env);
@@ -91,6 +93,7 @@ describe("partner invitation persistence", () => {
         const issuedAt = new Date("2026-11-07T12:00:00.000Z");
         const issued = await issuePartnerInvitation(database, operation, {
           email: " Partner@Example.Test ",
+          locale: "nl",
           now: issuedAt,
         });
         expect(issued.invitation).toMatchObject({
@@ -102,6 +105,28 @@ describe("partner invitation persistence", () => {
         const [stored] = await database.select().from(weddingInvitations);
         expect(stored?.tokenDigest).toMatch(/^[0-9a-f]{64}$/);
         expect(stored?.tokenDigest).not.toContain(issued.token);
+        const [issuedOutbox] = await database
+          .select({ payload: outboxEvents.payload })
+          .from(outboxEvents)
+          .where(
+            eq(outboxEvents.eventType, "wedding.partner_invitation_issued"),
+          );
+        expect(issuedOutbox?.payload).toMatchObject({
+          invitationId: issued.invitation.id,
+          acceptancePath: `/invitations/pending/${issued.invitation.id}?locale=nl`,
+        });
+        expect(JSON.stringify(issuedOutbox?.payload)).not.toContain(
+          issued.token,
+        );
+        await expect(
+          readPartnerInvitationForActor(database, {
+            actorId: recipient,
+            invitationId: issued.invitation.id,
+          }),
+        ).resolves.toMatchObject({
+          id: issued.invitation.id,
+          invitedEmail: "partner@example.test",
+        });
 
         const pool = new pg.Pool({
           connectionString: config.connectionString,
@@ -126,7 +151,7 @@ describe("partner invitation persistence", () => {
             acceptPartnerInvitation(concurrentDatabase, {
               actorId: recipient,
               correlationId: randomUUID(),
-              token: issued.token,
+              invitationId: issued.invitation.id,
               now: new Date("2026-11-08T12:00:00.000Z"),
             }),
             acceptPartnerInvitation(concurrentDatabase, {
@@ -159,6 +184,27 @@ describe("partner invitation persistence", () => {
           (await database.select({ value: count() }).from(outboxEvents))[0]
             ?.value,
         ).toBe(3);
+        const recipientOperation = await authorizeWeddingServerOperation(
+          { actorId: recipient },
+          {
+            resource: "existing",
+            recordId: created.wedding.id,
+            weddingId: created.wedding.id,
+            action: "edit",
+            correlationId: randomUUID(),
+          },
+          new DatabaseWeddingAuthorizationState(database),
+        );
+        await expect(
+          updateWeddingSettings(database, recipientOperation, {
+            name: "Updated equally by invited partner",
+            weddingDate: null,
+            timeZone: "Europe/Brussels",
+            expectedVersion: created.wedding.settingsVersion,
+          }),
+        ).resolves.toMatchObject({
+          name: "Updated equally by invited partner",
+        });
       },
     );
   });
@@ -288,12 +334,21 @@ describe("partner invitation persistence", () => {
           },
         });
         const sender = createUuidV7();
-        await database.insert(user).values({
-          id: sender,
-          name: "Sender",
-          email: `${sender}@example.test`,
-          emailVerified: true,
-        });
+        const otherOwner = createUuidV7();
+        await database.insert(user).values([
+          {
+            id: sender,
+            name: "Sender",
+            email: `${sender}@example.test`,
+            emailVerified: true,
+          },
+          {
+            id: otherOwner,
+            name: "Other owner",
+            email: `${otherOwner}@example.test`,
+            emailVerified: true,
+          },
+        ]);
         const created = await createCoupleWedding(
           database,
           authorizeCoupleWeddingCreation({
@@ -350,6 +405,53 @@ describe("partner invitation persistence", () => {
           "pending",
         ]);
         expect(rows[0]?.replacedByInvitationId).toBe(rows[1]?.id);
+        const otherWedding = await createCoupleWedding(
+          database,
+          authorizeCoupleWeddingCreation({
+            actorId: otherOwner,
+            correlationId: randomUUID(),
+            creationRequestId: randomUUID(),
+            name: "Other wedding",
+            weddingDate: null,
+            timeZone: "UTC",
+          }),
+        );
+        const otherOperation = await authorizeWeddingServerOperation(
+          { actorId: otherOwner },
+          {
+            resource: "existing",
+            recordId: otherWedding.wedding.id,
+            weddingId: otherWedding.wedding.id,
+            action: "edit",
+            correlationId: randomUUID(),
+          },
+          new DatabaseWeddingAuthorizationState(database),
+        );
+        await expect(
+          revokePartnerInvitation(
+            database,
+            otherOperation,
+            renewed.invitation.id,
+          ),
+        ).resolves.toBe(false);
+        const viewOnlyOperation = await authorizeWeddingServerOperation(
+          { actorId: sender },
+          {
+            resource: "existing",
+            recordId: created.wedding.id,
+            weddingId: created.wedding.id,
+            action: "view",
+            correlationId: randomUUID(),
+          },
+          new DatabaseWeddingAuthorizationState(database),
+        );
+        await expect(
+          revokePartnerInvitation(
+            database,
+            viewOnlyOperation,
+            renewed.invitation.id,
+          ),
+        ).rejects.toThrow();
         await expect(
           revokePartnerInvitation(
             database,

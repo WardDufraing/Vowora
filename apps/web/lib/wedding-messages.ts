@@ -35,6 +35,8 @@ export interface WeddingFormMessages {
   readonly invitationSend: string;
   readonly invitationSending: string;
   readonly invitationSent: string;
+  readonly invitationPending: string;
+  readonly invitationExpires: string;
   readonly invitationCopy: string;
   readonly invitationError: string;
   readonly invitationRevoke: string;
@@ -45,6 +47,7 @@ export interface WeddingFormMessages {
   readonly invitationAccept: string;
   readonly invitationAccepting: string;
   readonly invitationAcceptError: string;
+  readonly invitationExpired: string;
 }
 
 const en: WeddingFormMessages = {
@@ -85,6 +88,9 @@ const en: WeddingFormMessages = {
   invitationSending: "Creating invitation…",
   invitationSent:
     "Invitation created. Share this secure link only with your partner.",
+  invitationPending:
+    "An invitation is pending. Revoke it to create and share a replacement link.",
+  invitationExpires: "Expires:",
   invitationCopy: "Copy invitation link",
   invitationError:
     "The invitation could not be created. A partner or pending invitation may already exist.",
@@ -98,6 +104,8 @@ const en: WeddingFormMessages = {
   invitationAccepting: "Accepting invitation…",
   invitationAcceptError:
     "This invitation cannot be accepted with this account. It may be expired or already used.",
+  invitationExpired:
+    "This invitation has expired. Ask an existing partner for a replacement invitation.",
 };
 
 const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
@@ -144,6 +152,9 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationSending: "Uitnodiging aanmaken…",
     invitationSent:
       "Uitnodiging aangemaakt. Deel deze beveiligde link alleen met je partner.",
+    invitationPending:
+      "Er staat een uitnodiging open. Trek ze in om een nieuwe link aan te maken en te delen.",
+    invitationExpires: "Verloopt op:",
     invitationCopy: "Uitnodigingslink kopiëren",
     invitationError:
       "De uitnodiging kon niet worden aangemaakt. Er bestaat mogelijk al een partner of openstaande uitnodiging.",
@@ -157,6 +168,8 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationAccepting: "Uitnodiging accepteren…",
     invitationAcceptError:
       "Deze uitnodiging kan niet met dit account worden geaccepteerd. Ze is mogelijk verlopen of al gebruikt.",
+    invitationExpired:
+      "Deze uitnodiging is verlopen. Vraag een bestaande partner om een nieuwe uitnodiging.",
   },
   fr: {
     ...en,
@@ -203,6 +216,9 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationSending: "Création de l’invitation…",
     invitationSent:
       "Invitation créée. Partagez ce lien sécurisé uniquement avec votre partenaire.",
+    invitationPending:
+      "Une invitation est en attente. Révoquez-la pour créer et partager un nouveau lien.",
+    invitationExpires: "Expire le :",
     invitationCopy: "Copier le lien d’invitation",
     invitationError:
       "L’invitation n’a pas pu être créée. Un partenaire ou une invitation en attente existe peut-être déjà.",
@@ -216,6 +232,8 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationAccepting: "Acceptation de l’invitation…",
     invitationAcceptError:
       "Cette invitation ne peut pas être acceptée avec ce compte. Elle a peut-être expiré ou déjà été utilisée.",
+    invitationExpired:
+      "Cette invitation a expiré. Demandez une nouvelle invitation à un partenaire existant.",
   },
   de: {
     ...en,
@@ -261,6 +279,9 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationSending: "Einladung wird erstellt…",
     invitationSent:
       "Einladung erstellt. Teilt diesen sicheren Link nur mit eurem Partner.",
+    invitationPending:
+      "Eine Einladung ist offen. Widerruft sie, um einen neuen Link zu erstellen und zu teilen.",
+    invitationExpires: "Läuft ab am:",
     invitationCopy: "Einladungslink kopieren",
     invitationError:
       "Die Einladung konnte nicht erstellt werden. Möglicherweise gibt es bereits einen Partner oder eine offene Einladung.",
@@ -274,6 +295,8 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     invitationAccepting: "Einladung wird angenommen…",
     invitationAcceptError:
       "Diese Einladung kann mit diesem Konto nicht angenommen werden. Sie ist möglicherweise abgelaufen oder bereits verwendet.",
+    invitationExpired:
+      "Diese Einladung ist abgelaufen. Bittet einen bestehenden Partner um eine neue Einladung.",
   },
 };
 

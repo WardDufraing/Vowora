@@ -74,6 +74,31 @@ export interface WeddingInvitationView {
   readonly createdAt: string;
 }
 
+export async function listPartnerInvitations<HKT extends PgQueryResultHKT>(
+  database: InvitationDatabase<HKT>,
+  operation: AuthorizedServerOperation,
+): Promise<readonly WeddingInvitationView[]> {
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    assertAuthorizedRepositoryCall(call, {
+      area: "settings",
+      action: "edit",
+      resource: { kind: "existing", id: operation.resourceId! },
+      visibility: "wedding_shared",
+    });
+    const rows = await call.session
+      .select()
+      .from(weddingInvitations)
+      .where(
+        and(
+          eq(weddingInvitations.weddingId, call.authorization.activeWeddingId!),
+          eq(weddingInvitations.role, "partner"),
+          eq(weddingInvitations.status, "pending"),
+        ),
+      );
+    return Object.freeze(rows.map(invitationView));
+  });
+}
+
 function digest(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
@@ -93,10 +118,48 @@ function invitationView(
   });
 }
 
+export async function readPartnerInvitationForActor<
+  HKT extends PgQueryResultHKT,
+>(
+  database: InvitationDatabase<HKT>,
+  input: { readonly actorId: string } & (
+    { readonly token: string } | { readonly invitationId: string }
+  ),
+): Promise<WeddingInvitationView | undefined> {
+  if (
+    "token" in input &&
+    (input.token.length < 32 || input.token.length > 256)
+  ) {
+    return undefined;
+  }
+  const [row] = await database
+    .select({ invitation: weddingInvitations })
+    .from(weddingInvitations)
+    .innerJoin(
+      user,
+      and(
+        eq(user.id, input.actorId),
+        eq(user.emailVerified, true),
+        eq(user.email, weddingInvitations.invitedEmail),
+      ),
+    )
+    .where(
+      "token" in input
+        ? eq(weddingInvitations.tokenDigest, digest(input.token))
+        : eq(weddingInvitations.id, input.invitationId),
+    )
+    .limit(1);
+  return row ? invitationView(row.invitation) : undefined;
+}
+
 export async function issuePartnerInvitation<HKT extends PgQueryResultHKT>(
   database: InvitationDatabase<HKT>,
   operation: AuthorizedServerOperation,
-  input: { readonly email: string; readonly now?: Date },
+  input: {
+    readonly email: string;
+    readonly locale?: "en" | "nl" | "fr" | "de";
+    readonly now?: Date;
+  },
 ): Promise<{
   readonly invitation: WeddingInvitationView;
   readonly token: string;
@@ -208,6 +271,7 @@ export async function issuePartnerInvitation<HKT extends PgQueryResultHKT>(
         .where(eq(weddingInvitations.id, pending.id));
     }
     const occurredAt = now.toISOString();
+    const deliveryPath = `/invitations/pending/${inserted!.id}?locale=${input.locale ?? "en"}`;
     await appendAuthorizedAuditEvent(
       call.authorization,
       call.session,
@@ -238,6 +302,7 @@ export async function issuePartnerInvitation<HKT extends PgQueryResultHKT>(
           weddingId,
           expiresAt: expiresAt.toISOString(),
           reminderAt: reminderAt.toISOString(),
+          acceptancePath: deliveryPath,
           ...(pending ? { replacedInvitationId: pending.id } : {}),
         },
       }),
@@ -251,20 +316,25 @@ export async function acceptPartnerInvitation<HKT extends PgQueryResultHKT>(
   input: {
     readonly actorId: string;
     readonly correlationId: string;
-    readonly token: string;
     readonly now?: Date;
-  },
+  } & ({ readonly token: string } | { readonly invitationId: string }),
 ): Promise<{ readonly weddingId: string; readonly replayed: boolean }> {
-  if (input.token.length < 32 || input.token.length > 256) {
+  if (
+    "token" in input &&
+    (input.token.length < 32 || input.token.length > 256)
+  ) {
     throw new WeddingInvitationUnavailableError("invalid");
   }
-  const tokenDigest = digest(input.token);
   return database.transaction(async (transaction) => {
     const now = input.now ?? new Date();
     const [invitation] = await transaction
       .select()
       .from(weddingInvitations)
-      .where(eq(weddingInvitations.tokenDigest, tokenDigest))
+      .where(
+        "token" in input
+          ? eq(weddingInvitations.tokenDigest, digest(input.token))
+          : eq(weddingInvitations.id, input.invitationId),
+      )
       .limit(1)
       .for("update");
     if (!invitation) throw new WeddingInvitationUnavailableError("invalid");

@@ -10,10 +10,54 @@ import { readAuthEnvironment } from "../../../../../../lib/env";
 import {
   createPartnerInvitation,
   isWeddingInvitationConflict,
+  authorizeWeddingSettingsApiOperation,
+  loadPartnerInvitations,
   partnerInvitationCorrelationId,
 } from "../../../../../../lib/wedding-service";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ weddingId: string }> },
+) {
+  const weddingId = z.uuidv7().safeParse((await context.params).weddingId);
+  if (!weddingId.success) {
+    return problemResponse(request, {
+      status: 404,
+      title: "Invitations unavailable",
+      detail: "The invitations are unavailable.",
+      code: "INVITATION_UNAVAILABLE",
+    });
+  }
+  const authorized = await authorizeWeddingSettingsApiOperation(
+    getAuth(),
+    request,
+    weddingId.data,
+  );
+  if (!authorized.authorized) return authorized.response;
+  const correlationId = authorized.operation.authorization.correlationId;
+  try {
+    return jsonResponse(
+      {
+        data: await loadPartnerInvitations(authorized.operation),
+        meta: { correlationId },
+      },
+      correlationId,
+    );
+  } catch {
+    return problemResponse(
+      request,
+      {
+        status: 503,
+        title: "Invitations unavailable",
+        detail: "The invitations could not be loaded.",
+        code: "INVITATION_UNAVAILABLE",
+      },
+      correlationId,
+    );
+  }
+}
 
 export async function POST(
   request: Request,
@@ -52,6 +96,7 @@ export async function POST(
     const result = await createPartnerInvitation({
       auth: getAuth(),
       email: parsed.data.email,
+      locale: parsed.data.locale,
       request,
       weddingId: weddingId.data,
     });
@@ -59,7 +104,10 @@ export async function POST(
     const { invitation, token } = result.result;
     return jsonResponse(
       {
-        data: { ...invitation, acceptancePath: `/invitations/${token}` },
+        data: {
+          ...invitation,
+          acceptancePath: `/invitations/${token}?locale=${parsed.data.locale}`,
+        },
         meta: { correlationId: result.correlationId },
       },
       result.correlationId,
