@@ -43,7 +43,7 @@
 | 05-c | Shared forms, tables and localization | 05-b | In review | [Brief](steps/05-c.md) |
 | 06-a | Wedding creation and workspace settings | 05-c | In review | [Brief](steps/06-a.md) |
 | 06-b | Partner invitations and claim lifecycle | 06-a | In review | [Brief](steps/06-b.md) |
-| 06-c | Workspace switching and deep links | 06-b | Not started | [Brief](steps/06-c.md) |
+| 06-c | Workspace switching and deep links | 06-b | In review | [Brief](steps/06-c.md) |
 | 07-a | Organization and staff memberships | 06-c | Not started | [Brief](steps/07-a.md) |
 | 07-b | Wedding planner assignment and fallback | 07-a | Not started | [Brief](steps/07-b.md) |
 | 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |

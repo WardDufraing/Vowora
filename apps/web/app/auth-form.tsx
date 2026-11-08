@@ -8,7 +8,7 @@ const genericFailure =
   "We could not complete that request. Check your details and try again.";
 
 export function AuthForm({
-  continuation = "/account",
+  continuation = "/weddings",
   mode,
 }: {
   readonly continuation?: string;

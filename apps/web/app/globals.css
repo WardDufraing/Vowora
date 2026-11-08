@@ -919,6 +919,45 @@ tr[aria-selected="true"] {
   background: var(--card);
   box-shadow: var(--shadow-raised);
 }
+.workspace-entry,
+.workspace-unavailable {
+  width: min(calc(100% - 2 * var(--space-8)), 46rem);
+  margin: var(--space-16) auto;
+}
+.workspace-chooser {
+  display: grid;
+  gap: var(--space-4);
+}
+.workspace-chooser > label {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: 650;
+}
+.workspace-chooser > label input {
+  min-height: 2.75rem;
+}
+.workspace-chooser nav {
+  display: grid;
+  gap: var(--space-2);
+}
+.workspace-chooser nav a {
+  display: grid;
+  gap: var(--space-1);
+  min-height: 3.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: var(--space-3) var(--space-4);
+  background: var(--card);
+  color: var(--card-foreground);
+  text-decoration: none;
+}
+.workspace-chooser nav a:hover {
+  background: var(--selected);
+  color: var(--selected-foreground);
+}
+.workspace-chooser nav span {
+  color: var(--muted-foreground);
+}
 .mobile-more-sheet {
   position: fixed;
   z-index: 51;

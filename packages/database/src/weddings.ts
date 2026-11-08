@@ -244,6 +244,101 @@ export interface AccessibleWeddingWorkspace {
   readonly membership: AuthorizedWeddingSettingsView["membership"];
 }
 
+export interface WeddingWorkspaceEntryState {
+  readonly accessibleWorkspaces: readonly AccessibleWeddingWorkspace[];
+  /**
+   * The most recently opened membership may have been revoked or expired.
+   * In that case DEC-672 requires an explicit chooser instead of silently
+   * opening a different wedding.
+   */
+  readonly lastOpenedAccessibleWeddingId: string | null;
+}
+
+function accessibleMembership(
+  membership: Pick<
+    typeof weddingMemberships.$inferSelect,
+    "accessExpiresAt" | "status"
+  >,
+  now: Date,
+): boolean {
+  return (
+    membership.status === "active" &&
+    (membership.accessExpiresAt === null || membership.accessExpiresAt > now)
+  );
+}
+
+function workspaceProjection(row: {
+  readonly wedding: typeof weddings.$inferSelect;
+  readonly membership: typeof weddingMemberships.$inferSelect;
+}): AccessibleWeddingWorkspace {
+  return Object.freeze({
+    weddingId: row.wedding.id,
+    name: row.wedding.name,
+    weddingDate: row.wedding.weddingDate,
+    lastOpenedAt: row.membership.lastOpenedAt.toISOString(),
+    membership: Object.freeze({
+      actorId: row.membership.actorId,
+      weddingId: row.membership.weddingId,
+      role: row.membership.role,
+      status: row.membership.status,
+      accessExpiresAt: row.membership.accessExpiresAt?.toISOString() ?? null,
+      permissionOverrides: row.membership.permissionOverrides,
+    }),
+  });
+}
+
+/**
+ * Resolves the normal app entry without changing recency. It deliberately
+ * inspects the actor's most recent inaccessible membership only to decide
+ * whether a chooser is required; inaccessible wedding details are never
+ * returned to the application.
+ */
+export async function readWeddingWorkspaceEntryState<
+  HKT extends PgQueryResultHKT,
+>(
+  database: WeddingDatabase<HKT>,
+  input: { readonly actorId: string; readonly now?: Date },
+): Promise<WeddingWorkspaceEntryState> {
+  const now = input.now ?? new Date();
+  const [lastOpenedMembership] = await database
+    .select({
+      accessExpiresAt: weddingMemberships.accessExpiresAt,
+      status: weddingMemberships.status,
+      weddingId: weddingMemberships.weddingId,
+    })
+    .from(weddingMemberships)
+    .where(eq(weddingMemberships.actorId, input.actorId))
+    .orderBy(
+      desc(weddingMemberships.lastOpenedAt),
+      weddingMemberships.weddingId,
+    )
+    .limit(1);
+  const accessibleRows = await database
+    .select({ wedding: weddings, membership: weddingMemberships })
+    .from(weddingMemberships)
+    .innerJoin(weddings, eq(weddings.id, weddingMemberships.weddingId))
+    .where(
+      and(
+        eq(weddingMemberships.actorId, input.actorId),
+        eq(weddingMemberships.status, "active"),
+        or(
+          isNull(weddingMemberships.accessExpiresAt),
+          gt(weddingMemberships.accessExpiresAt, now),
+        ),
+      ),
+    )
+    .orderBy(desc(weddingMemberships.lastOpenedAt), weddings.id);
+  return Object.freeze({
+    accessibleWorkspaces: Object.freeze(
+      accessibleRows.map(workspaceProjection),
+    ),
+    lastOpenedAccessibleWeddingId:
+      lastOpenedMembership && accessibleMembership(lastOpenedMembership, now)
+        ? lastOpenedMembership.weddingId
+        : null,
+  });
+}
+
 /**
  * Lists only the actor's currently usable wedding memberships and records the
  * wedding they just opened. The update is deliberately limited to personal
@@ -292,25 +387,7 @@ export async function listAccessibleWeddingWorkspaces<
       )
       .orderBy(desc(weddingMemberships.lastOpenedAt), weddings.id);
 
-    return Object.freeze(
-      rows.map((row) =>
-        Object.freeze({
-          weddingId: row.wedding.id,
-          name: row.wedding.name,
-          weddingDate: row.wedding.weddingDate,
-          lastOpenedAt: row.membership.lastOpenedAt.toISOString(),
-          membership: Object.freeze({
-            actorId: row.membership.actorId,
-            weddingId: row.membership.weddingId,
-            role: row.membership.role,
-            status: row.membership.status,
-            accessExpiresAt:
-              row.membership.accessExpiresAt?.toISOString() ?? null,
-            permissionOverrides: row.membership.permissionOverrides,
-          }),
-        }),
-      ),
-    );
+    return Object.freeze(rows.map(workspaceProjection));
   });
 }
 

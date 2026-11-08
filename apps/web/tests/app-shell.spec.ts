@@ -193,6 +193,43 @@ test.describe("responsive permission-aware application shell", () => {
     await page.waitForURL(`**/weddings/${weddingId}/timeline`);
   });
 
+  test("keeps a localized cross-workspace record link and edits in place on Stay", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(
+      "/app-shell?dirty=true&deepLink=true&destination=settings&locale=de",
+    );
+    const switcher = page.locator(
+      ".app-shell__sidebar details.workspace-switcher",
+    );
+    await switcher.locator("summary").click();
+    await expect(
+      switcher.getByRole("searchbox", { name: "Hochzeiten suchen" }),
+    ).toBeVisible();
+    await expect(
+      switcher.getByRole("link", { name: /Morgan & Riley/ }),
+    ).toHaveAttribute(
+      "href",
+      "/weddings/019a1f5e-70a0-7000-8000-000000000003/dashboard?locale=de",
+    );
+    await switcher.locator("summary").click();
+    const name = page.getByRole("textbox", { name: "Name der Hochzeit" });
+    await name.fill("Geänderte Hochzeit");
+    const direct = page.getByRole("link", { name: "Open linked record" });
+    await expect(direct).toHaveAttribute(
+      "href",
+      "/weddings/019a1f5e-70a0-7000-8000-000000000003/timeline/019a1f5e-70a0-7000-8000-000000000004?locale=de",
+    );
+    await direct.click();
+    const dialog = page.getByRole("dialog", {
+      name: "Nicht gespeicherte Änderungen",
+    });
+    await dialog.getByRole("button", { name: "Bleiben" }).click();
+    await expect(name).toHaveValue("Geänderte Hochzeit");
+    await expect(page).toHaveURL(/\/app-shell\?/);
+  });
+
   test("reflows with long labels, large text, safe targets and both themes", async ({
     page,
   }) => {

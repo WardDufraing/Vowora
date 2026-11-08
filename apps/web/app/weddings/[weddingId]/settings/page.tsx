@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { AppShell } from "../../../../components/app-shell";
+import { WorkspaceUnavailable } from "../../../../components/workspace-unavailable";
 import { getAuth } from "../../../../lib/auth";
 import {
   weddingLocale,
@@ -25,11 +26,17 @@ export default async function WeddingSettingsPage({
 }) {
   const weddingId = z.uuidv7().safeParse((await params).weddingId);
   if (!weddingId.success) notFound();
+  const locale = weddingLocale((await searchParams).locale);
   const session = await getAuth().api.getSession({
     headers: await headers(),
     query: { disableCookieCache: true, disableRefresh: true },
   });
-  if (!session) redirect(`/sign-in?next=/weddings/${weddingId.data}/settings`);
+  if (!session) {
+    const localeQuery = locale === "en" ? "" : `?locale=${locale}`;
+    redirect(
+      `/sign-in?next=${encodeURIComponent(`/weddings/${weddingId.data}/settings${localeQuery}`)}`,
+    );
+  }
 
   let pageData;
   try {
@@ -45,12 +52,12 @@ export default async function WeddingSettingsPage({
       membership: loaded.membership,
       workspaces: loaded.workspaces,
       requestedPath: `/weddings/${weddingId.data}/settings`,
+      locale,
     });
     pageData = { loaded, navigation };
   } catch {
-    notFound();
+    return <WorkspaceUnavailable kind="wedding" locale={locale} />;
   }
-  const locale = weddingLocale((await searchParams).locale);
   const messages = weddingMessages(locale);
   return (
     <AppShell model={pageData.navigation}>

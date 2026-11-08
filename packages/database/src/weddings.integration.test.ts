@@ -26,6 +26,7 @@ import {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
   listAccessibleWeddingWorkspaces,
+  readWeddingWorkspaceEntryState,
   updateWeddingSettings,
   WeddingCreationConflictError,
   WeddingSettingsConflictError,
@@ -226,17 +227,36 @@ describe("wedding workspace persistence", () => {
           .where(eq(weddingMemberships.weddingId, opened.wedding.id));
         await database
           .update(weddingMemberships)
-          .set({ status: "revoked" })
+          .set({
+            status: "revoked",
+            lastOpenedAt: new Date("2026-01-06T00:00:00.000Z"),
+          })
           .where(eq(weddingMemberships.weddingId, revoked.wedding.id));
         await database
           .update(weddingMemberships)
           .set({
             role: "coordinator",
             accessExpiresAt: new Date("2026-01-02T00:00:00.000Z"),
+            lastOpenedAt: new Date("2026-01-05T00:00:00.000Z"),
           })
           .where(eq(weddingMemberships.weddingId, expired.wedding.id));
 
-        const now = new Date("2026-01-05T00:00:00.000Z");
+        const now = new Date("2026-01-07T00:00:00.000Z");
+        const chooser = await readWeddingWorkspaceEntryState(database, {
+          actorId,
+          now,
+        });
+        expect(chooser.lastOpenedAccessibleWeddingId).toBeNull();
+        expect(chooser.accessibleWorkspaces.map(({ name }) => name)).toEqual([
+          "Older accessible",
+          "Just opened",
+        ]);
+        expect(
+          chooser.accessibleWorkspaces.some(
+            ({ membership }) => membership.actorId === otherActorId,
+          ),
+        ).toBe(false);
+
         const workspaces = await listAccessibleWeddingWorkspaces(database, {
           actorId,
           openedWeddingId: opened.wedding.id,
@@ -254,6 +274,10 @@ describe("wedding workspace persistence", () => {
         expect(
           workspaces.every(({ membership }) => membership.actorId === actorId),
         ).toBe(true);
+        expect(
+          (await readWeddingWorkspaceEntryState(database, { actorId, now }))
+            .lastOpenedAccessibleWeddingId,
+        ).toBe(opened.wedding.id);
       },
     );
   });

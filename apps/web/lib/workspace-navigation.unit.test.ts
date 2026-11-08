@@ -263,4 +263,28 @@ describe("authoritative wedding shell navigation", () => {
       "contacts",
     ]);
   });
+
+  it("localizes switcher details and preserves locale on cross-workspace links", () => {
+    const localized = resolveWeddingShellNavigation({
+      actorId,
+      weddingId,
+      membership: membership("partner"),
+      workspaces,
+      requestedPath: `/weddings/${weddingId}/settings`,
+      evaluatedAt: now,
+      locale: "de",
+    });
+    expect(localized.labels.noWeddings).toBe("Keine Hochzeiten gefunden");
+    expect(
+      localized.destinations.find(({ id }) => id === "settings"),
+    ).toMatchObject({
+      label: "Bereichseinstellungen",
+      href: `/weddings/${weddingId}/settings?locale=de`,
+    });
+    expect(localized.workspaceOptions[1]).toMatchObject({
+      dateLabel: "Datum nicht festgelegt",
+      roleLabel: "Planer",
+      href: `/weddings/${otherWeddingId}/dashboard?locale=de`,
+    });
+  });
 });
