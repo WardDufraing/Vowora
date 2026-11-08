@@ -35,9 +35,7 @@ export default async function InvitationPage({
       <InvitationAcceptance
         endpoint={`/api/v1/invitations/${encodeURIComponent(token)}/accept`}
         expiresAt={invitation?.expiresAt}
-        initiallyExpired={
-          invitation ? Date.parse(invitation.expiresAt) <= Date.now() : false
-        }
+        initiallyExpired={invitation?.expired}
         locale={locale}
         messages={weddingMessages(locale)}
       />

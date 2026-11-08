@@ -126,6 +126,7 @@ describe("partner invitation persistence", () => {
         ).resolves.toMatchObject({
           id: issued.invitation.id,
           invitedEmail: "partner@example.test",
+          expired: false,
         });
 
         const pool = new pg.Pool({

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -125,7 +125,9 @@ export async function readPartnerInvitationForActor<
   input: { readonly actorId: string } & (
     { readonly token: string } | { readonly invitationId: string }
   ),
-): Promise<WeddingInvitationView | undefined> {
+): Promise<
+  (WeddingInvitationView & { readonly expired: boolean }) | undefined
+> {
   if (
     "token" in input &&
     (input.token.length < 32 || input.token.length > 256)
@@ -133,7 +135,10 @@ export async function readPartnerInvitationForActor<
     return undefined;
   }
   const [row] = await database
-    .select({ invitation: weddingInvitations })
+    .select({
+      invitation: weddingInvitations,
+      expired: sql<boolean>`${weddingInvitations.expiresAt} <= current_timestamp`,
+    })
     .from(weddingInvitations)
     .innerJoin(
       user,
@@ -149,7 +154,9 @@ export async function readPartnerInvitationForActor<
         : eq(weddingInvitations.id, input.invitationId),
     )
     .limit(1);
-  return row ? invitationView(row.invitation) : undefined;
+  return row
+    ? Object.freeze({ ...invitationView(row.invitation), expired: row.expired })
+    : undefined;
 }
 
 export async function issuePartnerInvitation<HKT extends PgQueryResultHKT>(

@@ -37,9 +37,7 @@ export default async function PendingInvitationPage({
       <InvitationAcceptance
         endpoint={`/api/v1/invitations/pending/${invitationId.data}/accept`}
         expiresAt={invitation?.expiresAt}
-        initiallyExpired={
-          invitation ? Date.parse(invitation.expiresAt) <= Date.now() : false
-        }
+        initiallyExpired={invitation?.expired}
         locale={locale}
         messages={weddingMessages(locale)}
       />
