@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(4);
+      expect(journal.rowCount).toBe(5);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
@@ -235,6 +235,33 @@ describe("persistent migration workflow", () => {
         "UPDATE weddings SET name = 'Updated wedding', settings_version = 2 WHERE id = $1",
         [weddingId],
       );
+      const invitationId = "019a27f0-67b7-7000-8000-000000000008";
+      await runtime.query(
+        `INSERT INTO wedding_invitations
+          (id, wedding_id, invited_email, role, token_digest, status,
+           issued_by_actor_id, expires_at, reminder_at)
+         VALUES ($1, $2, 'partner@example.invalid', 'partner', $3, 'pending',
+           $4, now() + interval '14 days', now() + interval '11 days')`,
+        [invitationId, weddingId, "b".repeat(64), userId],
+      );
+      await runtime.query(
+        `UPDATE wedding_invitations
+            SET status = 'accepted', accepted_by_actor_id = $2,
+                accepted_at = now(), updated_at = now()
+          WHERE id = $1`,
+        [invitationId, userId],
+      );
+      await expect(
+        runtime.query(
+          "UPDATE wedding_invitations SET invited_email = 'attacker@example.invalid' WHERE id = $1",
+          [invitationId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query("DELETE FROM wedding_invitations WHERE id = $1", [
+          invitationId,
+        ]),
+      ).rejects.toThrow(/permission denied/);
       expect(
         (
           await runtime.query("SELECT name FROM weddings WHERE id = $1", [

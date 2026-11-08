@@ -7,7 +7,13 @@ import { TurnstileChallenge } from "./turnstile-challenge";
 const genericFailure =
   "We could not complete that request. Check your details and try again.";
 
-export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
+export function AuthForm({
+  continuation = "/account",
+  mode,
+}: {
+  readonly continuation?: string;
+  readonly mode: "sign-in" | "sign-up";
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "submitting" | "success">(
     "idle",
@@ -25,7 +31,9 @@ export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
       ...(isSignUp ? { name: String(data.get("name") ?? "") } : {}),
       email: String(data.get("email") ?? ""),
       password: String(data.get("password") ?? ""),
-      callbackURL: `${window.location.origin}/account`,
+      callbackURL: isSignUp
+        ? `${window.location.origin}/sign-in?next=${encodeURIComponent(continuation)}`
+        : `${window.location.origin}${continuation}`,
     };
     const challengeToken = String(data.get("cf-turnstile-response") ?? "");
     setChallengeRequired(false);
@@ -71,7 +79,7 @@ export function AuthForm({ mode }: { readonly mode: "sign-in" | "sign-up" }) {
         );
         setStatus("success");
       } else {
-        router.push("/account");
+        router.push(continuation);
       }
     } catch {
       setMessage(genericFailure);

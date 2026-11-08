@@ -20,7 +20,12 @@ describe("account forms", () => {
       .mockResolvedValue(new Response("private-response", { status: 200 }));
     vi.stubGlobal("fetch", request);
     const user = userEvent.setup();
-    render(<AuthForm mode="sign-up" />);
+    render(
+      <AuthForm
+        continuation="/invitations/pending/019a1f5e-70a0-7000-8000-000000000003?locale=nl"
+        mode="sign-up"
+      />,
+    );
 
     await user.type(screen.getByLabelText("Name"), "Synthetic Partner");
     await user.type(screen.getByLabelText("Email"), "partner@example.test");
@@ -32,10 +37,32 @@ describe("account forms", () => {
 
     expect(request).toHaveBeenCalledOnce();
     expect(request.mock.calls[0]?.[0]).toBe("/api/v1/auth/sign-up/email");
+    expect(JSON.parse(String(request.mock.calls[0]?.[1]?.body))).toMatchObject({
+      callbackURL:
+        "http://localhost:3000/sign-in?next=%2Finvitations%2Fpending%2F019a1f5e-70a0-7000-8000-000000000003%3Flocale%3Dnl",
+    });
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Check your inbox for a verification link before signing in.",
     );
     expect(screen.queryByText("private-response")).not.toBeInTheDocument();
+  });
+
+  it("continues a successful sign-in to the validated invitation path", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(null));
+    vi.stubGlobal("fetch", request);
+    const user = userEvent.setup();
+    const continuation = "/invitations/token?locale=fr";
+    render(<AuthForm continuation={continuation} mode="sign-in" />);
+    await user.type(screen.getByLabelText("Email"), "partner@example.test");
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-passphrase-123",
+    );
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(JSON.parse(String(request.mock.calls[0]?.[1]?.body))).toMatchObject({
+      callbackURL: `http://localhost:3000${continuation}`,
+    });
+    expect(push).toHaveBeenCalledWith(continuation);
   });
 
   it("uses the same safe error presentation for rejected sign-in responses", async () => {

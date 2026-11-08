@@ -176,6 +176,10 @@ test(
         "/api/v1/account/sessions/{sessionId}",
         "/api/v1/weddings",
         "/api/v1/weddings/{weddingId}",
+        "/api/v1/weddings/{weddingId}/invitations",
+        "/api/v1/weddings/{weddingId}/invitations/{invitationId}",
+        "/api/v1/invitations/{token}/accept",
+        "/api/v1/invitations/pending/{invitationId}/accept",
         "/api/v1/{path}",
       ]);
       assert.deepEqual(

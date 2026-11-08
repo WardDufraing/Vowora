@@ -28,6 +28,26 @@ export interface WeddingFormMessages {
   readonly unsavedSave: string;
   readonly unsavedDiscard: string;
   readonly unsavedStay: string;
+  readonly invitationTitle: string;
+  readonly invitationIntro: string;
+  readonly invitationEmail: string;
+  readonly invitationEmailDescription: string;
+  readonly invitationSend: string;
+  readonly invitationSending: string;
+  readonly invitationSent: string;
+  readonly invitationPending: string;
+  readonly invitationExpires: string;
+  readonly invitationCopy: string;
+  readonly invitationError: string;
+  readonly invitationRevoke: string;
+  readonly invitationRevoking: string;
+  readonly invitationRevoked: string;
+  readonly invitationAcceptTitle: string;
+  readonly invitationAcceptIntro: string;
+  readonly invitationAccept: string;
+  readonly invitationAccepting: string;
+  readonly invitationAcceptError: string;
+  readonly invitationExpired: string;
 }
 
 const en: WeddingFormMessages = {
@@ -59,6 +79,33 @@ const en: WeddingFormMessages = {
   unsavedSave: "Save",
   unsavedDiscard: "Discard",
   unsavedStay: "Stay",
+  invitationTitle: "Invite your partner",
+  invitationIntro:
+    "The invitation expires after 14 days and can be used only by the verified invited email address.",
+  invitationEmail: "Partner email",
+  invitationEmailDescription: "We use this address to verify who may join.",
+  invitationSend: "Create invitation",
+  invitationSending: "Creating invitation…",
+  invitationSent:
+    "Invitation created. Share this secure link only with your partner.",
+  invitationPending:
+    "An invitation is pending. Revoke it to create and share a replacement link.",
+  invitationExpires: "Expires:",
+  invitationCopy: "Copy invitation link",
+  invitationError:
+    "The invitation could not be created. A partner or pending invitation may already exist.",
+  invitationRevoke: "Revoke invitation",
+  invitationRevoking: "Revoking invitation…",
+  invitationRevoked: "Invitation revoked.",
+  invitationAcceptTitle: "Join this wedding",
+  invitationAcceptIntro:
+    "Confirm to join as an equal partner. You must be signed in with the verified invited email address.",
+  invitationAccept: "Accept invitation",
+  invitationAccepting: "Accepting invitation…",
+  invitationAcceptError:
+    "This invitation cannot be accepted with this account. It may be expired or already used.",
+  invitationExpired:
+    "This invitation has expired. Ask an existing partner for a replacement invitation.",
 };
 
 const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
@@ -95,6 +142,34 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     unsavedSave: "Opslaan",
     unsavedDiscard: "Negeren",
     unsavedStay: "Blijven",
+    invitationTitle: "Nodig je partner uit",
+    invitationIntro:
+      "De uitnodiging verloopt na 14 dagen en werkt alleen met het geverifieerde uitgenodigde e-mailadres.",
+    invitationEmail: "E-mailadres van je partner",
+    invitationEmailDescription:
+      "We gebruiken dit adres om te controleren wie mag deelnemen.",
+    invitationSend: "Uitnodiging aanmaken",
+    invitationSending: "Uitnodiging aanmaken…",
+    invitationSent:
+      "Uitnodiging aangemaakt. Deel deze beveiligde link alleen met je partner.",
+    invitationPending:
+      "Er staat een uitnodiging open. Trek ze in om een nieuwe link aan te maken en te delen.",
+    invitationExpires: "Verloopt op:",
+    invitationCopy: "Uitnodigingslink kopiëren",
+    invitationError:
+      "De uitnodiging kon niet worden aangemaakt. Er bestaat mogelijk al een partner of openstaande uitnodiging.",
+    invitationRevoke: "Uitnodiging intrekken",
+    invitationRevoking: "Uitnodiging intrekken…",
+    invitationRevoked: "Uitnodiging ingetrokken.",
+    invitationAcceptTitle: "Neem deel aan deze bruiloft",
+    invitationAcceptIntro:
+      "Bevestig om als gelijkwaardige partner deel te nemen. Meld je aan met het geverifieerde uitgenodigde e-mailadres.",
+    invitationAccept: "Uitnodiging accepteren",
+    invitationAccepting: "Uitnodiging accepteren…",
+    invitationAcceptError:
+      "Deze uitnodiging kan niet met dit account worden geaccepteerd. Ze is mogelijk verlopen of al gebruikt.",
+    invitationExpired:
+      "Deze uitnodiging is verlopen. Vraag een bestaande partner om een nieuwe uitnodiging.",
   },
   fr: {
     ...en,
@@ -131,6 +206,34 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     unsavedSave: "Enregistrer",
     unsavedDiscard: "Ignorer",
     unsavedStay: "Rester",
+    invitationTitle: "Invitez votre partenaire",
+    invitationIntro:
+      "L’invitation expire après 14 jours et fonctionne uniquement avec l’adresse invitée vérifiée.",
+    invitationEmail: "Adresse e-mail du partenaire",
+    invitationEmailDescription:
+      "Nous utilisons cette adresse pour vérifier qui peut rejoindre l’espace.",
+    invitationSend: "Créer l’invitation",
+    invitationSending: "Création de l’invitation…",
+    invitationSent:
+      "Invitation créée. Partagez ce lien sécurisé uniquement avec votre partenaire.",
+    invitationPending:
+      "Une invitation est en attente. Révoquez-la pour créer et partager un nouveau lien.",
+    invitationExpires: "Expire le :",
+    invitationCopy: "Copier le lien d’invitation",
+    invitationError:
+      "L’invitation n’a pas pu être créée. Un partenaire ou une invitation en attente existe peut-être déjà.",
+    invitationRevoke: "Révoquer l’invitation",
+    invitationRevoking: "Révocation de l’invitation…",
+    invitationRevoked: "Invitation révoquée.",
+    invitationAcceptTitle: "Rejoindre ce mariage",
+    invitationAcceptIntro:
+      "Confirmez pour rejoindre comme partenaire à égalité. Connectez-vous avec l’adresse invitée vérifiée.",
+    invitationAccept: "Accepter l’invitation",
+    invitationAccepting: "Acceptation de l’invitation…",
+    invitationAcceptError:
+      "Cette invitation ne peut pas être acceptée avec ce compte. Elle a peut-être expiré ou déjà été utilisée.",
+    invitationExpired:
+      "Cette invitation a expiré. Demandez une nouvelle invitation à un partenaire existant.",
   },
   de: {
     ...en,
@@ -166,6 +269,34 @@ const messages: Readonly<Record<AppLocale, WeddingFormMessages>> = {
     unsavedSave: "Speichern",
     unsavedDiscard: "Verwerfen",
     unsavedStay: "Bleiben",
+    invitationTitle: "Partner einladen",
+    invitationIntro:
+      "Die Einladung läuft nach 14 Tagen ab und gilt nur für die verifizierte eingeladene E-Mail-Adresse.",
+    invitationEmail: "E-Mail-Adresse des Partners",
+    invitationEmailDescription:
+      "Wir verwenden diese Adresse, um den Beitritt zu prüfen.",
+    invitationSend: "Einladung erstellen",
+    invitationSending: "Einladung wird erstellt…",
+    invitationSent:
+      "Einladung erstellt. Teilt diesen sicheren Link nur mit eurem Partner.",
+    invitationPending:
+      "Eine Einladung ist offen. Widerruft sie, um einen neuen Link zu erstellen und zu teilen.",
+    invitationExpires: "Läuft ab am:",
+    invitationCopy: "Einladungslink kopieren",
+    invitationError:
+      "Die Einladung konnte nicht erstellt werden. Möglicherweise gibt es bereits einen Partner oder eine offene Einladung.",
+    invitationRevoke: "Einladung widerrufen",
+    invitationRevoking: "Einladung wird widerrufen…",
+    invitationRevoked: "Einladung widerrufen.",
+    invitationAcceptTitle: "Dieser Hochzeit beitreten",
+    invitationAcceptIntro:
+      "Bestätigt den Beitritt als gleichberechtigter Partner. Meldet euch mit der verifizierten eingeladenen E-Mail-Adresse an.",
+    invitationAccept: "Einladung annehmen",
+    invitationAccepting: "Einladung wird angenommen…",
+    invitationAcceptError:
+      "Diese Einladung kann mit diesem Konto nicht angenommen werden. Sie ist möglicherweise abgelaufen oder bereits verwendet.",
+    invitationExpired:
+      "Diese Einladung ist abgelaufen. Bittet einen bestehenden Partner um eine neue Einladung.",
   },
 };
 

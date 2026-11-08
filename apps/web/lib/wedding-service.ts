@@ -3,12 +3,19 @@ import type {
   UpdateWeddingSettingsRequest,
 } from "@vowora/contracts";
 import {
+  acceptPartnerInvitation,
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  issuePartnerInvitation,
+  listPartnerInvitations,
   listAccessibleWeddingWorkspaces,
   readWeddingSettings,
+  readPartnerInvitationForActor,
+  revokePartnerInvitation,
   updateWeddingSettings,
   WeddingCreationConflictError,
+  WeddingInvitationConflictError,
+  WeddingInvitationUnavailableError,
   WeddingSettingsConflictError,
 } from "@vowora/database";
 import {
@@ -94,6 +101,106 @@ export function updateWeddingWorkspace(
     operation,
     request,
   );
+}
+
+export async function createPartnerInvitation(input: {
+  readonly auth: SessionReader;
+  readonly email: string;
+  readonly locale: "en" | "nl" | "fr" | "de";
+  readonly request: Request;
+  readonly weddingId: string;
+}) {
+  const authorized = await authorizeWeddingSettingsApiOperation(
+    input.auth,
+    input.request,
+    input.weddingId,
+  );
+  if (!authorized.authorized) return authorized;
+  let result;
+  try {
+    result = await issuePartnerInvitation(
+      getRuntimeDatabase().database,
+      authorized.operation,
+      { email: input.email, locale: input.locale },
+    );
+  } catch (error) {
+    throw new PartnerInvitationRequestError(
+      authorized.operation.authorization.correlationId,
+      error,
+    );
+  }
+  return Object.freeze({
+    authorized: true as const,
+    correlationId: authorized.operation.authorization.correlationId,
+    result,
+  });
+}
+
+export class PartnerInvitationRequestError extends Error {
+  constructor(
+    readonly correlationId: string,
+    readonly cause: unknown,
+  ) {
+    super("The partner invitation request failed");
+    this.name = "PartnerInvitationRequestError";
+  }
+}
+
+export function claimPartnerInvitation(input: {
+  readonly actorId: string;
+  readonly correlationId: string;
+  readonly token: string;
+}) {
+  return acceptPartnerInvitation(getRuntimeDatabase().database, input);
+}
+
+export function claimPartnerInvitationByEmail(input: {
+  readonly actorId: string;
+  readonly correlationId: string;
+  readonly invitationId: string;
+}) {
+  return acceptPartnerInvitation(getRuntimeDatabase().database, input);
+}
+
+export function loadPartnerInvitations(operation: AuthorizedServerOperation) {
+  return listPartnerInvitations(getRuntimeDatabase().database, operation);
+}
+
+export function loadPartnerInvitationForActor(
+  input: { readonly actorId: string } & (
+    { readonly token: string } | { readonly invitationId: string }
+  ),
+) {
+  return readPartnerInvitationForActor(getRuntimeDatabase().database, input);
+}
+
+export function revokeWeddingPartnerInvitation(
+  operation: AuthorizedServerOperation,
+  invitationId: string,
+) {
+  return revokePartnerInvitation(
+    getRuntimeDatabase().database,
+    operation,
+    invitationId,
+  );
+}
+
+export function isWeddingInvitationConflict(error: unknown): boolean {
+  const cause =
+    error instanceof PartnerInvitationRequestError ? error.cause : error;
+  return cause instanceof WeddingInvitationConflictError;
+}
+
+export function partnerInvitationCorrelationId(error: unknown) {
+  return error instanceof PartnerInvitationRequestError
+    ? error.correlationId
+    : undefined;
+}
+
+export function weddingInvitationUnavailableReason(error: unknown) {
+  return error instanceof WeddingInvitationUnavailableError
+    ? error.reason
+    : undefined;
 }
 
 export async function loadWeddingSettingsForActor(input: {
