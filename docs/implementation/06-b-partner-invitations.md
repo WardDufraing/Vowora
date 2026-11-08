@@ -52,7 +52,9 @@ All 23 integration tests and seven persistent workflow/grant tests passed after 
 
 ## Independent review
 
-The first fresh reviewer `/root/implement_06_b/review_06_b` reviewed pushed head `355469a` and found two high and two medium gaps: auth continuation was dropped, the outbox lacked a usable privacy-safe delivery path and sender management disappeared after reload, exact expiry/localization states were incomplete, and equal-control/isolation/revocation coverage was missing. The corrections above address every finding. The same review also identified a hosted workspace failure; the production smoke test still expected the pre-06-b OpenAPI path list. That assertion now includes all invitation endpoints and passes locally. A different fresh independent re-review is required on the corrected head before the PR can leave draft.
+The first fresh reviewer `/root/implement_06_b/review_06_b` reviewed pushed head `355469a` and found two high and two medium gaps: auth continuation was dropped, the outbox lacked a usable privacy-safe delivery path and sender management disappeared after reload, exact expiry/localization states were incomplete, and equal-control/isolation/revocation coverage was missing. The corrections above address every finding. The same review also identified a hosted workspace failure; the production smoke test still expected the pre-06-b OpenAPI path list. That assertion now includes all invitation endpoints and passes.
+
+Different fresh reviewer `/root/continue_06_b_fixes/rereview_06_b` independently reviewed the complete PR and final corrected code at `8230e63`, including the database-clock expiry correction, and found no blocking, high or material-medium findings. The reviewer ran web lint and 37 targeted tests, inspected the full schema/migration/grant, domain, API, UI and test diff, and confirmed hosted policy, secret scan, database/persistent migration, combined workspace/audit and both Vercel statuses passed. Actual Trigger.dev/Resend dispatch, delivery tracking/retries and the notification inbox remain intentionally assigned to milestone 16.
 
 ## Approved limits and follow-up
 
