@@ -122,6 +122,7 @@ function WorkspaceContext({
   readonly model: WeddingShellNavigation;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const compactContext = (
     <span
@@ -151,7 +152,7 @@ function WorkspaceContext({
   );
   return (
     <details className="workspace-switcher" ref={detailsRef}>
-      <summary>
+      <summary ref={summaryRef}>
         {compactContext}
         <span className="screen-reader-only">{model.labels.switchCurrent}</span>
         <span>
@@ -200,7 +201,10 @@ function WorkspaceContext({
                 <button
                   aria-current="page"
                   key={workspace.weddingId}
-                  onClick={() => detailsRef.current?.removeAttribute("open")}
+                  onClick={() => {
+                    detailsRef.current?.removeAttribute("open");
+                    summaryRef.current?.focus();
+                  }}
                   type="button"
                 >
                   {content}

@@ -121,6 +121,7 @@ describe("responsive application shell", () => {
       }),
     );
     expect(switcher).not.toHaveAttribute("open");
+    expect(summary).toHaveFocus();
   });
 
   it("collapses accessibly without removing labels from the accessibility tree", async () => {

@@ -46,6 +46,9 @@ describe("accessible wedding chooser", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No weddings found");
     await user.click(screen.getByRole("button", { name: "Clear search" }));
     expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(
+      screen.getByRole("searchbox", { name: "Search weddings" }),
+    ).toHaveFocus();
   });
 
   it("presents localized entry details and preserves locale in links", () => {

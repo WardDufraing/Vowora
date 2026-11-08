@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { WorkspaceMessages } from "../lib/workspace-messages";
 
@@ -20,6 +20,7 @@ export function WorkspaceChooser({
   readonly workspaces: readonly WorkspaceChooserOption[];
 }) {
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const visible = workspaces.filter(({ name }) =>
     name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
   );
@@ -34,6 +35,7 @@ export function WorkspaceChooser({
         <span>{labels.searchWeddings}</span>
         <input
           onChange={(event) => setQuery(event.currentTarget.value)}
+          ref={searchRef}
           type="search"
           value={query}
         />
@@ -41,7 +43,13 @@ export function WorkspaceChooser({
       {visible.length === 0 ? (
         <div className="workspace-switcher__empty" role="status">
           <p>{labels.noWeddings}</p>
-          <button className="button button--ghost" onClick={() => setQuery("")}>
+          <button
+            className="button button--ghost"
+            onClick={() => {
+              setQuery("");
+              searchRef.current?.focus();
+            }}
+          >
             {labels.clearSearch}
           </button>
         </div>
