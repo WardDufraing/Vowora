@@ -106,6 +106,7 @@ describe("responsive application shell", () => {
     await user.click(
       within(switcher).getByRole("button", { name: "Clear search" }),
     );
+    expect(search).toHaveFocus();
     const workspaceNavigation = within(switcher).getByRole("navigation", {
       name: "Wedding workspaces",
     });

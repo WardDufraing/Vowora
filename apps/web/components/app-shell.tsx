@@ -123,6 +123,7 @@ function WorkspaceContext({
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const compactContext = (
     <span
@@ -167,6 +168,7 @@ function WorkspaceContext({
           <span>{model.labels.searchWeddings}</span>
           <input
             onChange={(event) => setQuery(event.currentTarget.value)}
+            ref={searchRef}
             type="search"
             value={query}
           />
@@ -176,7 +178,10 @@ function WorkspaceContext({
             <p>{model.labels.noWeddings}</p>
             <button
               className="button button--ghost"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
             >
               {model.labels.clearSearch}
             </button>
