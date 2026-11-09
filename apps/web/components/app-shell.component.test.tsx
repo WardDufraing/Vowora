@@ -11,6 +11,7 @@ import type {
 import { AppShell } from "./app-shell";
 import { WeddingForm } from "../app/weddings/wedding-form";
 import { weddingMessages } from "../lib/wedding-messages";
+import { workspaceMessages } from "../lib/workspace-messages";
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
@@ -49,6 +50,7 @@ function model(
     weddingName: "Jordan & Alex",
     weddingDateLabel: "2027-06-12",
     roleLabel: "Partner",
+    labels: workspaceMessages("en"),
     destinations: destinations.map((destination) => ({
       ...destination,
       href: `/weddings/${weddingId}/${destination.id}`,
@@ -104,6 +106,7 @@ describe("responsive application shell", () => {
     await user.click(
       within(switcher).getByRole("button", { name: "Clear search" }),
     );
+    expect(search).toHaveFocus();
     const workspaceNavigation = within(switcher).getByRole("navigation", {
       name: "Wedding workspaces",
     });
@@ -119,6 +122,7 @@ describe("responsive application shell", () => {
       }),
     );
     expect(switcher).not.toHaveAttribute("open");
+    expect(summary).toHaveFocus();
   });
 
   it("collapses accessibly without removing labels from the accessibility tree", async () => {
@@ -319,5 +323,47 @@ describe("responsive application shell", () => {
     back.mockRestore();
     forward.mockRestore();
     go.mockRestore();
+  });
+
+  it("preserves an exact cross-workspace record deep link after resolving dirty edits", async () => {
+    push.mockClear();
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const exactRecord =
+      "/weddings/019a1f5e-70a0-7000-8000-000000000003/timeline/019a1f5e-70a0-7000-8000-000000000004?locale=fr";
+    render(
+      <AppShell model={model("settings")}>
+        <WeddingForm
+          endpoint={`/api/v1/weddings/${weddingId}`}
+          initial={{
+            name: "Jordan & Alex",
+            weddingDate: null,
+            timeZone: "Europe/Brussels",
+            settingsVersion: 1,
+          }}
+          messages={weddingMessages("en")}
+          mode="settings"
+        />
+        <a href={exactRecord}>Open linked task</a>
+      </AppShell>,
+    );
+    await user.type(screen.getByLabelText("Wedding name"), " changed");
+    await user.click(screen.getByRole("link", { name: "Open linked task" }));
+    const dialog = screen.getByRole("dialog", { name: "Unsaved changes" });
+    await user.click(within(dialog).getByRole("button", { name: "Stay" }));
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Wedding name")).toHaveValue(
+      "Jordan & Alex changed",
+    );
+    await user.click(screen.getByRole("link", { name: "Open linked task" }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Unsaved changes" })).getByRole(
+        "button",
+        { name: "Discard" },
+      ),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    expect(push).toHaveBeenCalledWith(exactRecord);
+    back.mockRestore();
   });
 });

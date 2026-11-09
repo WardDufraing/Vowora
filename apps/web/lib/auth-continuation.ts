@@ -1,4 +1,4 @@
-const fallback = "/account";
+const fallback = "/weddings";
 
 /** Accepts only a same-origin relative application path. */
 export function safeAuthContinuation(value: unknown): string {

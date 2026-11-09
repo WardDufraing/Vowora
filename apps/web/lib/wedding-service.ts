@@ -9,6 +9,7 @@ import {
   issuePartnerInvitation,
   listPartnerInvitations,
   listAccessibleWeddingWorkspaces,
+  readWeddingWorkspaceEntryState,
   readWeddingSettings,
   readPartnerInvitationForActor,
   revokePartnerInvitation,
@@ -227,4 +228,29 @@ export async function loadWeddingSettingsForActor(input: {
     openedWeddingId: input.weddingId,
   });
   return Object.freeze({ ...settings, workspaces });
+}
+
+export function loadWeddingWorkspaceEntryForActor(input: {
+  readonly actorId: string;
+}) {
+  return readWeddingWorkspaceEntryState(getRuntimeDatabase().database, input);
+}
+
+/**
+ * Loads the exact actor's accessible shell projection and records personal
+ * recency for an opened wedding. The navigation resolver still validates the
+ * active exact membership before presenting links.
+ */
+export async function loadWeddingShellForActor(input: {
+  readonly actorId: string;
+  readonly weddingId: string;
+}) {
+  const workspaces = await listAccessibleWeddingWorkspaces(
+    getRuntimeDatabase().database,
+    { actorId: input.actorId, openedWeddingId: input.weddingId },
+  );
+  const current = workspaces.find(
+    (workspace) => workspace.weddingId === input.weddingId,
+  );
+  return current ? Object.freeze({ current, workspaces }) : undefined;
 }

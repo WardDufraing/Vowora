@@ -122,6 +122,8 @@ function WorkspaceContext({
   readonly model: WeddingShellNavigation;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const compactContext = (
     <span
@@ -134,7 +136,10 @@ function WorkspaceContext({
   );
   if (model.workspaceOptions.length === 1) {
     return (
-      <div className="workspace-context" aria-label="Current wedding workspace">
+      <div
+        className="workspace-context"
+        aria-label={model.labels.currentWorkspace}
+      >
         {compactContext}
         <strong>{model.weddingName}</strong>
         <span>
@@ -148,11 +153,9 @@ function WorkspaceContext({
   );
   return (
     <details className="workspace-switcher" ref={detailsRef}>
-      <summary>
+      <summary ref={summaryRef}>
         {compactContext}
-        <span className="screen-reader-only">
-          Switch wedding workspace. Current:
-        </span>
+        <span className="screen-reader-only">{model.labels.switchCurrent}</span>
         <span>
           <strong>{model.weddingName}</strong>
           <small>
@@ -162,21 +165,25 @@ function WorkspaceContext({
       </summary>
       <div className="workspace-switcher__panel">
         <label>
-          <span>Search weddings</span>
+          <span>{model.labels.searchWeddings}</span>
           <input
             onChange={(event) => setQuery(event.currentTarget.value)}
+            ref={searchRef}
             type="search"
             value={query}
           />
         </label>
         {visibleWorkspaces.length === 0 ? (
           <div className="workspace-switcher__empty" role="status">
-            <p>No weddings found</p>
+            <p>{model.labels.noWeddings}</p>
             <button
               className="button button--ghost"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                searchRef.current?.focus();
+              }}
             >
-              Clear search
+              {model.labels.clearSearch}
             </button>
           </div>
         ) : (
@@ -199,7 +206,10 @@ function WorkspaceContext({
                 <button
                   aria-current="page"
                   key={workspace.weddingId}
-                  onClick={() => detailsRef.current?.removeAttribute("open")}
+                  onClick={() => {
+                    detailsRef.current?.removeAttribute("open");
+                    summaryRef.current?.focus();
+                  }}
                   type="button"
                 >
                   {content}
@@ -223,9 +233,9 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
     ({ mobile }) => mobile === "more",
   );
   const groups: readonly { id: WeddingNavigationGroup; label: string }[] = [
-    { id: "planning", label: "Planning" },
-    { id: "people", label: "People" },
-    { id: "reports", label: "Reports" },
+    { id: "planning", label: model.labels.planning },
+    { id: "people", label: model.labels.people },
+    { id: "reports", label: model.labels.reports },
   ];
   const settings = remaining.find(({ id }) => id === "settings");
   const activeInMore = remaining.some(
@@ -240,9 +250,9 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
           type="button"
         >
           <MoreHorizontal aria-hidden="true" size={22} />
-          <span>More</span>
+          <span>{model.labels.more}</span>
           {activeInMore ? (
-            <span className="mobile-current-label">Current</span>
+            <span className="mobile-current-label">{model.labels.current}</span>
           ) : null}
           <span className="screen-reader-only">workspace navigation</span>
         </button>
@@ -252,13 +262,13 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
         <Dialog.Content className="mobile-more-sheet">
           <div className="mobile-more-sheet__header">
             <div>
-              <Dialog.Title>More</Dialog.Title>
+              <Dialog.Title>{model.labels.more}</Dialog.Title>
               <Dialog.Description>
-                Additional destinations for {model.weddingName}
+                {model.labels.additionalDestinations} {model.weddingName}
               </Dialog.Description>
             </div>
             <Dialog.Close
-              aria-label="Close more navigation"
+              aria-label={model.labels.closeMore}
               className="icon-button"
             >
               <X aria-hidden="true" size={22} />
@@ -295,12 +305,12 @@ function MoreNavigation({ model }: { readonly model: WeddingShellNavigation }) {
             ) : null}
             {remaining.length === 0 ? (
               <p className="mobile-more-sheet__empty">
-                No additional areas are available.
+                {model.labels.noAdditionalAreas}
               </p>
             ) : null}
           </nav>
           <section aria-labelledby="more-appearance">
-            <h2 id="more-appearance">Appearance</h2>
+            <h2 id="more-appearance">{model.labels.appearance}</h2>
             <ThemePreferenceControl id="app-theme-mobile" />
           </section>
         </Dialog.Content>
@@ -514,7 +524,7 @@ export function AppShell({
           </nav>
           <a className="account-link" href="/account">
             <CircleUserRound aria-hidden="true" size={20} />
-            <span>Account</span>
+            <span>{model.labels.account}</span>
           </a>
         </header>
 

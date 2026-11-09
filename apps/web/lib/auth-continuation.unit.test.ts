@@ -21,6 +21,6 @@ describe("authentication continuation", () => {
     "invitations/token",
     "/safe\nunsafe",
   ])("rejects unsafe continuation %s", (value) => {
-    expect(safeAuthContinuation(value)).toBe("/account");
+    expect(safeAuthContinuation(value)).toBe("/weddings");
   });
 });

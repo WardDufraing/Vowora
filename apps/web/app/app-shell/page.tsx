@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { readServerEnvironment } from "../../lib/env";
 import { weddingMessages } from "../../lib/wedding-messages";
+import { weddingLocale } from "../../lib/wedding-messages";
 import {
   resolveWeddingShellNavigation,
   WeddingNavigationAccessError,
@@ -25,6 +26,7 @@ function createReviewModel(
   role: "partner" | "coordinator",
   requested: string,
   singleWorkspace: boolean,
+  locale: "en" | "nl" | "fr" | "de",
 ) {
   try {
     return resolveWeddingShellNavigation({
@@ -71,6 +73,7 @@ function createReviewModel(
       ].slice(0, singleWorkspace ? 1 : 2),
       requestedPath: `/weddings/${weddingId}/${requested}`,
       evaluatedAt: new Date("2026-10-30T10:00:00.000Z"),
+      locale,
     });
   } catch (error) {
     if (error instanceof WeddingNavigationAccessError) notFound();
@@ -91,7 +94,13 @@ export default async function AppShellReviewPage({
     weddingNavigationDestinationIds.includes(query.destination as never)
       ? query.destination
       : "dashboard";
-  const model = createReviewModel(role, requested, query.single === "true");
+  const locale = weddingLocale(query.locale);
+  const model = createReviewModel(
+    role,
+    requested,
+    query.single === "true",
+    locale,
+  );
   return (
     <AppShell model={model}>
       <p className="eyebrow">Responsive shell review · synthetic content</p>
@@ -115,9 +124,16 @@ export default async function AppShellReviewPage({
             timeZone: "Europe/Brussels",
             settingsVersion: 1,
           }}
-          messages={weddingMessages("en")}
+          messages={weddingMessages(locale)}
           mode="settings"
         />
+      ) : null}
+      {query.deepLink === "true" ? (
+        <a
+          href={`/weddings/${otherWeddingId}/timeline/019a1f5e-70a0-7000-8000-000000000004?locale=${locale}`}
+        >
+          Open linked record
+        </a>
       ) : null}
       <section
         className="shell-placeholder"

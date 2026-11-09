@@ -65,6 +65,20 @@ describe("account forms", () => {
     expect(push).toHaveBeenCalledWith(continuation);
   });
 
+  it("opens the last accessible wedding flow after a normal sign-in", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(new Response(null));
+    vi.stubGlobal("fetch", request);
+    const user = userEvent.setup();
+    render(<AuthForm mode="sign-in" />);
+    await user.type(screen.getByLabelText("Email"), "partner@example.test");
+    await user.type(
+      screen.getByLabelText("Password"),
+      "synthetic-passphrase-123",
+    );
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(push).toHaveBeenCalledWith("/weddings");
+  });
+
   it("uses the same safe error presentation for rejected sign-in responses", async () => {
     vi.stubGlobal(
       "fetch",

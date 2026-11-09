@@ -7,6 +7,12 @@ import {
 } from "@vowora/domain";
 import { z } from "zod";
 
+import type { AppLocale } from "../i18n/messages";
+import {
+  workspaceMessages,
+  type WorkspaceMessages,
+} from "./workspace-messages";
+
 export const weddingNavigationDestinationIds = [
   "dashboard",
   "timeline",
@@ -59,6 +65,7 @@ export interface WeddingShellNavigation {
   readonly weddingDateLabel: string;
   readonly roleLabel: string;
   readonly workspaceOptions: readonly WeddingWorkspaceOption[];
+  readonly labels: WorkspaceMessages;
 }
 
 export function selectMobilePrimaryDestinations(
@@ -119,45 +126,41 @@ function hasAreaPermission(
   );
 }
 
-const catalog: readonly Omit<WeddingNavigationDestination, "href">[] = [
-  { id: "dashboard", label: "Dashboard", mobile: "primary" },
-  { id: "timeline", label: "Timeline", mobile: "primary" },
-  {
-    id: "decisions",
-    label: "Decisions",
-    mobile: "more",
-    mobileGroup: "planning",
-  },
-  { id: "vendors", label: "Vendors", mobile: "more", mobileGroup: "planning" },
-  { id: "budget", label: "Budget", mobile: "primary" },
-  { id: "guests", label: "Guests", mobile: "primary" },
-  {
-    id: "schedule",
-    label: "Wedding-day schedule",
-    mobile: "more",
-    mobileGroup: "planning",
-  },
-  { id: "contacts", label: "Contacts", mobile: "more", mobileGroup: "people" },
-  {
-    id: "documents-notes",
-    label: "Documents & notes",
-    mobile: "more",
-    mobileGroup: "planning",
-  },
-  {
-    id: "inspiration",
-    label: "Inspiration",
-    mobile: "more",
-    mobileGroup: "planning",
-  },
-  {
-    id: "reports",
-    label: "Reports & exports",
-    mobile: "more",
-    mobileGroup: "reports",
-  },
-  { id: "settings", label: "Workspace settings", mobile: "more" },
-];
+const catalog: readonly Omit<WeddingNavigationDestination, "href" | "label">[] =
+  [
+    { id: "dashboard", mobile: "primary" },
+    { id: "timeline", mobile: "primary" },
+    {
+      id: "decisions",
+      mobile: "more",
+      mobileGroup: "planning",
+    },
+    { id: "vendors", mobile: "more", mobileGroup: "planning" },
+    { id: "budget", mobile: "primary" },
+    { id: "guests", mobile: "primary" },
+    {
+      id: "schedule",
+      mobile: "more",
+      mobileGroup: "planning",
+    },
+    { id: "contacts", mobile: "more", mobileGroup: "people" },
+    {
+      id: "documents-notes",
+      mobile: "more",
+      mobileGroup: "planning",
+    },
+    {
+      id: "inspiration",
+      mobile: "more",
+      mobileGroup: "planning",
+    },
+    {
+      id: "reports",
+      mobile: "more",
+      mobileGroup: "reports",
+    },
+    { id: "settings", mobile: "more" },
+  ];
 
 function destinationAllowed(
   id: WeddingNavigationDestinationId,
@@ -188,16 +191,6 @@ function destinationAllowed(
   };
   const area = areaByDestination[id];
   return area ? view(area) : false;
-}
-
-function roleLabel(role: WeddingMembership["role"]): string {
-  return {
-    partner: "Partner",
-    planner: "Planner",
-    coordinator: "Coordinator",
-    helper: "Helper",
-    read_only_guest: "Read-only guest",
-  }[role];
 }
 
 function assertActiveExactMembership(
@@ -237,9 +230,13 @@ export function resolveWeddingShellNavigation(input: {
   readonly workspaces: readonly WorkspaceInput[];
   readonly requestedPath?: string;
   readonly evaluatedAt?: Date;
+  readonly locale?: AppLocale;
 }): WeddingShellNavigation {
   const membership = readMembership(input.membership);
   const evaluatedAt = input.evaluatedAt ?? new Date();
+  const locale = input.locale ?? "en";
+  const labels = workspaceMessages(locale);
+  const localeQuery = locale === "en" ? "" : `?locale=${locale}`;
   assertActiveExactMembership(
     membership,
     input.actorId,
@@ -279,7 +276,8 @@ export function resolveWeddingShellNavigation(input: {
     .map((destination) =>
       Object.freeze({
         ...destination,
-        href: `/weddings/${input.weddingId}/${destination.id}`,
+        label: labels.destinations[destination.id]!,
+        href: `/weddings/${input.weddingId}/${destination.id}${localeQuery}`,
       }),
     );
 
@@ -306,20 +304,22 @@ export function resolveWeddingShellNavigation(input: {
     destinations: Object.freeze(destinations),
     weddingId: input.weddingId,
     weddingName: currentWorkspace.name,
-    weddingDateLabel: currentWorkspace.weddingDate ?? "Date not set",
-    roleLabel: roleLabel(membership.role),
+    weddingDateLabel: currentWorkspace.weddingDate ?? labels.dateNotSet,
+    roleLabel: labels.roles[membership.role]!,
+    labels,
     workspaceOptions: Object.freeze(
       orderedWorkspaces.map((workspace) =>
         Object.freeze({
           weddingId: workspace.weddingId,
           name: workspace.name,
-          dateLabel: workspace.weddingDate ?? "Date not set",
-          roleLabel: roleLabel(
-            workspace.weddingId === input.weddingId
-              ? membership.role
-              : workspace.membership.role,
-          ),
-          href: `/weddings/${workspace.weddingId}/dashboard`,
+          dateLabel: workspace.weddingDate ?? labels.dateNotSet,
+          roleLabel:
+            labels.roles[
+              workspace.weddingId === input.weddingId
+                ? membership.role
+                : workspace.membership.role
+            ]!,
+          href: `/weddings/${workspace.weddingId}/dashboard${localeQuery}`,
           current: workspace.weddingId === input.weddingId,
         }),
       ),
