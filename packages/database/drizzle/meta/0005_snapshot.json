@@ -622,6 +622,22 @@
           "method": "btree",
           "with": {}
         },
+        "organization_memberships_owner_unique_idx": {
+          "name": "organization_memberships_owner_unique_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"organization_memberships\".\"role\" = 'owner'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "organization_memberships_actor_status_idx": {
           "name": "organization_memberships_actor_status_idx",
           "columns": [
@@ -683,6 +699,10 @@
         "organization_memberships_scope_version_positive": {
           "name": "organization_memberships_scope_version_positive",
           "value": "\"organization_memberships\".\"permission_scope_version\" > 0"
+        },
+        "organization_memberships_owner_immutable": {
+          "name": "organization_memberships_owner_immutable",
+          "value": "\"organization_memberships\".\"role\" <> 'owner' OR (\"organization_memberships\".\"status\" = 'active' AND \"organization_memberships\".\"deactivated_at\" IS NULL)"
         }
       },
       "isRLSEnabled": false

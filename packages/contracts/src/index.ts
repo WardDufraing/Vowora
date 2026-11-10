@@ -983,6 +983,14 @@ export const openApiDocument = {
     "/api/v1/organizations": {
       post: {
         operationId: "createOrganization",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -1139,6 +1147,7 @@ export const openApiDocument = {
         responses: {
           "204": { description: "Pending invitation revoked." },
           "401": authenticationFailure,
+          "403": problemResponse("The request could not be completed."),
           "404": problemResponse("The invitation is unavailable."),
         },
       },
@@ -1175,7 +1184,9 @@ export const openApiDocument = {
               },
             },
           },
+          "400": problemResponse("Explicit acceptance is required."),
           "401": authenticationFailure,
+          "403": problemResponse("The invitation is unavailable."),
           "404": problemResponse("The invitation is unavailable."),
         },
       },
@@ -1212,7 +1223,9 @@ export const openApiDocument = {
               },
             },
           },
+          "400": problemResponse("Explicit acceptance is required."),
           "401": authenticationFailure,
+          "403": problemResponse("The invitation is unavailable."),
           "404": problemResponse("The invitation is unavailable."),
         },
       },

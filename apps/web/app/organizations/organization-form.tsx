@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { organizationMessages } from "../../lib/organization-messages";
 
@@ -13,19 +13,27 @@ export function OrganizationForm({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const retry = useRef<{ fingerprint: string; key: string } | undefined>(
+    undefined,
+  );
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
     const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+    const fingerprint = JSON.stringify({ name });
+    if (!retry.current || retry.current.fingerprint !== fingerprint) {
+      retry.current = { fingerprint, key: crypto.randomUUID() };
+    }
     try {
       const response = await fetch("/api/v1/organizations", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "idempotency-key": crypto.randomUUID(),
+          "idempotency-key": retry.current.key,
         },
-        body: JSON.stringify({ name: form.get("name") }),
+        body: fingerprint,
       });
       if (!response.ok) throw new Error();
       const body = (await response.json()) as { data: { id: string } };

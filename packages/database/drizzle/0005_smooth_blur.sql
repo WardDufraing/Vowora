@@ -36,6 +36,7 @@ CREATE TABLE "organization_memberships" (
 	CONSTRAINT "organization_memberships_role" CHECK ("organization_memberships"."role" IN ('owner', 'manager', 'employee')),
 	CONSTRAINT "organization_memberships_status" CHECK ("organization_memberships"."status" IN ('active', 'revoked')),
 	CONSTRAINT "organization_memberships_deactivation_consistent" CHECK (("organization_memberships"."status" = 'revoked') = ("organization_memberships"."deactivated_at" IS NOT NULL)),
+	CONSTRAINT "organization_memberships_owner_immutable" CHECK ("organization_memberships"."role" <> 'owner' OR ("organization_memberships"."status" = 'active' AND "organization_memberships"."deactivated_at" IS NULL)),
 	CONSTRAINT "organization_memberships_scope_version_positive" CHECK ("organization_memberships"."permission_scope_version" > 0)
 );
 --> statement-breakpoint
@@ -62,5 +63,6 @@ CREATE UNIQUE INDEX "organization_invitations_pending_email_unique_idx" ON "orga
 CREATE INDEX "organization_invitations_org_status_idx" ON "organization_invitations" USING btree ("organization_id","status");--> statement-breakpoint
 CREATE INDEX "organization_invitations_reminder_idx" ON "organization_invitations" USING btree ("reminder_at","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "organization_memberships_actor_unique_idx" ON "organization_memberships" USING btree ("organization_id","actor_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "organization_memberships_owner_unique_idx" ON "organization_memberships" USING btree ("organization_id") WHERE "organization_memberships"."role" = 'owner';--> statement-breakpoint
 CREATE INDEX "organization_memberships_actor_status_idx" ON "organization_memberships" USING btree ("actor_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "organizations_creator_request_unique_idx" ON "organizations" USING btree ("creator_actor_id","creation_request_id");

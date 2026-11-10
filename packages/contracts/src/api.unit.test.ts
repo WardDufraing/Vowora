@@ -106,6 +106,27 @@ describe("API contracts", () => {
     expect(
       openApiDocument.paths["/api/v1/auth/sign-out"].post.responses["403"],
     ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
+    expect(
+      openApiDocument.paths["/api/v1/organizations"].post.parameters,
+    ).toEqual([
+      expect.objectContaining({
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        schema: { type: "string", format: "uuid" },
+      }),
+    ]);
+    expect(
+      Object.keys(
+        openApiDocument.paths["/api/v1/organization-invitations/{token}/accept"]
+          .post.responses,
+      ),
+    ).toEqual(["200", "400", "401", "403", "404"]);
+    expect(
+      openApiDocument.paths[
+        "/api/v1/organizations/{organizationId}/invitations/{invitationId}"
+      ].delete.responses["403"],
+    ).toBeTruthy();
     expect(openApiDocument.components.schemas.HealthResponse).toEqual(
       z.toJSONSchema(healthResponseSchema, { target: "draft-2020-12" }),
     );

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { and, count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -617,6 +618,145 @@ describe("organization and staff persistence", () => {
                   eq(organizationMemberships.actorId, employeeId),
                 ),
               )
+          )[0]?.value,
+        ).toBe(1);
+      },
+    );
+  });
+
+  it("serializes acceptance before reissue so joined staff cannot retain a pending invite", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `organization-accept-reissue-${randomUUID()}`,
+      async ({ client, schemaName }) => {
+        const database = drizzle(client, { casing: "snake_case", schema });
+        const ownerId = createUuidV7();
+        const employeeId = createUuidV7();
+        await database.insert(user).values([
+          {
+            id: ownerId,
+            name: "Owner",
+            email: "race-owner@example.test",
+            emailVerified: true,
+          },
+          {
+            id: employeeId,
+            name: "Employee",
+            email: "race-employee@example.test",
+            emailVerified: true,
+          },
+        ]);
+        const created = await createOrganization(
+          database,
+          authorizeOrganizationCreation({
+            actorId: ownerId,
+            correlationId: randomUUID(),
+            creationRequestId: randomUUID(),
+            name: "Race Org",
+          }),
+        );
+        const state = new DatabaseOrganizationAuthorizationState(database);
+        const authorize = () =>
+          authorizeOrganizationServerOperation(
+            { actorId: ownerId },
+            {
+              organizationId: created.organization.id,
+              recordId: created.organization.id,
+              action: "edit",
+              correlationId: randomUUID(),
+            },
+            state,
+          );
+        const issued = await issueOrganizationInvitation(
+          database,
+          await authorize(),
+          {
+            email: "race-employee@example.test",
+            role: "employee",
+            locale: "en",
+          },
+        );
+        const pool = new pg.Pool({
+          connectionString: config.connectionString,
+          max: 3,
+          options: `-c search_path=${schemaName},public`,
+        });
+        const concurrentDatabase = drizzle(pool, {
+          casing: "snake_case",
+          schema,
+        });
+        const blocker = await pool.connect();
+        try {
+          await blocker.query("BEGIN");
+          await blocker.query(
+            "SELECT id FROM organization_invitations WHERE id = $1 FOR UPDATE",
+            [issued.invitation.id],
+          );
+          const acceptance = acceptOrganizationInvitation(
+            concurrentDatabase,
+            authorizeOrganizationInvitationClaim({
+              actorId: employeeId,
+              correlationId: randomUUID(),
+              token: issued.token,
+            }),
+          );
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const reissue = authorize().then((operation) =>
+            issueOrganizationInvitation(concurrentDatabase, operation, {
+              email: "race-employee@example.test",
+              role: "manager",
+              locale: "en",
+            }),
+          );
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          await blocker.query("COMMIT");
+          await expect(acceptance).resolves.toMatchObject({ replayed: false });
+          await expect(reissue).rejects.toMatchObject({
+            reason: "member_exists",
+          });
+        } finally {
+          await blocker.query("ROLLBACK").catch(() => undefined);
+          blocker.release();
+          await pool.end();
+        }
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(organizationMemberships)
+              .where(
+                and(
+                  eq(
+                    organizationMemberships.organizationId,
+                    created.organization.id,
+                  ),
+                  eq(organizationMemberships.actorId, employeeId),
+                ),
+              )
+          )[0]?.value,
+        ).toBe(1);
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(organizationInvitations)
+              .where(
+                and(
+                  eq(
+                    organizationInvitations.organizationId,
+                    created.organization.id,
+                  ),
+                  eq(organizationInvitations.status, "pending"),
+                ),
+              )
+          )[0]?.value,
+        ).toBe(0);
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(outboxEvents)
+              .where(eq(outboxEvents.eventType, "organization.staff_invited"))
           )[0]?.value,
         ).toBe(1);
       },

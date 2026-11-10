@@ -6,10 +6,12 @@ import type { OrganizationMember } from "@vowora/contracts";
 import type { organizationMessages } from "../../../../lib/organization-messages";
 
 export function StaffList({
+  currentActorId,
   initial,
   messages,
   organizationId,
 }: {
+  readonly currentActorId: string;
   readonly initial: readonly OrganizationMember[];
   readonly messages: ReturnType<typeof organizationMessages>;
   readonly organizationId: string;
@@ -44,8 +46,11 @@ export function StaffList({
               <span>
                 <strong>{member.name}</strong> · {member.email} ·{" "}
                 {messages[member.role]} · {messages[member.status]}
+                {member.actorId === currentActorId ? ` · ${messages.you}` : ""}
               </span>
-              {member.role !== "owner" && member.status === "active" ? (
+              {member.role !== "owner" &&
+              member.status === "active" &&
+              member.actorId !== currentActorId ? (
                 <button
                   type="button"
                   onClick={() => void deactivate(member.id)}

@@ -293,7 +293,7 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
       )
       .limit(1);
     if (existingInvite) {
-      await call.session
+      const replaced = await call.session
         .update(organizationInvitations)
         .set({ status: "replaced", updatedAt: now })
         .where(
@@ -301,7 +301,10 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
             eq(organizationInvitations.id, existingInvite.id),
             eq(organizationInvitations.status, "pending"),
           ),
-        );
+        )
+        .returning({ id: organizationInvitations.id });
+      if (replaced.length !== 1)
+        throw new OrganizationInvitationUnavailableError("already_claimed");
     }
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -439,14 +442,24 @@ export async function acceptOrganizationInvitation<
   now = new Date(),
 ) {
   return database.transaction(async (transaction) => {
+    const invitationWhere = command.token
+      ? eq(organizationInvitations.tokenDigest, digest(command.token))
+      : eq(organizationInvitations.id, command.invitationId!);
+    const [candidate] = await transaction
+      .select({ organizationId: organizationInvitations.organizationId })
+      .from(organizationInvitations)
+      .where(invitationWhere)
+      .limit(1);
+    if (!candidate) throw new OrganizationInvitationUnavailableError("invalid");
+    await transaction
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.id, candidate.organizationId))
+      .for("update");
     const [invitation] = await transaction
       .select()
       .from(organizationInvitations)
-      .where(
-        command.token
-          ? eq(organizationInvitations.tokenDigest, digest(command.token))
-          : eq(organizationInvitations.id, command.invitationId!),
-      )
+      .where(invitationWhere)
       .for("update")
       .limit(1);
     if (!invitation)

@@ -487,6 +487,10 @@ export const organizationMemberships = pgTable(
       sql`(${table.status} = 'revoked') = (${table.deactivatedAt} IS NOT NULL)`,
     ),
     check(
+      "organization_memberships_owner_immutable",
+      sql`${table.role} <> 'owner' OR (${table.status} = 'active' AND ${table.deactivatedAt} IS NULL)`,
+    ),
+    check(
       "organization_memberships_scope_version_positive",
       sql`${table.permissionScopeVersion} > 0`,
     ),
@@ -494,6 +498,9 @@ export const organizationMemberships = pgTable(
       table.organizationId,
       table.actorId,
     ),
+    uniqueIndex("organization_memberships_owner_unique_idx")
+      .on(table.organizationId)
+      .where(sql`${table.role} = 'owner'`),
     index("organization_memberships_actor_status_idx").on(
       table.actorId,
       table.status,

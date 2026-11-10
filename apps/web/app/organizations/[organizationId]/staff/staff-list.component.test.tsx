@@ -36,6 +36,7 @@ describe("organization staff list", () => {
     const user = userEvent.setup();
     render(
       <StaffList
+        currentActorId={owner.actorId}
         initial={[owner, employee]}
         messages={organizationMessages("nl")}
         organizationId={organizationId}
@@ -66,6 +67,7 @@ describe("organization staff list", () => {
     const user = userEvent.setup();
     render(
       <StaffList
+        currentActorId={owner.actorId}
         initial={[employee]}
         messages={organizationMessages("de")}
         organizationId={organizationId}
@@ -77,5 +79,35 @@ describe("organization staff list", () => {
       "Die Anfrage konnte nicht abgeschlossen werden.",
     );
     await waitFor(() => expect(screen.getByText(/Aktiv/)).toBeVisible());
+  });
+
+  it("identifies the current manager without offering self-deactivation", () => {
+    const manager = {
+      ...employee,
+      actorId: "019a2f36-0eb9-7000-8000-000000000006",
+      email: "manager@example.test",
+      name: "Manager Person",
+      role: "manager" as const,
+    };
+    render(
+      <StaffList
+        currentActorId={manager.actorId}
+        initial={[manager]}
+        messages={organizationMessages("fr")}
+        organizationId={organizationId}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "SPAN" &&
+          element.textContent?.includes("Manager Person") === true &&
+          element.textContent.includes("Vous"),
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Désactiver" }),
+    ).not.toBeInTheDocument();
   });
 });

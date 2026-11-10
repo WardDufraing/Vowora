@@ -53,6 +53,7 @@ export default async function OrganizationStaffPage({
       <section className="account-card" aria-labelledby="staff-title">
         <h1 id="staff-title">{messages.staffTitle}</h1>
         <StaffList
+          currentActorId={session.user.id}
           initial={members}
           messages={messages}
           organizationId={organizationId}

@@ -287,12 +287,43 @@ describe("persistent migration workflow", () => {
          VALUES ($1, $2, $3, 'owner', 'active', '[]'::jsonb)`,
         [organizationMembershipId, organizationId, userId],
       );
+      await expect(
+        runtime.query(
+          `UPDATE organization_memberships
+              SET status = 'revoked', deactivated_at = now(),
+                  permission_scope_version = 2, updated_at = now()
+            WHERE id = $1`,
+          [organizationMembershipId],
+        ),
+      ).rejects.toThrow(/organization_memberships_owner_immutable/);
+      const managerId = "019a27f0-67b7-7000-8000-000000000012";
+      await runtime.query(
+        `INSERT INTO auth_user
+          (id, name, email, email_verified, created_at, updated_at)
+         VALUES ($1, 'Organization manager', 'manager@example.invalid', true, now(), now())`,
+        [managerId],
+      );
+      const managerMembershipId = "019a27f0-67b7-7000-8000-000000000013";
+      await expect(
+        runtime.query(
+          `INSERT INTO organization_memberships
+            (id, organization_id, actor_id, role, status, permission_overrides)
+           VALUES ($1, $2, $3, 'owner', 'active', '[]'::jsonb)`,
+          [managerMembershipId, organizationId, managerId],
+        ),
+      ).rejects.toThrow(/organization_memberships_owner_unique_idx/);
+      await runtime.query(
+        `INSERT INTO organization_memberships
+          (id, organization_id, actor_id, role, status, permission_overrides)
+         VALUES ($1, $2, $3, 'manager', 'active', '[]'::jsonb)`,
+        [managerMembershipId, organizationId, managerId],
+      );
       await runtime.query(
         `UPDATE organization_memberships
             SET status = 'revoked', deactivated_at = now(),
                 permission_scope_version = 2, updated_at = now()
           WHERE id = $1`,
-        [organizationMembershipId],
+        [managerMembershipId],
       );
       await expect(
         runtime.query(
