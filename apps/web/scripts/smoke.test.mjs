@@ -180,6 +180,13 @@ test(
         "/api/v1/weddings/{weddingId}/invitations/{invitationId}",
         "/api/v1/invitations/{token}/accept",
         "/api/v1/invitations/pending/{invitationId}/accept",
+        "/api/v1/organizations",
+        "/api/v1/organizations/{organizationId}/staff",
+        "/api/v1/organizations/{organizationId}/staff/{membershipId}",
+        "/api/v1/organizations/{organizationId}/invitations",
+        "/api/v1/organizations/{organizationId}/invitations/{invitationId}",
+        "/api/v1/organization-invitations/{token}/accept",
+        "/api/v1/organization-invitations/pending/{invitationId}/accept",
         "/api/v1/{path}",
       ]);
       assert.deepEqual(

@@ -79,6 +79,19 @@ export {
   ServerAuthorizationError,
 } from "./server-authorization.js";
 export {
+  assertAuthorizedOrganizationCreation,
+  assertAuthorizedOrganizationInvitationClaim,
+  authorizeOrganizationCreation,
+  authorizeOrganizationInvitationClaim,
+  consumeAuthorizedOrganizationCreation,
+  consumeAuthorizedOrganizationInvitationClaim,
+  OrganizationAuthorizationError,
+} from "./organizations.js";
+export type {
+  AuthorizedOrganizationCreation,
+  AuthorizedOrganizationInvitationClaim,
+} from "./organizations.js";
+export {
   assertAuthorizedCoupleWeddingCreation,
   authorizeCoupleWeddingCreation,
   consumeAuthorizedCoupleWeddingCreation,

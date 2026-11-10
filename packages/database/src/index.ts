@@ -16,6 +16,9 @@ export {
   weddings,
   weddingMemberships,
   weddingInvitations,
+  organizations,
+  organizationMemberships,
+  organizationInvitations,
 } from "./schema.js";
 export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";
@@ -47,6 +50,26 @@ export {
   WeddingSettingsConflictError,
   WeddingSettingsValidationError,
 } from "./weddings.js";
+export {
+  acceptOrganizationInvitation,
+  createOrganization,
+  DatabaseOrganizationAuthorizationState,
+  deactivateOrganizationMember,
+  issueOrganizationInvitation,
+  listOrganizationInvitations,
+  listOrganizationStaff,
+  readOrganizationInvitationForActor,
+  revokeOrganizationInvitation,
+  OrganizationConflictError,
+  OrganizationInvitationUnavailableError,
+} from "./organizations.js";
+export type {
+  OrganizationDatabase,
+  OrganizationInvitationView,
+  OrganizationMemberView,
+  OrganizationRole,
+  OrganizationView,
+} from "./organizations.js";
 export {
   acceptPartnerInvitation,
   issuePartnerInvitation,

@@ -24,6 +24,9 @@ const appendOnlyTables = ["audit_events", "outbox_events"] as const;
 const weddingMutableTables = ["weddings"] as const;
 const weddingMembershipTables = ["wedding_memberships"] as const;
 const weddingInvitationTables = ["wedding_invitations"] as const;
+const organizationTables = ["organizations"] as const;
+const organizationMembershipTables = ["organization_memberships"] as const;
+const organizationInvitationTables = ["organization_invitations"] as const;
 const allApplicationTables = [
   "schema_metadata",
   ...appendOnlyTables,
@@ -31,6 +34,9 @@ const allApplicationTables = [
   ...weddingMutableTables,
   ...weddingMembershipTables,
   ...weddingInvitationTables,
+  ...organizationTables,
+  ...organizationMembershipTables,
+  ...organizationInvitationTables,
 ] as const;
 const tablePrivileges = [
   "SELECT",
@@ -76,6 +82,15 @@ function expectedTablePrivileges(schemaName: string, tableName: string) {
   if ((weddingInvitationTables as readonly string[]).includes(tableName)) {
     return new Set(["SELECT", "INSERT"]);
   }
+  if ((organizationTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((organizationMembershipTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((organizationInvitationTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
   return new Set<string>();
 }
 
@@ -104,6 +119,39 @@ function expectedColumnPrivileges(
     ]);
   }
   if ((weddingInvitationTables as readonly string[]).includes(tableName)) {
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...([
+        "status",
+        "accepted_by_actor_id",
+        "accepted_at",
+        "revoked_at",
+        "replaced_by_invitation_id",
+        "updated_at",
+      ].includes(columnName)
+        ? ["UPDATE"]
+        : []),
+    ]);
+  }
+  if ((organizationTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((organizationMembershipTables as readonly string[]).includes(tableName)) {
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...([
+        "status",
+        "permission_scope_version",
+        "deactivated_at",
+        "updated_at",
+      ].includes(columnName)
+        ? ["UPDATE"]
+        : []),
+    ]);
+  }
+  if ((organizationInvitationTables as readonly string[]).includes(tableName)) {
     return new Set([
       "SELECT",
       "INSERT",
@@ -275,6 +323,13 @@ async function reconcileRuntimeGrants(
   const wedding = weddingMutableTables.map(quoteIdentifier).join(", ");
   const memberships = weddingMembershipTables.map(quoteIdentifier).join(", ");
   const invitations = weddingInvitationTables.map(quoteIdentifier).join(", ");
+  const organizations = organizationTables.map(quoteIdentifier).join(", ");
+  const organizationMemberships = organizationMembershipTables
+    .map(quoteIdentifier)
+    .join(", ");
+  const organizationInvitations = organizationInvitationTables
+    .map(quoteIdentifier)
+    .join(", ");
 
   await client.query("BEGIN");
   try {
@@ -330,6 +385,21 @@ async function reconcileRuntimeGrants(
     );
     await client.query(
       `GRANT UPDATE ("status", "accepted_by_actor_id", "accepted_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE ${invitations} TO ${role}`,
+    );
+    await client.query(
+      `GRANT SELECT, INSERT ON TABLE ${organizations} TO ${role}`,
+    );
+    await client.query(
+      `GRANT SELECT, INSERT ON TABLE ${organizationMemberships} TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "permission_scope_version", "deactivated_at", "updated_at") ON TABLE ${organizationMemberships} TO ${role}`,
+    );
+    await client.query(
+      `GRANT SELECT, INSERT ON TABLE ${organizationInvitations} TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "accepted_by_actor_id", "accepted_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE ${organizationInvitations} TO ${role}`,
     );
     await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
@@ -621,7 +691,7 @@ async function verifyRuntimeGrants(
   if (defaultPrivileges.rows[0]?.exposed) {
     throw new PersistentMigrationError("runtime default privileges mismatch");
   }
-  if (allApplicationTables.length !== 10) {
+  if (allApplicationTables.length !== 13) {
     throw new PersistentMigrationError("runtime grant manifest mismatch");
   }
 }
