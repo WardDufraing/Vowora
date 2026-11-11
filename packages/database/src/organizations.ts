@@ -295,6 +295,9 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
       ) {
         throw new OrganizationConflictError("idempotency");
       }
+      if (replayedInvitation.status !== "pending") {
+        throw new OrganizationConflictError("invitation_exists");
+      }
       return Object.freeze({
         invitation: invitationView(replayedInvitation),
         token: undefined,

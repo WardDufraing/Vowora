@@ -87,6 +87,7 @@ describe("organization and staff persistence", () => {
             new DatabaseOrganizationAuthorizationState(database),
           );
         const now = new Date();
+        const issuanceRequestId = randomUUID();
         const issued = await issueOrganizationInvitation(
           database,
           await authorize(),
@@ -94,7 +95,7 @@ describe("organization and staff persistence", () => {
             email: " Employee@Example.Test ",
             role: "employee",
             locale: "en",
-            issuanceRequestId: randomUUID(),
+            issuanceRequestId,
             now,
           },
         );
@@ -125,6 +126,14 @@ describe("organization and staff persistence", () => {
           organizationId: created.organization.id,
           replayed: false,
         });
+        await expect(
+          issueOrganizationInvitation(database, await authorize(), {
+            email: "employee@example.test",
+            role: "employee",
+            locale: "en",
+            issuanceRequestId,
+          }),
+        ).rejects.toMatchObject({ reason: "invitation_exists" });
         await expect(
           acceptOrganizationInvitation(
             database,
@@ -542,6 +551,7 @@ describe("organization and staff persistence", () => {
               .where(eq(outboxEvents.eventType, "organization.staff_invited"))
           )[0]?.value,
         ).toBe(1);
+        const secondRequestId = randomUUID();
         const second = await issueOrganizationInvitation(
           database,
           await authorize(),
@@ -549,12 +559,20 @@ describe("organization and staff persistence", () => {
             email: "reissue-employee@example.test",
             role: "manager",
             locale: "nl",
-            issuanceRequestId: randomUUID(),
+            issuanceRequestId: secondRequestId,
             reissueInvitationId: first.invitation.id,
           },
         );
         expect(second.replayed).toBe(false);
         expect(second.token).not.toBe(first.token);
+        await expect(
+          issueOrganizationInvitation(database, await authorize(), {
+            email: "reissue-employee@example.test",
+            role: "employee",
+            locale: "en",
+            issuanceRequestId: firstRequestId,
+          }),
+        ).rejects.toMatchObject({ reason: "invitation_exists" });
         await expect(
           acceptOrganizationInvitation(
             database,
@@ -575,6 +593,15 @@ describe("organization and staff persistence", () => {
             second.invitation.id,
           ),
         ).resolves.toBe(true);
+        await expect(
+          issueOrganizationInvitation(database, await authorize(), {
+            email: "reissue-employee@example.test",
+            role: "manager",
+            locale: "nl",
+            issuanceRequestId: secondRequestId,
+            reissueInvitationId: first.invitation.id,
+          }),
+        ).rejects.toMatchObject({ reason: "invitation_exists" });
         await expect(
           acceptOrganizationInvitation(
             database,

@@ -30,6 +30,14 @@ export function StaffInvitationForm({
   const retry = useRef<{ fingerprint: string; key: string } | undefined>(
     undefined,
   );
+  async function refreshInvitations() {
+    const response = await fetch(endpoint);
+    if (!response.ok) return;
+    const body = (await response.json()) as {
+      data: readonly OrganizationInvitation[];
+    };
+    setInvitations(body.data);
+  }
   async function issue(
     email: string,
     role: "manager" | "employee",
@@ -57,7 +65,10 @@ export function StaffInvitationForm({
         ...(reissueInvitationId ? { reissueInvitationId } : {}),
       }),
     });
-    if (!response.ok) throw new Error();
+    if (!response.ok) {
+      if (response.status === 409) await refreshInvitations();
+      throw new Error();
+    }
     const body = (await response.json()) as { data: InvitationWithLink };
     retry.current = undefined;
     setInvitations((current) => [

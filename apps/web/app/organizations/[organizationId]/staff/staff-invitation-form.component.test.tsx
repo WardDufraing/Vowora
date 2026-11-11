@@ -109,22 +109,21 @@ describe("organization staff invitation form", () => {
   });
 
   it("reuses its request key after an ambiguous issue failure", async () => {
-    const invitation = {
+    const currentInvitation = {
       id: "019a2f36-0eb9-7000-8000-000000000005",
       organizationId: "019a2f36-0eb9-7000-8000-000000000002",
       invitedEmail: "retry@example.test",
-      role: "employee" as const,
+      role: "manager" as const,
       status: "pending" as const,
       expiresAt: "2026-11-24T12:00:00.000Z",
       reminderAt: "2026-11-21T12:00:00.000Z",
       createdAt: "2026-11-10T12:00:00.000Z",
-      acceptancePath:
-        "/organization-invitations/pending/019a2f36-0eb9-7000-8000-000000000005",
     };
     const fetch = vi
       .fn()
       .mockRejectedValueOnce(new Error("response lost"))
-      .mockResolvedValueOnce(Response.json({ data: invitation }));
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(Response.json({ data: [currentInvitation] }));
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     render(
@@ -152,5 +151,10 @@ describe("organization staff invitation form", () => {
     expect(firstHeaders["idempotency-key"]).toBe(
       secondHeaders["idempotency-key"],
     );
+    expect(fetch).toHaveBeenNthCalledWith(3, "/api/invitations");
+    expect(await screen.findByText(/retry@example\.test/)).toHaveTextContent(
+      "Manager",
+    );
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
