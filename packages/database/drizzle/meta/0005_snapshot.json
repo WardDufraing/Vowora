@@ -329,6 +329,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "issuance_request_id": {
+          "name": "issuance_request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issuance_request_fingerprint": {
+          "name": "issuance_request_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "accepted_by_actor_id": {
           "name": "accepted_by_actor_id",
           "type": "uuid",
@@ -386,6 +398,33 @@
           "columns": [
             {
               "expression": "token_digest",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "organization_invitations_issuance_request_unique_idx": {
+          "name": "organization_invitations_issuance_request_unique_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "issued_by_actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "issuance_request_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

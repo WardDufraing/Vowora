@@ -85,12 +85,13 @@ export async function createOrganizationStaffInvitation(input: {
   readonly actorId: string;
   readonly correlationId: string;
   readonly organizationId: string;
+  readonly issuanceRequestId: string;
   readonly request: CreateOrganizationInvitationRequest;
 }) {
   return issueOrganizationInvitation(
     getRuntimeDatabase().database,
     await authorizeManagement(input),
-    input.request,
+    { ...input.request, issuanceRequestId: input.issuanceRequestId },
   );
 }
 

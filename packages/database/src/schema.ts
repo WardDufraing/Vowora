@@ -522,6 +522,8 @@ export const organizationInvitations = pgTable(
     issuedByActorId: uuid("issued_by_actor_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
+    issuanceRequestId: uuid("issuance_request_id").notNull(),
+    issuanceRequestFingerprint: text("issuance_request_fingerprint").notNull(),
     acceptedByActorId: uuid("accepted_by_actor_id").references(() => user.id, {
       onDelete: "restrict",
     }),
@@ -570,6 +572,11 @@ export const organizationInvitations = pgTable(
     ),
     uniqueIndex("organization_invitations_token_unique_idx").on(
       table.tokenDigest,
+    ),
+    uniqueIndex("organization_invitations_issuance_request_unique_idx").on(
+      table.organizationId,
+      table.issuedByActorId,
+      table.issuanceRequestId,
     ),
     uniqueIndex("organization_invitations_pending_email_unique_idx")
       .on(table.organizationId, table.invitedEmail)

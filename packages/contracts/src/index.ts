@@ -196,6 +196,7 @@ export const createOrganizationInvitationRequestSchema = z.strictObject({
   email: z.email().max(320),
   role: z.enum(["manager", "employee"]),
   locale: z.enum(["en", "nl", "fr", "de"]),
+  reissueInvitationId: z.uuidv7().optional(),
 });
 export const organizationInvitationSchema = z.strictObject({
   id: z.uuidv7(),
@@ -211,7 +212,7 @@ export const organizationInvitationResponseSchema = z.strictObject({
   data: organizationInvitationSchema.extend({
     acceptancePath: z.string().startsWith("/organization-invitations/"),
   }),
-  meta: responseMetadataSchema,
+  meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
 });
 export const organizationInvitationsResponseSchema = z.strictObject({
   data: z.array(organizationInvitationSchema),
@@ -1097,6 +1098,14 @@ export const openApiDocument = {
       },
       post: {
         operationId: "createOrganizationInvitation",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
         requestBody: {
           required: true,
           content: {
@@ -1108,6 +1117,16 @@ export const openApiDocument = {
           },
         },
         responses: {
+          "200": {
+            description: "Existing staff invitation returned for a retry.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationInvitationResponse",
+                },
+              },
+            },
+          },
           "201": {
             description: "Staff invitation created.",
             content: {

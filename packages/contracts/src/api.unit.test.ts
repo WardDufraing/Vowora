@@ -122,6 +122,20 @@ describe("API contracts", () => {
           .post.responses,
       ),
     ).toEqual(["200", "400", "401", "403", "404"]);
+    const invitationPost =
+      openApiDocument.paths[
+        "/api/v1/organizations/{organizationId}/invitations"
+      ].post;
+    expect(invitationPost.parameters).toEqual([
+      expect.objectContaining({
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        schema: { type: "string", format: "uuid" },
+      }),
+    ]);
+    expect(invitationPost.responses["200"]).toBeTruthy();
+    expect(invitationPost.responses["201"]).toBeTruthy();
     expect(
       openApiDocument.paths[
         "/api/v1/organizations/{organizationId}/invitations/{invitationId}"

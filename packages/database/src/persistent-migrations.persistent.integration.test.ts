@@ -352,10 +352,18 @@ describe("persistent migration workflow", () => {
       await runtime.query(
         `INSERT INTO organization_invitations
           (id, organization_id, invited_email, role, token_digest, status,
-           issued_by_actor_id, expires_at, reminder_at)
+           issued_by_actor_id, issuance_request_id,
+           issuance_request_fingerprint, expires_at, reminder_at)
          VALUES ($1, $2, 'staff@example.invalid', 'employee', $3, 'pending',
-           $4, now() + interval '14 days', now() + interval '11 days')`,
-        [organizationInvitationId, organizationId, "d".repeat(64), userId],
+           $4, $5, $6, now() + interval '14 days', now() + interval '11 days')`,
+        [
+          organizationInvitationId,
+          organizationId,
+          "d".repeat(64),
+          userId,
+          randomUUID(),
+          "e".repeat(64),
+        ],
       );
       await runtime.query(
         `UPDATE organization_invitations
@@ -374,6 +382,18 @@ describe("persistent migration workflow", () => {
         runtime.query(
           "UPDATE organization_invitations SET expires_at = now() + interval '1 year' WHERE id = $1",
           [organizationInvitationId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET issuance_request_id = $2 WHERE id = $1",
+          [organizationInvitationId, randomUUID()],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET issuance_request_fingerprint = $2 WHERE id = $1",
+          [organizationInvitationId, "f".repeat(64)],
         ),
       ).rejects.toThrow(/permission denied/);
       await expect(

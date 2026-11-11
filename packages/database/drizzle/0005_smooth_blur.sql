@@ -6,6 +6,8 @@ CREATE TABLE "organization_invitations" (
 	"token_digest" text NOT NULL,
 	"status" text DEFAULT 'pending' NOT NULL,
 	"issued_by_actor_id" uuid NOT NULL,
+	"issuance_request_id" uuid NOT NULL,
+	"issuance_request_fingerprint" text NOT NULL,
 	"accepted_by_actor_id" uuid,
 	"expires_at" timestamp with time zone NOT NULL,
 	"reminder_at" timestamp with time zone NOT NULL,
@@ -59,6 +61,7 @@ ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_
 ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_actor_id_auth_user_id_fk" FOREIGN KEY ("actor_id") REFERENCES "auth_user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organizations" ADD CONSTRAINT "organizations_creator_actor_id_auth_user_id_fk" FOREIGN KEY ("creator_actor_id") REFERENCES "auth_user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "organization_invitations_token_unique_idx" ON "organization_invitations" USING btree ("token_digest");--> statement-breakpoint
+CREATE UNIQUE INDEX "organization_invitations_issuance_request_unique_idx" ON "organization_invitations" USING btree ("organization_id","issued_by_actor_id","issuance_request_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "organization_invitations_pending_email_unique_idx" ON "organization_invitations" USING btree ("organization_id","invited_email") WHERE "organization_invitations"."status" = 'pending';--> statement-breakpoint
 CREATE INDEX "organization_invitations_org_status_idx" ON "organization_invitations" USING btree ("organization_id","status");--> statement-breakpoint
 CREATE INDEX "organization_invitations_reminder_idx" ON "organization_invitations" USING btree ("reminder_at","status");--> statement-breakpoint

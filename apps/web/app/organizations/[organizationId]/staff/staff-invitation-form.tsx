@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import type { OrganizationInvitation } from "@vowora/contracts";
 import type {
@@ -27,14 +27,39 @@ export function StaffInvitationForm({
     useState<readonly InvitationWithLink[]>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function issue(email: string, role: "manager" | "employee") {
+  const retry = useRef<{ fingerprint: string; key: string } | undefined>(
+    undefined,
+  );
+  async function issue(
+    email: string,
+    role: "manager" | "employee",
+    reissueInvitationId?: string,
+  ) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const fingerprint = JSON.stringify({
+      email: normalizedEmail,
+      role,
+      reissueInvitationId: reissueInvitationId ?? null,
+    });
+    if (retry.current?.fingerprint !== fingerprint) {
+      retry.current = { fingerprint, key: crypto.randomUUID() };
+    }
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, role, locale }),
+      headers: {
+        "content-type": "application/json",
+        "idempotency-key": retry.current.key,
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        role,
+        locale,
+        ...(reissueInvitationId ? { reissueInvitationId } : {}),
+      }),
     });
     if (!response.ok) throw new Error();
     const body = (await response.json()) as { data: InvitationWithLink };
+    retry.current = undefined;
     setInvitations((current) => [
       ...current.filter((item) => item.invitedEmail !== body.data.invitedEmail),
       body.data,
@@ -79,7 +104,7 @@ export function StaffInvitationForm({
     setBusy(true);
     setError("");
     try {
-      await issue(invitation.invitedEmail, invitation.role);
+      await issue(invitation.invitedEmail, invitation.role, invitation.id);
     } catch {
       setError(messages.error);
     } finally {

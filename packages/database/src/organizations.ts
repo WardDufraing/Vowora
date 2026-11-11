@@ -60,12 +60,6 @@ const employeeGrants: readonly PermissionOverride[] = Object.freeze([
 const managerGrants: readonly PermissionOverride[] = Object.freeze([
   ...employeeGrants,
   Object.freeze({
-    area: "vendors",
-    action: "edit",
-    effect: "allow",
-    scope: "workspace",
-  }),
-  Object.freeze({
     area: "settings",
     action: "view",
     effect: "allow",
@@ -244,6 +238,8 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
     readonly email: string;
     readonly role: "manager" | "employee";
     readonly locale: "en" | "nl" | "fr" | "de";
+    readonly issuanceRequestId: string;
+    readonly reissueInvitationId?: string;
     readonly now?: Date;
   },
 ) {
@@ -268,6 +264,43 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
       .from(organizations)
       .where(eq(organizations.id, organizationId))
       .for("update");
+    const requestFingerprint = digest(
+      JSON.stringify({
+        email: invitedEmail,
+        role: input.role,
+        locale: input.locale,
+        reissueInvitationId: input.reissueInvitationId ?? null,
+      }),
+    );
+    const [replayedInvitation] = await call.session
+      .select()
+      .from(organizationInvitations)
+      .where(
+        and(
+          eq(organizationInvitations.organizationId, organizationId),
+          eq(
+            organizationInvitations.issuedByActorId,
+            call.authorization.actorId,
+          ),
+          eq(
+            organizationInvitations.issuanceRequestId,
+            input.issuanceRequestId,
+          ),
+        ),
+      )
+      .limit(1);
+    if (replayedInvitation) {
+      if (
+        replayedInvitation.issuanceRequestFingerprint !== requestFingerprint
+      ) {
+        throw new OrganizationConflictError("idempotency");
+      }
+      return Object.freeze({
+        invitation: invitationView(replayedInvitation),
+        token: undefined,
+        replayed: true,
+      });
+    }
     const [existingMember] = await call.session
       .select({ id: organizationMemberships.id })
       .from(organizationMemberships)
@@ -292,7 +325,16 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
         ),
       )
       .limit(1);
-    if (existingInvite) {
+    if (existingInvite && !input.reissueInvitationId) {
+      throw new OrganizationConflictError("invitation_exists");
+    }
+    if (
+      input.reissueInvitationId &&
+      (!existingInvite || existingInvite.id !== input.reissueInvitationId)
+    ) {
+      throw new OrganizationInvitationUnavailableError("invalid");
+    }
+    if (existingInvite && input.reissueInvitationId) {
       const replaced = await call.session
         .update(organizationInvitations)
         .set({ status: "replaced", updatedAt: now })
@@ -309,7 +351,7 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
     const token = randomBytes(32).toString("base64url");
     const expiresAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     const reminderAt = new Date(expiresAt.getTime() - 3 * 24 * 60 * 60 * 1000);
-    const [row] = await call.session
+    const insertedRows = await call.session
       .insert(organizationInvitations)
       .values({
         organizationId,
@@ -318,16 +360,48 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
         tokenDigest: digest(token),
         status: "pending",
         issuedByActorId: call.authorization.actorId,
+        issuanceRequestId: input.issuanceRequestId,
+        issuanceRequestFingerprint: requestFingerprint,
         expiresAt,
         reminderAt,
         createdAt: now,
         updatedAt: now,
       })
+      .onConflictDoNothing()
       .returning();
+    const row = insertedRows[0];
+    if (!row) {
+      const [concurrentReplay] = await call.session
+        .select()
+        .from(organizationInvitations)
+        .where(
+          and(
+            eq(organizationInvitations.organizationId, organizationId),
+            eq(
+              organizationInvitations.issuedByActorId,
+              call.authorization.actorId,
+            ),
+            eq(
+              organizationInvitations.issuanceRequestId,
+              input.issuanceRequestId,
+            ),
+          ),
+        )
+        .limit(1);
+      if (concurrentReplay?.issuanceRequestFingerprint === requestFingerprint) {
+        return Object.freeze({
+          invitation: invitationView(concurrentReplay),
+          token: undefined,
+          replayed: true,
+        });
+      }
+      if (concurrentReplay) throw new OrganizationConflictError("idempotency");
+      throw new OrganizationConflictError("invitation_exists");
+    }
     if (existingInvite) {
       await call.session
         .update(organizationInvitations)
-        .set({ replacedByInvitationId: row!.id, updatedAt: now })
+        .set({ replacedByInvitationId: row.id, updatedAt: now })
         .where(eq(organizationInvitations.id, existingInvite.id));
     }
     const occurredAt = now.toISOString();
@@ -340,7 +414,7 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
         schemaVersion: 1,
         occurredAt,
         subjectType: "organization_invitation",
-        subjectId: row!.id,
+        subjectId: row.id,
         metadata: {
           role: input.role,
           expiresAt: expiresAt.toISOString(),
@@ -359,19 +433,23 @@ export async function issueOrganizationInvitation<HKT extends PgQueryResultHKT>(
         schemaVersion: 1,
         occurredAt,
         payload: {
-          invitationId: row!.id,
+          invitationId: row.id,
           organizationId,
           locale: input.locale,
           expiresAt: expiresAt.toISOString(),
           reminderAt: reminderAt.toISOString(),
-          acceptancePath: `/organization-invitations/pending/${row!.id}?locale=${input.locale}`,
+          acceptancePath: `/organization-invitations/pending/${row.id}?locale=${input.locale}`,
           ...(existingInvite
             ? { replacedInvitationId: existingInvite.id }
             : {}),
         },
       }),
     );
-    return Object.freeze({ invitation: invitationView(row!), token });
+    return Object.freeze({
+      invitation: invitationView(row),
+      token,
+      replayed: false,
+    });
   });
 }
 
@@ -568,7 +646,7 @@ export async function acceptOrganizationInvitation<
         schemaVersion: 1,
         occurredAt,
         subjectType: "organization_membership",
-        subjectId: command.actorId,
+        subjectId: insertedMembership[0]!.id,
         metadata: { role: invitation.role },
       }),
     );

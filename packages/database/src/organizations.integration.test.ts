@@ -94,6 +94,7 @@ describe("organization and staff persistence", () => {
             email: " Employee@Example.Test ",
             role: "employee",
             locale: "en",
+            issuanceRequestId: randomUUID(),
             now,
           },
         );
@@ -117,7 +118,7 @@ describe("organization and staff persistence", () => {
           authorizeOrganizationInvitationClaim({
             actorId: employeeId,
             correlationId: randomUUID(),
-            token: issued.token,
+            token: issued.token!,
           }),
         );
         expect(claimed).toEqual({
@@ -130,7 +131,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: employeeId,
               correlationId: randomUUID(),
-              token: issued.token,
+              token: issued.token!,
             }),
           ),
         ).resolves.toMatchObject({ replayed: true });
@@ -146,6 +147,11 @@ describe("organization and staff persistence", () => {
           email: "employee@example.test",
         });
         const employee = staff.find((member) => member.actorId === employeeId)!;
+        const [joinAudit] = await database
+          .select({ subjectId: auditEvents.subjectId })
+          .from(auditEvents)
+          .where(eq(auditEvents.eventType, "organization.staff_joined"));
+        expect(joinAudit?.subjectId).toBe(employee.id);
         await expect(
           deactivateOrganizationMember(
             database,
@@ -174,6 +180,7 @@ describe("organization and staff persistence", () => {
             email: "employee@example.test",
             role: "employee",
             locale: "en",
+            issuanceRequestId: randomUUID(),
           }),
         ).rejects.toMatchObject({ reason: "member_exists" });
       },
@@ -239,6 +246,7 @@ describe("organization and staff persistence", () => {
           email: "b@example.test",
           role: "manager",
           locale: "en",
+          issuanceRequestId: randomUUID(),
         });
         await expect(
           acceptOrganizationInvitation(
@@ -246,7 +254,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: wrong,
               correlationId: randomUUID(),
-              token: issued.token,
+              token: issued.token!,
             }),
           ),
         ).rejects.toMatchObject({ reason: "email_mismatch" });
@@ -345,6 +353,7 @@ describe("organization and staff persistence", () => {
               email: invitee.email,
               role: invitee.role,
               locale: "en",
+              issuanceRequestId: randomUUID(),
             },
           );
           await acceptOrganizationInvitation(
@@ -352,7 +361,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: invitee.actorId,
               correlationId: randomUUID(),
-              token: invitation.token,
+              token: invitation.token!,
             }),
           );
         }
@@ -483,6 +492,7 @@ describe("organization and staff persistence", () => {
             },
             new DatabaseOrganizationAuthorizationState(database),
           );
+        const firstRequestId = randomUUID();
         const first = await issueOrganizationInvitation(
           database,
           await authorize(),
@@ -490,8 +500,48 @@ describe("organization and staff persistence", () => {
             email: "reissue-employee@example.test",
             role: "employee",
             locale: "en",
+            issuanceRequestId: firstRequestId,
           },
         );
+        const replay = await issueOrganizationInvitation(
+          database,
+          await authorize(),
+          {
+            email: "reissue-employee@example.test",
+            role: "employee",
+            locale: "en",
+            issuanceRequestId: firstRequestId,
+          },
+        );
+        expect(replay).toMatchObject({
+          invitation: { id: first.invitation.id },
+          replayed: true,
+          token: undefined,
+        });
+        await expect(
+          issueOrganizationInvitation(database, await authorize(), {
+            email: "reissue-employee@example.test",
+            role: "manager",
+            locale: "en",
+            issuanceRequestId: firstRequestId,
+          }),
+        ).rejects.toMatchObject({ reason: "idempotency" });
+        await expect(
+          issueOrganizationInvitation(database, await authorize(), {
+            email: "reissue-employee@example.test",
+            role: "employee",
+            locale: "en",
+            issuanceRequestId: randomUUID(),
+          }),
+        ).rejects.toMatchObject({ reason: "invitation_exists" });
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(outboxEvents)
+              .where(eq(outboxEvents.eventType, "organization.staff_invited"))
+          )[0]?.value,
+        ).toBe(1);
         const second = await issueOrganizationInvitation(
           database,
           await authorize(),
@@ -499,8 +549,11 @@ describe("organization and staff persistence", () => {
             email: "reissue-employee@example.test",
             role: "manager",
             locale: "nl",
+            issuanceRequestId: randomUUID(),
+            reissueInvitationId: first.invitation.id,
           },
         );
+        expect(second.replayed).toBe(false);
         expect(second.token).not.toBe(first.token);
         await expect(
           acceptOrganizationInvitation(
@@ -508,7 +561,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: employeeId,
               correlationId: randomUUID(),
-              token: first.token,
+              token: first.token!,
             }),
           ),
         ).rejects.toMatchObject({ reason: "already_claimed" });
@@ -528,7 +581,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: employeeId,
               correlationId: randomUUID(),
-              token: second.token,
+              token: second.token!,
             }),
           ),
         ).rejects.toMatchObject({ reason: "already_claimed" });
@@ -581,6 +634,7 @@ describe("organization and staff persistence", () => {
           email: "concurrent-employee@example.test",
           role: "employee",
           locale: "en",
+          issuanceRequestId: randomUUID(),
         });
         const results = await Promise.all([
           acceptOrganizationInvitation(
@@ -588,7 +642,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: employeeId,
               correlationId: randomUUID(),
-              token: issued.token,
+              token: issued.token!,
             }),
           ),
           acceptOrganizationInvitation(
@@ -618,6 +672,75 @@ describe("organization and staff persistence", () => {
                   eq(organizationMemberships.actorId, employeeId),
                 ),
               )
+          )[0]?.value,
+        ).toBe(1);
+      },
+    );
+  });
+
+  it("serializes concurrent invitation retries without duplicate delivery facts", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `organization-issue-retry-${randomUUID()}`,
+      async ({ client }) => {
+        const database = drizzle(client, { casing: "snake_case", schema });
+        const ownerId = createUuidV7();
+        await database.insert(user).values({
+          id: ownerId,
+          name: "Owner",
+          email: "retry-owner@example.test",
+          emailVerified: true,
+        });
+        const created = await createOrganization(
+          database,
+          authorizeOrganizationCreation({
+            actorId: ownerId,
+            correlationId: randomUUID(),
+            creationRequestId: randomUUID(),
+            name: "Retry Org",
+          }),
+        );
+        const state = new DatabaseOrganizationAuthorizationState(database);
+        const requestId = randomUUID();
+        const issue = async () =>
+          issueOrganizationInvitation(
+            database,
+            await authorizeOrganizationServerOperation(
+              { actorId: ownerId },
+              {
+                organizationId: created.organization.id,
+                recordId: created.organization.id,
+                action: "edit",
+                correlationId: randomUUID(),
+              },
+              state,
+            ),
+            {
+              email: "retry-staff@example.test",
+              role: "employee",
+              locale: "en",
+              issuanceRequestId: requestId,
+            },
+          );
+        const results = await Promise.all([issue(), issue()]);
+        expect(results.map((result) => result.replayed).sort()).toEqual([
+          false,
+          true,
+        ]);
+        expect(results.filter((result) => result.token).length).toBe(1);
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(organizationInvitations)
+          )[0]?.value,
+        ).toBe(1);
+        expect(
+          (
+            await database
+              .select({ value: count() })
+              .from(outboxEvents)
+              .where(eq(outboxEvents.eventType, "organization.staff_invited"))
           )[0]?.value,
         ).toBe(1);
       },
@@ -674,6 +797,7 @@ describe("organization and staff persistence", () => {
             email: "race-employee@example.test",
             role: "employee",
             locale: "en",
+            issuanceRequestId: randomUUID(),
           },
         );
         const pool = new pg.Pool({
@@ -697,7 +821,7 @@ describe("organization and staff persistence", () => {
             authorizeOrganizationInvitationClaim({
               actorId: employeeId,
               correlationId: randomUUID(),
-              token: issued.token,
+              token: issued.token!,
             }),
           );
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -706,6 +830,8 @@ describe("organization and staff persistence", () => {
               email: "race-employee@example.test",
               role: "manager",
               locale: "en",
+              issuanceRequestId: randomUUID(),
+              reissueInvitationId: issued.invitation.id,
             }),
           );
           await new Promise((resolve) => setTimeout(resolve, 100));

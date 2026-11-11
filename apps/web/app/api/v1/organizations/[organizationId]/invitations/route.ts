@@ -18,6 +18,7 @@ import {
 } from "../../../../../../lib/organization-service";
 
 export const dynamic = "force-dynamic";
+const idempotencyKeySchema = z.uuid();
 
 async function sessionFor(request: Request) {
   return getAuth()
@@ -108,6 +109,9 @@ export async function POST(
   const parsed = createOrganizationInvitationRequestSchema.safeParse(
     await request.json().catch(() => undefined),
   );
+  const idempotencyKey = idempotencyKeySchema.safeParse(
+    request.headers.get("idempotency-key"),
+  );
   if (!session)
     return problemResponse(
       request,
@@ -119,7 +123,7 @@ export async function POST(
       },
       correlationId,
     );
-  if (!organizationId.success || !parsed.success)
+  if (!organizationId.success || !parsed.success || !idempotencyKey.success)
     return problemResponse(
       request,
       {
@@ -131,22 +135,26 @@ export async function POST(
       correlationId,
     );
   try {
-    const { invitation, token } = await createOrganizationStaffInvitation({
+    const result = await createOrganizationStaffInvitation({
       actorId: session.user.id,
       correlationId,
       organizationId: organizationId.data,
+      issuanceRequestId: idempotencyKey.data,
       request: parsed.data,
     });
+    const acceptancePath = result.token
+      ? `/organization-invitations/${result.token}?locale=${parsed.data.locale}`
+      : `/organization-invitations/pending/${result.invitation.id}?locale=${parsed.data.locale}`;
     return jsonResponse(
       {
         data: {
-          ...invitation,
-          acceptancePath: `/organization-invitations/${token}?locale=${parsed.data.locale}`,
+          ...result.invitation,
+          acceptancePath,
         },
-        meta: { correlationId },
+        meta: { correlationId, replayed: result.replayed },
       },
       correlationId,
-      201,
+      result.replayed ? 200 : 201,
     );
   } catch (error) {
     return problemResponse(
