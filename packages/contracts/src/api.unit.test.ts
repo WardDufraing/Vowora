@@ -90,6 +90,13 @@ describe("API contracts", () => {
       "/api/v1/weddings/{weddingId}/invitations/{invitationId}",
       "/api/v1/invitations/{token}/accept",
       "/api/v1/invitations/pending/{invitationId}/accept",
+      "/api/v1/organizations",
+      "/api/v1/organizations/{organizationId}/staff",
+      "/api/v1/organizations/{organizationId}/staff/{membershipId}",
+      "/api/v1/organizations/{organizationId}/invitations",
+      "/api/v1/organizations/{organizationId}/invitations/{invitationId}",
+      "/api/v1/organization-invitations/{token}/accept",
+      "/api/v1/organization-invitations/pending/{invitationId}/accept",
       "/api/v1/{path}",
     ]);
     expect(
@@ -99,6 +106,41 @@ describe("API contracts", () => {
     expect(
       openApiDocument.paths["/api/v1/auth/sign-out"].post.responses["403"],
     ).toEqual({ $ref: "#/components/responses/AuthenticationFailed" });
+    expect(
+      openApiDocument.paths["/api/v1/organizations"].post.parameters,
+    ).toEqual([
+      expect.objectContaining({
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        schema: { type: "string", format: "uuid" },
+      }),
+    ]);
+    expect(
+      Object.keys(
+        openApiDocument.paths["/api/v1/organization-invitations/{token}/accept"]
+          .post.responses,
+      ),
+    ).toEqual(["200", "400", "401", "403", "404"]);
+    const invitationPost =
+      openApiDocument.paths[
+        "/api/v1/organizations/{organizationId}/invitations"
+      ].post;
+    expect(invitationPost.parameters).toEqual([
+      expect.objectContaining({
+        name: "Idempotency-Key",
+        in: "header",
+        required: true,
+        schema: { type: "string", format: "uuid" },
+      }),
+    ]);
+    expect(invitationPost.responses["200"]).toBeTruthy();
+    expect(invitationPost.responses["201"]).toBeTruthy();
+    expect(
+      openApiDocument.paths[
+        "/api/v1/organizations/{organizationId}/invitations/{invitationId}"
+      ].delete.responses["403"],
+    ).toBeTruthy();
     expect(openApiDocument.components.schemas.HealthResponse).toEqual(
       z.toJSONSchema(healthResponseSchema, { target: "draft-2020-12" }),
     );

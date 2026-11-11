@@ -44,7 +44,7 @@
 | 06-a | Wedding creation and workspace settings | 05-c | In review | [Brief](steps/06-a.md) |
 | 06-b | Partner invitations and claim lifecycle | 06-a | In review | [Brief](steps/06-b.md) |
 | 06-c | Workspace switching and deep links | 06-b | In review | [Brief](steps/06-c.md) |
-| 07-a | Organization and staff memberships | 06-c | Not started | [Brief](steps/07-a.md) |
+| 07-a | Organization and staff memberships | 06-c | In review | [Brief](steps/07-a.md) |
 | 07-b | Wedding planner assignment and fallback | 07-a | Not started | [Brief](steps/07-b.md) |
 | 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |
 | 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
@@ -98,6 +98,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-11-10 — Task 07-a implements authoritative planner organizations and owner/manager/employee staff memberships from owner-merged 06-c main `78dd6e8`. DEC-336 deliberately left organization and staff onboarding details open; the owner explicitly approved verified-email self-service organization creation with an immutable first owner and multiple organization ownership, 14-day staff invitations, owner/manager revoke and reissue, and one reminder three days before expiry. Additive migration `0005_smooth_blur.sql`, central organization authorization, privacy-safe staff management, audit/outbox capture, typed APIs and localized UI are complete on `feat/07-a-organization-staff-memberships`. Local verification and review evidence are recorded in [the 07-a handoff](implementation/07-a-organization-staff-memberships.md). The pull request and independent review remain the current gates. No persistent migration, deployment, provider configuration or external email dispatch occurred; a separate migration agent owns any post-merge staging execution.
 
 - 2026-11-05 — Task 05-c implements the shared product localization and interaction foundation after the owner merged 05-b [PR #54](https://github.com/WardDufraing/Vowora/pull/54) as `0f51a50`. Strict EN/NL/FR/DE catalogs, locale and IANA timezone parsing, date-only and instant contracts, accessible form feedback and confirmation, and responsive table/mobile records are demonstrated by a synthetic no-index `/shared-patterns` fixture that returns 404 in production. Formatting, workspace lint and types, 235 unit/component tests, 38 tooling/boundary tests, uncached preview and production web builds, an uncached preview marketing build, 26 web and 26 marketing Chromium tests pass. Production requests to all three review fixtures return 404. [PR #55](https://github.com/WardDufraing/Vowora/pull/55); [implementation evidence](implementation/05-c-shared-patterns.md). Independent review and owner merge remain; no schema, migration, persistent data, external configuration or deployment changed.
 

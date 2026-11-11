@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(5);
+      expect(journal.rowCount).toBe(6);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
@@ -271,6 +271,146 @@ describe("persistent migration workflow", () => {
       ).toBe("Updated wedding");
       await expect(
         runtime.query("DELETE FROM weddings WHERE id = $1", [weddingId]),
+      ).rejects.toThrow(/permission denied/);
+      const organizationId = "019a27f0-67b7-7000-8000-000000000009";
+      await runtime.query(
+        `INSERT INTO organizations
+          (id, name, creator_actor_id, creation_request_id,
+           creation_request_fingerprint)
+         VALUES ($1, 'Synthetic organization', $2, $3, $4)`,
+        [organizationId, userId, randomUUID(), "c".repeat(64)],
+      );
+      const organizationMembershipId = "019a27f0-67b7-7000-8000-000000000010";
+      await runtime.query(
+        `INSERT INTO organization_memberships
+          (id, organization_id, actor_id, role, status, permission_overrides)
+         VALUES ($1, $2, $3, 'owner', 'active', '[]'::jsonb)`,
+        [organizationMembershipId, organizationId, userId],
+      );
+      await expect(
+        runtime.query(
+          `UPDATE organization_memberships
+              SET status = 'revoked', deactivated_at = now(),
+                  permission_scope_version = 2, updated_at = now()
+            WHERE id = $1`,
+          [organizationMembershipId],
+        ),
+      ).rejects.toThrow(/organization_memberships_owner_immutable/);
+      const managerId = "019a27f0-67b7-7000-8000-000000000012";
+      await runtime.query(
+        `INSERT INTO auth_user
+          (id, name, email, email_verified, created_at, updated_at)
+         VALUES ($1, 'Organization manager', 'manager@example.invalid', true, now(), now())`,
+        [managerId],
+      );
+      const managerMembershipId = "019a27f0-67b7-7000-8000-000000000013";
+      await expect(
+        runtime.query(
+          `INSERT INTO organization_memberships
+            (id, organization_id, actor_id, role, status, permission_overrides)
+           VALUES ($1, $2, $3, 'owner', 'active', '[]'::jsonb)`,
+          [managerMembershipId, organizationId, managerId],
+        ),
+      ).rejects.toThrow(/organization_memberships_owner_unique_idx/);
+      await runtime.query(
+        `INSERT INTO organization_memberships
+          (id, organization_id, actor_id, role, status, permission_overrides)
+         VALUES ($1, $2, $3, 'manager', 'active', '[]'::jsonb)`,
+        [managerMembershipId, organizationId, managerId],
+      );
+      await runtime.query(
+        `UPDATE organization_memberships
+            SET status = 'revoked', deactivated_at = now(),
+                permission_scope_version = 2, updated_at = now()
+          WHERE id = $1`,
+        [managerMembershipId],
+      );
+      await expect(
+        runtime.query(
+          "UPDATE organization_memberships SET role = 'manager' WHERE id = $1",
+          [organizationMembershipId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_memberships SET actor_id = $2 WHERE id = $1",
+          [organizationMembershipId, randomUUID()],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_memberships SET permission_overrides = '[]'::jsonb WHERE id = $1",
+          [organizationMembershipId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query("DELETE FROM organization_memberships WHERE id = $1", [
+          organizationMembershipId,
+        ]),
+      ).rejects.toThrow(/permission denied/);
+      const organizationInvitationId = "019a27f0-67b7-7000-8000-000000000011";
+      await runtime.query(
+        `INSERT INTO organization_invitations
+          (id, organization_id, invited_email, role, token_digest, status,
+           issued_by_actor_id, issuance_request_id,
+           issuance_request_fingerprint, expires_at, reminder_at)
+         VALUES ($1, $2, 'staff@example.invalid', 'employee', $3, 'pending',
+           $4, $5, $6, now() + interval '14 days', now() + interval '11 days')`,
+        [
+          organizationInvitationId,
+          organizationId,
+          "d".repeat(64),
+          userId,
+          randomUUID(),
+          "e".repeat(64),
+        ],
+      );
+      await runtime.query(
+        `UPDATE organization_invitations
+            SET status = 'accepted', accepted_by_actor_id = $2,
+                accepted_at = now(), updated_at = now()
+          WHERE id = $1`,
+        [organizationInvitationId, userId],
+      );
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET invited_email = 'attacker@example.invalid' WHERE id = $1",
+          [organizationInvitationId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET expires_at = now() + interval '1 year' WHERE id = $1",
+          [organizationInvitationId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET issuance_request_id = $2 WHERE id = $1",
+          [organizationInvitationId, randomUUID()],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organization_invitations SET issuance_request_fingerprint = $2 WHERE id = $1",
+          [organizationInvitationId, "f".repeat(64)],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query("DELETE FROM organization_invitations WHERE id = $1", [
+          organizationInvitationId,
+        ]),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query(
+          "UPDATE organizations SET name = 'Attacker organization' WHERE id = $1",
+          [organizationId],
+        ),
+      ).rejects.toThrow(/permission denied/);
+      await expect(
+        runtime.query("DELETE FROM organizations WHERE id = $1", [
+          organizationId,
+        ]),
       ).rejects.toThrow(/permission denied/);
       await runtime.query(
         `INSERT INTO audit_events

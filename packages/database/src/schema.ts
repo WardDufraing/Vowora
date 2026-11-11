@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -414,9 +415,196 @@ export const weddingInvitations = pgTable(
   ],
 );
 
+/** Authoritative professional organization identity. Wedding assignment is
+ * intentionally owned by 07-b and is not represented here. */
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    name: text("name").notNull(),
+    creatorActorId: uuid("creator_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    creationRequestId: uuid("creation_request_id").notNull(),
+    creationRequestFingerprint: text("creation_request_fingerprint").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "organizations_name_length",
+      sql`char_length(btrim(${table.name})) BETWEEN 1 AND 120`,
+    ),
+    uniqueIndex("organizations_creator_request_unique_idx").on(
+      table.creatorActorId,
+      table.creationRequestId,
+    ),
+  ],
+);
+
+export const organizationMemberships = pgTable(
+  "organization_memberships",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("active"),
+    permissionOverrides: jsonb("permission_overrides").notNull().default([]),
+    permissionScopeVersion: integer("permission_scope_version")
+      .notNull()
+      .default(1),
+    deactivatedAt: timestamp("deactivated_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "organization_memberships_role",
+      sql`${table.role} IN ('owner', 'manager', 'employee')`,
+    ),
+    check(
+      "organization_memberships_status",
+      sql`${table.status} IN ('active', 'revoked')`,
+    ),
+    check(
+      "organization_memberships_deactivation_consistent",
+      sql`(${table.status} = 'revoked') = (${table.deactivatedAt} IS NOT NULL)`,
+    ),
+    check(
+      "organization_memberships_owner_immutable",
+      sql`${table.role} <> 'owner' OR (${table.status} = 'active' AND ${table.deactivatedAt} IS NULL)`,
+    ),
+    check(
+      "organization_memberships_scope_version_positive",
+      sql`${table.permissionScopeVersion} > 0`,
+    ),
+    uniqueIndex("organization_memberships_actor_unique_idx").on(
+      table.organizationId,
+      table.actorId,
+    ),
+    uniqueIndex("organization_memberships_owner_unique_idx")
+      .on(table.organizationId)
+      .where(sql`${table.role} = 'owner'`),
+    index("organization_memberships_actor_status_idx").on(
+      table.actorId,
+      table.status,
+    ),
+  ],
+);
+
+export const organizationInvitations = pgTable(
+  "organization_invitations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    invitedEmail: text("invited_email").notNull(),
+    role: text("role").notNull(),
+    tokenDigest: text("token_digest").notNull(),
+    status: text("status").notNull().default("pending"),
+    issuedByActorId: uuid("issued_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    issuanceRequestId: uuid("issuance_request_id").notNull(),
+    issuanceRequestFingerprint: text("issuance_request_fingerprint").notNull(),
+    acceptedByActorId: uuid("accepted_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    reminderAt: timestamp("reminder_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "date" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    replacedByInvitationId: uuid("replaced_by_invitation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "organization_invitations_email_normalized",
+      sql`${table.invitedEmail} = lower(btrim(${table.invitedEmail}))`,
+    ),
+    check(
+      "organization_invitations_role",
+      sql`${table.role} IN ('manager', 'employee')`,
+    ),
+    check(
+      "organization_invitations_status",
+      sql`${table.status} IN ('pending', 'accepted', 'revoked', 'replaced')`,
+    ),
+    check(
+      "organization_invitations_token_digest",
+      sql`${table.tokenDigest} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "organization_invitations_deadlines",
+      sql`${table.reminderAt} < ${table.expiresAt}`,
+    ),
+    check(
+      "organization_invitations_acceptance_consistent",
+      sql`(${table.status} = 'accepted') = (${table.acceptedAt} IS NOT NULL AND ${table.acceptedByActorId} IS NOT NULL)`,
+    ),
+    uniqueIndex("organization_invitations_token_unique_idx").on(
+      table.tokenDigest,
+    ),
+    uniqueIndex("organization_invitations_issuance_request_unique_idx").on(
+      table.organizationId,
+      table.issuedByActorId,
+      table.issuanceRequestId,
+    ),
+    uniqueIndex("organization_invitations_pending_email_unique_idx")
+      .on(table.organizationId, table.invitedEmail)
+      .where(sql`${table.status} = 'pending'`),
+    index("organization_invitations_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("organization_invitations_reminder_idx").on(
+      table.reminderAt,
+      table.status,
+    ),
+    foreignKey({
+      columns: [table.replacedByInvitationId],
+      foreignColumns: [table.id],
+      name: "organization_invitations_replaced_by_fk",
+    }).onDelete("restrict"),
+  ],
+);
+
 export type Wedding = typeof weddings.$inferSelect;
 export type NewWedding = typeof weddings.$inferInsert;
 export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
 export type NewWeddingMembership = typeof weddingMemberships.$inferInsert;
 export type WeddingInvitationRow = typeof weddingInvitations.$inferSelect;
 export type NewWeddingInvitation = typeof weddingInvitations.$inferInsert;
+export type Organization = typeof organizations.$inferSelect;
+export type OrganizationMembershipRow =
+  typeof organizationMemberships.$inferSelect;
+export type OrganizationInvitationRow =
+  typeof organizationInvitations.$inferSelect;

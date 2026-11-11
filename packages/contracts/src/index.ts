@@ -173,6 +173,63 @@ export const acceptPartnerInvitationResponseSchema = z.strictObject({
   meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
 });
 
+export const organizationMemberSchema = z.strictObject({
+  id: z.uuidv7(),
+  actorId: z.uuidv7(),
+  name: z.string().min(1).max(100),
+  email: z.email().max(320),
+  role: z.enum(["owner", "manager", "employee"]),
+  status: z.enum(["active", "revoked"]),
+});
+export const createOrganizationRequestSchema = z.strictObject({
+  name: z.string().trim().min(1).max(120),
+});
+export const organizationSchema = z.strictObject({
+  id: z.uuidv7(),
+  name: z.string().min(1).max(120),
+});
+export const organizationResponseSchema = z.strictObject({
+  data: organizationSchema,
+  meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
+});
+export const createOrganizationInvitationRequestSchema = z.strictObject({
+  email: z.email().max(320),
+  role: z.enum(["manager", "employee"]),
+  locale: z.enum(["en", "nl", "fr", "de"]),
+  reissueInvitationId: z.uuidv7().optional(),
+});
+export const organizationInvitationSchema = z.strictObject({
+  id: z.uuidv7(),
+  organizationId: z.uuidv7(),
+  invitedEmail: z.email().max(320),
+  role: z.enum(["manager", "employee"]),
+  status: z.enum(["pending", "accepted", "revoked", "replaced"]),
+  expiresAt: z.iso.datetime(),
+  reminderAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
+});
+export const organizationInvitationResponseSchema = z.strictObject({
+  data: organizationInvitationSchema.extend({
+    acceptancePath: z.string().startsWith("/organization-invitations/"),
+  }),
+  meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
+});
+export const organizationInvitationsResponseSchema = z.strictObject({
+  data: z.array(organizationInvitationSchema),
+  meta: responseMetadataSchema,
+});
+export const acceptOrganizationInvitationRequestSchema = z.strictObject({
+  accept: z.literal(true),
+});
+export const acceptOrganizationInvitationResponseSchema = z.strictObject({
+  data: z.strictObject({ organizationId: z.uuidv7() }),
+  meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
+});
+export const organizationMembersResponseSchema = z.strictObject({
+  data: z.array(organizationMemberSchema),
+  meta: responseMetadataSchema,
+});
+
 export type ApiRootResponse = z.infer<typeof apiRootResponseSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ProblemDetails = z.infer<typeof problemDetailsSchema>;
@@ -193,6 +250,19 @@ export type PartnerInvitationResponse = z.infer<
 >;
 export type AcceptPartnerInvitationRequest = z.infer<
   typeof acceptPartnerInvitationRequestSchema
+>;
+export type OrganizationMember = z.infer<typeof organizationMemberSchema>;
+export type CreateOrganizationRequest = z.infer<
+  typeof createOrganizationRequestSchema
+>;
+export type CreateOrganizationInvitationRequest = z.infer<
+  typeof createOrganizationInvitationRequestSchema
+>;
+export type OrganizationInvitation = z.infer<
+  typeof organizationInvitationSchema
+>;
+export type AcceptOrganizationInvitationRequest = z.infer<
+  typeof acceptOrganizationInvitationRequestSchema
 >;
 
 const problemResponse = (description: string) => ({
@@ -911,6 +981,274 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/organizations": {
+      post: {
+        operationId: "createOrganization",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateOrganizationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Planner organization created.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrganizationResponse" },
+              },
+            },
+          },
+          "400": problemResponse("The request is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("A verified email is required."),
+          "409": problemResponse("The idempotency key conflicts."),
+          "503": authenticationServiceFailure,
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/staff": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listOrganizationStaff",
+        responses: {
+          "200": {
+            description: "Organization staff.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationMembersResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Organization access is unavailable."),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/staff/{membershipId}": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "membershipId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      delete: {
+        operationId: "deactivateOrganizationStaff",
+        responses: {
+          "200": { description: "Staff member deactivated." },
+          "401": authenticationFailure,
+          "403": problemResponse("The staff change is not permitted."),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/invitations": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listOrganizationInvitations",
+        responses: {
+          "200": {
+            description: "Pending staff invitations.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationInvitationsResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Invitation management is unavailable."),
+        },
+      },
+      post: {
+        operationId: "createOrganizationInvitation",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateOrganizationInvitationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Existing staff invitation returned for a retry.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "201": {
+            description: "Staff invitation created.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("The request is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("Invitation management is unavailable."),
+          "409": problemResponse(
+            "The invitation conflicts with current state.",
+          ),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/invitations/{invitationId}": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "invitationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      delete: {
+        operationId: "revokeOrganizationInvitation",
+        responses: {
+          "204": { description: "Pending invitation revoked." },
+          "401": authenticationFailure,
+          "403": problemResponse("The request could not be completed."),
+          "404": problemResponse("The invitation is unavailable."),
+        },
+      },
+    },
+    "/api/v1/organization-invitations/{token}/accept": {
+      parameters: [
+        {
+          name: "token",
+          in: "path",
+          required: true,
+          schema: { type: "string", minLength: 32, maxLength: 256 },
+        },
+      ],
+      post: {
+        operationId: "acceptOrganizationInvitation",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/AcceptOrganizationInvitationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Invitation accepted or safely replayed.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/AcceptOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("Explicit acceptance is required."),
+          "401": authenticationFailure,
+          "403": problemResponse("The invitation is unavailable."),
+          "404": problemResponse("The invitation is unavailable."),
+        },
+      },
+    },
+    "/api/v1/organization-invitations/pending/{invitationId}/accept": {
+      parameters: [
+        {
+          name: "invitationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      post: {
+        operationId: "acceptOrganizationInvitationByVerifiedEmail",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/AcceptOrganizationInvitationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Email invitation accepted or safely replayed.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/AcceptOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("Explicit acceptance is required."),
+          "401": authenticationFailure,
+          "403": problemResponse("The invitation is unavailable."),
+          "404": problemResponse("The invitation is unavailable."),
+        },
+      },
+    },
     "/api/v1/{path}": {
       parameters: [
         {
@@ -1012,6 +1350,37 @@ export const openApiDocument = {
       ),
       AcceptPartnerInvitationResponse: z.toJSONSchema(
         acceptPartnerInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      CreateOrganizationRequest: z.toJSONSchema(
+        createOrganizationRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationResponse: z.toJSONSchema(organizationResponseSchema, {
+        target: "draft-2020-12",
+      }),
+      OrganizationMembersResponse: z.toJSONSchema(
+        organizationMembersResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      CreateOrganizationInvitationRequest: z.toJSONSchema(
+        createOrganizationInvitationRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationInvitationResponse: z.toJSONSchema(
+        organizationInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationInvitationsResponse: z.toJSONSchema(
+        organizationInvitationsResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      AcceptOrganizationInvitationRequest: z.toJSONSchema(
+        acceptOrganizationInvitationRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      AcceptOrganizationInvitationResponse: z.toJSONSchema(
+        acceptOrganizationInvitationResponseSchema,
         { target: "draft-2020-12" },
       ),
     },
