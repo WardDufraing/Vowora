@@ -43,6 +43,7 @@ export default async function OrganizationInvitationPage({
       <OrganizationInvitationAcceptance
         endpoint={`/api/v1/organization-invitations/${token}/accept`}
         expired={invitation.expired}
+        locale={locale}
         messages={organizationMessages(locale)}
         organizationName={invitation.organizationName}
       />

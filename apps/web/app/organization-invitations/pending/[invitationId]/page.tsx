@@ -43,6 +43,7 @@ export default async function PendingOrganizationInvitationPage({
       <OrganizationInvitationAcceptance
         endpoint={`/api/v1/organization-invitations/pending/${invitationId}/accept`}
         expired={invitation.expired}
+        locale={locale}
         messages={organizationMessages(locale)}
         organizationName={invitation.organizationName}
       />

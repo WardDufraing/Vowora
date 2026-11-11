@@ -3,16 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import type { organizationMessages } from "../../lib/organization-messages";
+import type {
+  OrganizationLocale,
+  organizationMessages,
+} from "../../lib/organization-messages";
 
 export function OrganizationInvitationAcceptance({
   endpoint,
   expired,
+  locale,
   messages,
   organizationName,
 }: {
   readonly endpoint: string;
   readonly expired: boolean;
+  readonly locale: OrganizationLocale;
   readonly messages: ReturnType<typeof organizationMessages>;
   readonly organizationName: string;
 }) {
@@ -34,7 +39,9 @@ export function OrganizationInvitationAcceptance({
         data: { organizationId: string };
       };
       setAccepted(true);
-      router.push(`/organizations/${body.data.organizationId}/staff`);
+      router.push(
+        `/organizations/${body.data.organizationId}/staff?locale=${locale}`,
+      );
     } catch {
       setError(messages.error);
       setBusy(false);

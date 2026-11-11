@@ -66,7 +66,10 @@ export function StaffInvitationForm({
       }),
     });
     if (!response.ok) {
-      if (response.status === 409) await refreshInvitations();
+      if (response.status === 409) {
+        await refreshInvitations();
+        retry.current = undefined;
+      }
       throw new Error();
     }
     const body = (await response.json()) as { data: InvitationWithLink };

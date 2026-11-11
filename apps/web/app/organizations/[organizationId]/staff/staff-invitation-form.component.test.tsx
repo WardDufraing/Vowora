@@ -157,4 +157,66 @@ describe("organization staff invitation form", () => {
     );
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
+
+  it("uses a new request key after a definitive stale retry conflict", async () => {
+    const invitation = {
+      id: "019a2f36-0eb9-7000-8000-000000000006",
+      organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+      invitedEmail: "retry@example.test",
+      role: "employee" as const,
+      status: "pending" as const,
+      expiresAt: "2026-11-24T12:00:00.000Z",
+      reminderAt: "2026-11-21T12:00:00.000Z",
+      createdAt: "2026-11-10T12:00:00.000Z",
+      acceptancePath: "/organization-invitations/new-secret",
+    };
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("response lost"))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(Response.json({ data: [] }))
+      .mockResolvedValueOnce(Response.json({ data: invitation }));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <StaffInvitationForm
+        endpoint="/api/invitations"
+        initial={[]}
+        locale="en"
+        messages={organizationMessages("en")}
+      />,
+    );
+    await user.type(
+      screen.getByLabelText("Staff email address"),
+      "retry@example.test",
+    );
+    const submit = screen.getByRole("button", { name: "Create invitation" });
+    await user.click(submit);
+    await user.click(submit);
+    await user.click(submit);
+
+    const firstHeaders = fetch.mock.calls[0]?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    const staleRetryHeaders = fetch.mock.calls[1]?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    const newAttemptHeaders = fetch.mock.calls[3]?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(staleRetryHeaders["idempotency-key"]).toBe(
+      firstHeaders["idempotency-key"],
+    );
+    expect(newAttemptHeaders["idempotency-key"]).not.toBe(
+      firstHeaders["idempotency-key"],
+    );
+    expect(fetch).toHaveBeenNthCalledWith(3, "/api/invitations");
+    expect(await screen.findByRole("link")).toHaveAttribute(
+      "href",
+      invitation.acceptancePath,
+    );
+  });
 });

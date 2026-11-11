@@ -29,6 +29,7 @@ describe("organization invitation acceptance", () => {
       <OrganizationInvitationAcceptance
         endpoint="/api/accept"
         expired={false}
+        locale="de"
         messages={organizationMessages("de")}
         organizationName="North Star"
       />,
@@ -37,7 +38,7 @@ describe("organization invitation acceptance", () => {
       screen.getByRole("button", { name: "Einladung annehmen" }),
     );
     expect(push).toHaveBeenCalledWith(
-      "/organizations/019a2f36-0eb9-7000-8000-000000000002/staff",
+      "/organizations/019a2f36-0eb9-7000-8000-000000000002/staff?locale=de",
     );
   });
 
@@ -46,6 +47,7 @@ describe("organization invitation acceptance", () => {
       <OrganizationInvitationAcceptance
         endpoint="/api/accept"
         expired
+        locale="fr"
         messages={organizationMessages("fr")}
         organizationName="North Star"
       />,
