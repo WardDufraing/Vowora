@@ -1,4 +1,5 @@
 import type {
+  CreateWeddingOrganizationInvitationRequest,
   CreateWeddingRequest,
   UpdateWeddingSettingsRequest,
 } from "@vowora/contracts";
@@ -18,6 +19,12 @@ import {
   WeddingInvitationConflictError,
   WeddingInvitationUnavailableError,
   WeddingSettingsConflictError,
+  issueWeddingOrganizationInvitation,
+  listWeddingOrganizationInvitations,
+  revokeWeddingOrganizationInvitation,
+  revokeWeddingOrganizationAccess,
+  setPlannerStaffRestriction,
+  setLeadPlannerAbsence,
 } from "@vowora/database";
 import {
   authorizeCoupleWeddingCreation,
@@ -234,6 +241,98 @@ export function loadWeddingWorkspaceEntryForActor(input: {
   readonly actorId: string;
 }) {
   return readWeddingWorkspaceEntryState(getRuntimeDatabase().database, input);
+}
+
+export async function createPlannerOrganizationInvitation(input: {
+  auth: SessionReader;
+  request: Request;
+  weddingId: string;
+  issuanceRequestId: string;
+  body: CreateWeddingOrganizationInvitationRequest;
+}) {
+  const authorized = await authorizeWeddingSettingsApiOperation(
+    input.auth,
+    input.request,
+    input.weddingId,
+  );
+  if (!authorized.authorized) return authorized;
+  return {
+    authorized: true as const,
+    correlationId: authorized.operation.authorization.correlationId,
+    result: await issueWeddingOrganizationInvitation(
+      getRuntimeDatabase().database,
+      authorized.operation,
+      {
+        organizationId: input.body.organizationId,
+        ceiling: input.body.permissionCeiling,
+        requestId: input.issuanceRequestId,
+        reissueInvitationId: input.body.reissueInvitationId,
+      },
+    ),
+  };
+}
+export function loadPlannerOrganizationInvitations(
+  operation: AuthorizedServerOperation,
+) {
+  return listWeddingOrganizationInvitations(
+    getRuntimeDatabase().database,
+    operation,
+  );
+}
+export function revokePlannerOrganizationInvitation(
+  operation: AuthorizedServerOperation,
+  invitationId: string,
+) {
+  return revokeWeddingOrganizationInvitation(
+    getRuntimeDatabase().database,
+    operation,
+    invitationId,
+  );
+}
+export function revokePlannerOrganizationRelationship(
+  operation: AuthorizedServerOperation,
+  accessId: string,
+) {
+  return revokeWeddingOrganizationAccess(
+    getRuntimeDatabase().database,
+    operation,
+    accessId,
+  );
+}
+export function changePlannerStaffRestriction(
+  operation: AuthorizedServerOperation,
+  input: {
+    accessId: string;
+    organizationMembershipId: string;
+    blocked: boolean;
+  },
+) {
+  return setPlannerStaffRestriction(
+    getRuntimeDatabase().database,
+    operation,
+    input,
+  );
+}
+export async function authorizeLeadAbsenceApiOperation(
+  auth: SessionReader,
+  request: Request,
+  weddingId: string,
+) {
+  return authorizeApiOperation(
+    auth,
+    request,
+    {
+      tenant: "wedding",
+      operation: { resource: "new", area: "tasks", weddingId, action: "edit" },
+    },
+    new DatabaseWeddingAuthorizationState(getRuntimeDatabase().database),
+  );
+}
+export function changeLeadPlannerAbsence(
+  operation: AuthorizedServerOperation,
+  input: { accessId: string; startsAt: Date | null; endsAt: Date | null },
+) {
+  return setLeadPlannerAbsence(getRuntimeDatabase().database, operation, input);
 }
 
 /**

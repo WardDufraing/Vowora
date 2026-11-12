@@ -597,6 +597,274 @@ export const organizationInvitations = pgTable(
   ],
 );
 
+/** Couple-issued invitation for one verified planner organization. The
+ * organization id is the recipient identity; no bearer capability is needed. */
+export const weddingOrganizationInvitations = pgTable(
+  "wedding_organization_invitations",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("pending"),
+    permissionCeiling: jsonb("permission_ceiling").notNull().default([]),
+    issuedByActorId: uuid("issued_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    issuanceRequestId: uuid("issuance_request_id").notNull(),
+    issuanceRequestFingerprint: text("issuance_request_fingerprint").notNull(),
+    acceptedByActorId: uuid("accepted_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    rejectedByActorId: uuid("rejected_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    revokedByActorId: uuid("revoked_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "date" }),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true, mode: "date" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    replacedByInvitationId: uuid("replaced_by_invitation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_organization_invitations_status",
+      sql`${table.status} IN ('pending', 'accepted', 'rejected', 'revoked', 'replaced')`,
+    ),
+    check(
+      "wedding_organization_invitations_fingerprint",
+      sql`${table.issuanceRequestFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    uniqueIndex("wedding_organization_invitation_request_unique_idx").on(
+      table.weddingId,
+      table.issuedByActorId,
+      table.issuanceRequestId,
+    ),
+    uniqueIndex("wedding_organization_invitation_pending_wedding_idx")
+      .on(table.weddingId)
+      .where(sql`${table.status} = 'pending'`),
+    index("wedding_organization_invitation_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("wedding_organization_invitation_expiry_idx").on(
+      table.expiresAt,
+      table.status,
+    ),
+    foreignKey({
+      columns: [table.replacedByInvitationId],
+      foreignColumns: [table.id],
+      name: "wedding_organization_invitations_replaced_by_fk",
+    }).onDelete("restrict"),
+  ],
+);
+
+/** Couple-controlled boundary between a shared wedding and a planner
+ * organization. Staff access is always derived through this record and ends
+ * immediately when the couple revokes it. */
+export const weddingOrganizationAccesses = pgTable(
+  "wedding_organization_accesses",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    invitationId: uuid("invitation_id")
+      .notNull()
+      .references(() => weddingOrganizationInvitations.id, {
+        onDelete: "restrict",
+      }),
+    status: text("status").notNull().default("active"),
+    permissionCeiling: jsonb("permission_ceiling").notNull().default([]),
+    permissionScopeVersion: integer("permission_scope_version")
+      .notNull()
+      .default(1),
+    grantedByActorId: uuid("granted_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    revokedByActorId: uuid("revoked_by_actor_id").references(() => user.id, {
+      onDelete: "restrict",
+    }),
+    grantedAt: timestamp("granted_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_organization_accesses_status",
+      sql`${table.status} IN ('active', 'revoked')`,
+    ),
+    check(
+      "wedding_organization_accesses_revocation_consistent",
+      sql`(${table.status} = 'revoked') = (${table.revokedAt} IS NOT NULL AND ${table.revokedByActorId} IS NOT NULL)`,
+    ),
+    check(
+      "wedding_organization_accesses_scope_version_positive",
+      sql`${table.permissionScopeVersion} > 0`,
+    ),
+    uniqueIndex("wedding_organization_accesses_invitation_unique_idx").on(
+      table.invitationId,
+    ),
+    uniqueIndex("wedding_organization_accesses_one_active_wedding_idx")
+      .on(table.weddingId)
+      .where(sql`${table.status} = 'active'`),
+    index("wedding_organization_accesses_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("wedding_organization_accesses_wedding_status_idx").on(
+      table.weddingId,
+      table.status,
+    ),
+  ],
+);
+
+/** Organization-controlled staffing within the couple's access ceiling. Lead
+ * designation coordinates work but never changes the stored permission set. */
+export const weddingOrganizationStaffAssignments = pgTable(
+  "wedding_organization_staff_assignments",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    accessId: uuid("access_id")
+      .notNull()
+      .references(() => weddingOrganizationAccesses.id, {
+        onDelete: "restrict",
+      }),
+    organizationMembershipId: uuid("organization_membership_id")
+      .notNull()
+      .references(() => organizationMemberships.id, { onDelete: "restrict" }),
+    weddingMembershipId: uuid("wedding_membership_id")
+      .notNull()
+      .references(() => weddingMemberships.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("active"),
+    isLead: boolean("is_lead").notNull().default(false),
+    permissionOverrides: jsonb("permission_overrides").notNull().default([]),
+    permissionScopeVersion: integer("permission_scope_version")
+      .notNull()
+      .default(1),
+    assignedByActorId: uuid("assigned_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "date" }),
+    absenceStartsAt: timestamp("absence_starts_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    absenceEndsAt: timestamp("absence_ends_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    absenceExceptions: jsonb("absence_exceptions").notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_organization_staff_status",
+      sql`${table.status} IN ('active', 'revoked')`,
+    ),
+    check(
+      "wedding_organization_staff_revocation_consistent",
+      sql`(${table.status} = 'revoked') = (${table.revokedAt} IS NOT NULL)`,
+    ),
+    check(
+      "wedding_organization_staff_scope_version_positive",
+      sql`${table.permissionScopeVersion} > 0`,
+    ),
+    check(
+      "wedding_organization_staff_absence_consistent",
+      sql`(${table.absenceStartsAt} IS NULL AND ${table.absenceEndsAt} IS NULL) OR (${table.absenceStartsAt} IS NOT NULL AND ${table.absenceEndsAt} IS NOT NULL AND ${table.absenceStartsAt} < ${table.absenceEndsAt})`,
+    ),
+    uniqueIndex("wedding_organization_staff_access_member_unique_idx").on(
+      table.accessId,
+      table.organizationMembershipId,
+    ),
+    uniqueIndex("wedding_organization_staff_wedding_member_unique_idx").on(
+      table.weddingMembershipId,
+    ),
+    uniqueIndex("wedding_organization_staff_one_lead_idx")
+      .on(table.accessId)
+      .where(sql`${table.isLead} = true AND ${table.status} = 'active'`),
+    index("wedding_organization_staff_access_status_idx").on(
+      table.accessId,
+      table.status,
+    ),
+  ],
+);
+
+/** Couple restriction survives staff removal so a blocked employee cannot be
+ * silently reassigned until a partner explicitly lifts the restriction. */
+export const weddingOrganizationStaffRestrictions = pgTable(
+  "wedding_organization_staff_restrictions",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    accessId: uuid("access_id")
+      .notNull()
+      .references(() => weddingOrganizationAccesses.id, {
+        onDelete: "restrict",
+      }),
+    organizationMembershipId: uuid("organization_membership_id")
+      .notNull()
+      .references(() => organizationMemberships.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("blocked"),
+    changedByActorId: uuid("changed_by_actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    blockedAt: timestamp("blocked_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    liftedAt: timestamp("lifted_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_organization_staff_restrictions_status",
+      sql`${table.status} IN ('blocked', 'lifted')`,
+    ),
+    check(
+      "wedding_organization_staff_restrictions_lift_consistent",
+      sql`(${table.status} = 'lifted') = (${table.liftedAt} IS NOT NULL)`,
+    ),
+    uniqueIndex("wedding_organization_staff_restriction_unique_idx").on(
+      table.accessId,
+      table.organizationMembershipId,
+    ),
+  ],
+);
+
 export type Wedding = typeof weddings.$inferSelect;
 export type NewWedding = typeof weddings.$inferInsert;
 export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
@@ -608,3 +876,11 @@ export type OrganizationMembershipRow =
   typeof organizationMemberships.$inferSelect;
 export type OrganizationInvitationRow =
   typeof organizationInvitations.$inferSelect;
+export type WeddingOrganizationInvitationRow =
+  typeof weddingOrganizationInvitations.$inferSelect;
+export type WeddingOrganizationAccessRow =
+  typeof weddingOrganizationAccesses.$inferSelect;
+export type WeddingOrganizationStaffAssignmentRow =
+  typeof weddingOrganizationStaffAssignments.$inferSelect;
+export type WeddingOrganizationStaffRestrictionRow =
+  typeof weddingOrganizationStaffRestrictions.$inferSelect;

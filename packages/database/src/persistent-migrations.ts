@@ -27,6 +27,12 @@ const weddingInvitationTables = ["wedding_invitations"] as const;
 const organizationTables = ["organizations"] as const;
 const organizationMembershipTables = ["organization_memberships"] as const;
 const organizationInvitationTables = ["organization_invitations"] as const;
+const plannerAssignmentTables = [
+  "wedding_organization_invitations",
+  "wedding_organization_accesses",
+  "wedding_organization_staff_assignments",
+  "wedding_organization_staff_restrictions",
+] as const;
 const allApplicationTables = [
   "schema_metadata",
   ...appendOnlyTables,
@@ -37,6 +43,7 @@ const allApplicationTables = [
   ...organizationTables,
   ...organizationMembershipTables,
   ...organizationInvitationTables,
+  ...plannerAssignmentTables,
 ] as const;
 const tablePrivileges = [
   "SELECT",
@@ -89,6 +96,9 @@ function expectedTablePrivileges(schemaName: string, tableName: string) {
     return new Set(["SELECT", "INSERT"]);
   }
   if ((organizationInvitationTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((plannerAssignmentTables as readonly string[]).includes(tableName)) {
     return new Set(["SELECT", "INSERT"]);
   }
   return new Set<string>();
@@ -165,6 +175,52 @@ function expectedColumnPrivileges(
       ].includes(columnName)
         ? ["UPDATE"]
         : []),
+    ]);
+  }
+  if ((plannerAssignmentTables as readonly string[]).includes(tableName)) {
+    const mutable: Readonly<Record<string, readonly string[]>> = {
+      wedding_organization_invitations: [
+        "status",
+        "accepted_by_actor_id",
+        "rejected_by_actor_id",
+        "revoked_by_actor_id",
+        "accepted_at",
+        "rejected_at",
+        "revoked_at",
+        "replaced_by_invitation_id",
+        "updated_at",
+      ],
+      wedding_organization_accesses: [
+        "status",
+        "permission_ceiling",
+        "permission_scope_version",
+        "revoked_by_actor_id",
+        "revoked_at",
+        "updated_at",
+      ],
+      wedding_organization_staff_assignments: [
+        "status",
+        "is_lead",
+        "permission_overrides",
+        "permission_scope_version",
+        "revoked_at",
+        "absence_starts_at",
+        "absence_ends_at",
+        "absence_exceptions",
+        "updated_at",
+      ],
+      wedding_organization_staff_restrictions: [
+        "status",
+        "changed_by_actor_id",
+        "blocked_at",
+        "lifted_at",
+        "updated_at",
+      ],
+    };
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...((mutable[tableName] ?? []).includes(columnName) ? ["UPDATE"] : []),
     ]);
   }
   return new Set<string>();
@@ -330,6 +386,9 @@ async function reconcileRuntimeGrants(
   const organizationInvitations = organizationInvitationTables
     .map(quoteIdentifier)
     .join(", ");
+  const plannerAssignments = plannerAssignmentTables
+    .map(quoteIdentifier)
+    .join(", ");
 
   await client.query("BEGIN");
   try {
@@ -400,6 +459,21 @@ async function reconcileRuntimeGrants(
     );
     await client.query(
       `GRANT UPDATE ("status", "accepted_by_actor_id", "accepted_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE ${organizationInvitations} TO ${role}`,
+    );
+    await client.query(
+      `GRANT SELECT, INSERT ON TABLE ${plannerAssignments} TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "accepted_by_actor_id", "rejected_by_actor_id", "revoked_by_actor_id", "accepted_at", "rejected_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE "wedding_organization_invitations" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "permission_ceiling", "permission_scope_version", "revoked_by_actor_id", "revoked_at", "updated_at") ON TABLE "wedding_organization_accesses" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "is_lead", "permission_overrides", "permission_scope_version", "revoked_at", "absence_starts_at", "absence_ends_at", "absence_exceptions", "updated_at") ON TABLE "wedding_organization_staff_assignments" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("status", "changed_by_actor_id", "blocked_at", "lifted_at", "updated_at") ON TABLE "wedding_organization_staff_restrictions" TO ${role}`,
     );
     await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
@@ -691,7 +765,7 @@ async function verifyRuntimeGrants(
   if (defaultPrivileges.rows[0]?.exposed) {
     throw new PersistentMigrationError("runtime default privileges mismatch");
   }
-  if (allApplicationTables.length !== 13) {
+  if (allApplicationTables.length !== 17) {
     throw new PersistentMigrationError("runtime grant manifest mismatch");
   }
 }

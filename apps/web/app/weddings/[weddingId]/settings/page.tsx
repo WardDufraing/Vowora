@@ -14,6 +14,7 @@ import { resolveWeddingShellNavigation } from "../../../../lib/workspace-navigat
 import { loadWeddingSettingsForActor } from "../../../../lib/wedding-service";
 import { WeddingForm } from "../../wedding-form";
 import { PartnerInvitationForm } from "../../partner-invitation-form";
+import { PlannerOrganizationPanel } from "../../planner-organization-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,7 @@ export default async function WeddingSettingsPage({
           locale={locale}
           messages={messages}
         />
+        <PlannerOrganizationPanel weddingId={weddingId.data} locale={locale} />
       </div>
     </AppShell>
   );

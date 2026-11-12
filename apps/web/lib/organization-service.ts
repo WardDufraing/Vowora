@@ -1,4 +1,5 @@
 import type {
+  AssignWeddingOrganizationStaffRequest,
   CreateOrganizationInvitationRequest,
   CreateOrganizationRequest,
 } from "@vowora/contracts";
@@ -14,6 +15,9 @@ import {
   revokeOrganizationInvitation,
   OrganizationConflictError,
   OrganizationInvitationUnavailableError,
+  assignOrganizationStaffToWedding,
+  listOrganizationWeddingInvitations,
+  respondWeddingOrganizationInvitation,
 } from "@vowora/database";
 import {
   authorizeOrganizationCreation,
@@ -151,4 +155,47 @@ export function isOrganizationAuthorizationFailure(error: unknown) {
 }
 export function isOrganizationInvitationUnavailable(error: unknown) {
   return error instanceof OrganizationInvitationUnavailableError;
+}
+
+export async function loadPlannerWeddingInvitations(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+}) {
+  return listOrganizationWeddingInvitations(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+  );
+}
+export async function respondToPlannerWeddingInvitation(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  invitationId: string;
+  decision: "accept" | "reject";
+}) {
+  return respondWeddingOrganizationInvitation(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+    input.invitationId,
+    input.decision,
+  );
+}
+export async function assignPlannerWeddingStaff(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  accessId: string;
+  request: AssignWeddingOrganizationStaffRequest;
+}) {
+  return assignOrganizationStaffToWedding(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+    {
+      accessId: input.accessId,
+      organizationMembershipId: input.request.organizationMembershipId,
+      permissions: input.request.permissions,
+      isLead: input.request.isLead,
+    },
+  );
 }

@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(6);
+      expect(journal.rowCount).toBe(7);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
