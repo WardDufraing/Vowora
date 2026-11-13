@@ -11,9 +11,14 @@ import {
   weddingMessages,
 } from "../../../../lib/wedding-messages";
 import { resolveWeddingShellNavigation } from "../../../../lib/workspace-navigation";
-import { loadWeddingSettingsForActor } from "../../../../lib/wedding-service";
+import {
+  loadPlannerOrganizationAccessForActor,
+  loadPlannerOrganizationInvitationsForActor,
+  loadWeddingSettingsForActor,
+} from "../../../../lib/wedding-service";
 import { WeddingForm } from "../../wedding-form";
 import { PartnerInvitationForm } from "../../partner-invitation-form";
+import { PlannerOrganizationPanel } from "../../planner-organization-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +64,22 @@ export default async function WeddingSettingsPage({
     return <WorkspaceUnavailable kind="wedding" locale={locale} />;
   }
   const messages = weddingMessages(locale);
+  const plannerAccess =
+    pageData.loaded.membership.role === "partner"
+      ? await loadPlannerOrganizationAccessForActor({
+          actorId: session.user.id,
+          correlationId: randomUUID(),
+          weddingId: weddingId.data,
+        })
+      : null;
+  const plannerInvitations =
+    pageData.loaded.membership.role === "partner" && !plannerAccess
+      ? await loadPlannerOrganizationInvitationsForActor({
+          actorId: session.user.id,
+          correlationId: randomUUID(),
+          weddingId: weddingId.data,
+        })
+      : [];
   return (
     <AppShell model={pageData.navigation}>
       <div lang={locale}>
@@ -86,6 +107,23 @@ export default async function WeddingSettingsPage({
           locale={locale}
           messages={messages}
         />
+        {pageData.loaded.membership.role === "partner" ? (
+          <PlannerOrganizationPanel
+            weddingId={weddingId.data}
+            locale={locale}
+            initialAccess={plannerAccess}
+            initialInvitations={plannerInvitations.map(
+              ({ invitation, organizationName }) => ({
+                id: invitation.id,
+                organizationId: invitation.organizationId,
+                organizationName,
+                status: invitation.status,
+                permissionCeiling: invitation.permissionCeiling,
+                expiresAt: invitation.expiresAt,
+              }),
+            )}
+          />
+        ) : null}
       </div>
     </AppShell>
   );

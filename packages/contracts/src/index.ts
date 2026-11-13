@@ -218,6 +218,143 @@ export const organizationInvitationsResponseSchema = z.strictObject({
   data: z.array(organizationInvitationSchema),
   meta: responseMetadataSchema,
 });
+
+export const permissionCeilingEntrySchema = z.strictObject({
+  area: z.enum([
+    "settings",
+    "tasks",
+    "schedule",
+    "guests",
+    "contacts",
+    "vendors",
+    "budget",
+    "documents",
+    "notes",
+    "decisions",
+    "inspiration",
+  ]),
+  actions: z
+    .array(z.enum(["view", "edit", "download_export"]))
+    .min(1)
+    .max(3),
+});
+export const createWeddingOrganizationInvitationRequestSchema = z.strictObject({
+  organizationId: z.uuidv7(),
+  permissionCeiling: z.array(permissionCeilingEntrySchema).max(11),
+  reissueInvitationId: z.uuidv7().optional(),
+});
+export const weddingOrganizationInvitationSchema = z.strictObject({
+  id: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  organizationId: z.uuidv7(),
+  organizationName: z.string().min(1),
+  status: z.enum(["pending", "accepted", "rejected", "revoked", "replaced"]),
+  permissionCeiling: z.array(permissionCeilingEntrySchema),
+  expiresAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
+});
+export const weddingOrganizationInvitationsResponseSchema = z.strictObject({
+  data: z.array(weddingOrganizationInvitationSchema),
+  meta: responseMetadataSchema,
+});
+export const weddingOrganizationInvitationResponseSchema = z.strictObject({
+  data: weddingOrganizationInvitationSchema,
+  meta: responseMetadataSchema.extend({ replayed: z.boolean().optional() }),
+});
+export const respondWeddingOrganizationInvitationRequestSchema = z.strictObject(
+  { decision: z.enum(["accept", "reject"]) },
+);
+export const respondWeddingOrganizationInvitationResponseSchema =
+  z.strictObject({
+    data: z.strictObject({
+      accepted: z.boolean(),
+      access: z
+        .strictObject({
+          id: z.uuidv7(),
+          weddingId: z.uuidv7(),
+          organizationId: z.uuidv7(),
+          status: z.literal("active"),
+          permissionCeiling: z.array(permissionCeilingEntrySchema),
+          grantedAt: z.iso.datetime(),
+        })
+        .optional(),
+    }),
+    meta: responseMetadataSchema,
+  });
+export const assignWeddingOrganizationStaffRequestSchema = z.strictObject({
+  organizationMembershipId: z.uuidv7(),
+  permissions: z.array(permissionCeilingEntrySchema).max(11),
+  isLead: z.boolean().optional(),
+});
+export const weddingOrganizationStaffAssignmentSchema = z.strictObject({
+  id: z.uuidv7(),
+  accessId: z.uuidv7(),
+  organizationMembershipId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
+  isLead: z.boolean(),
+  permissions: z.array(permissionCeilingEntrySchema),
+});
+export const weddingOrganizationStaffAssignmentResponseSchema = z.strictObject({
+  data: weddingOrganizationStaffAssignmentSchema,
+  meta: responseMetadataSchema,
+});
+export const weddingOrganizationAccessManagementSchema = z.strictObject({
+  id: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  weddingName: z.string().min(1),
+  status: z.literal("active"),
+  permissionCeiling: z.array(permissionCeilingEntrySchema),
+  assignments: z.array(
+    z.strictObject({
+      id: z.uuidv7(),
+      organizationMembershipId: z.uuidv7(),
+      role: z.enum(["owner", "manager", "employee"]),
+      status: z.literal("active"),
+      isLead: z.boolean(),
+      permissions: z.array(permissionCeilingEntrySchema),
+      absenceStartsAt: z.iso.datetime().nullable(),
+      absenceEndsAt: z.iso.datetime().nullable(),
+    }),
+  ),
+});
+export const weddingOrganizationAccessManagementResponseSchema = z.strictObject(
+  {
+    data: weddingOrganizationAccessManagementSchema,
+    meta: responseMetadataSchema,
+  },
+);
+export const weddingOrganizationPartnerAccessResponseSchema = z.strictObject({
+  data: z.strictObject({
+    id: z.uuidv7(),
+    organizationId: z.uuidv7(),
+    organizationName: z.string().min(1),
+    permissionCeiling: z.array(permissionCeilingEntrySchema),
+    assignments: z.array(
+      z.strictObject({
+        id: z.uuidv7(),
+        organizationMembershipId: z.uuidv7(),
+        name: z.string().min(1),
+        role: z.enum(["owner", "manager", "employee"]),
+        isLead: z.boolean(),
+        active: z.boolean(),
+        blocked: z.boolean(),
+      }),
+    ),
+  }),
+  meta: responseMetadataSchema,
+});
+export const restrictWeddingOrganizationStaffRequestSchema = z.strictObject({
+  organizationMembershipId: z.uuidv7(),
+  blocked: z.boolean(),
+});
+export const updateLeadPlannerAbsenceRequestSchema = z
+  .strictObject({
+    startsAt: z.iso.datetime().nullable(),
+    endsAt: z.iso.datetime().nullable(),
+  })
+  .refine((value) => (value.startsAt === null) === (value.endsAt === null), {
+    path: ["endsAt"],
+  });
 export const acceptOrganizationInvitationRequestSchema = z.strictObject({
   accept: z.literal(true),
 });
@@ -257,6 +394,24 @@ export type CreateOrganizationRequest = z.infer<
 >;
 export type CreateOrganizationInvitationRequest = z.infer<
   typeof createOrganizationInvitationRequestSchema
+>;
+export type PermissionCeilingEntry = z.infer<
+  typeof permissionCeilingEntrySchema
+>;
+export type CreateWeddingOrganizationInvitationRequest = z.infer<
+  typeof createWeddingOrganizationInvitationRequestSchema
+>;
+export type RespondWeddingOrganizationInvitationRequest = z.infer<
+  typeof respondWeddingOrganizationInvitationRequestSchema
+>;
+export type AssignWeddingOrganizationStaffRequest = z.infer<
+  typeof assignWeddingOrganizationStaffRequestSchema
+>;
+export type RestrictWeddingOrganizationStaffRequest = z.infer<
+  typeof restrictWeddingOrganizationStaffRequestSchema
+>;
+export type UpdateLeadPlannerAbsenceRequest = z.infer<
+  typeof updateLeadPlannerAbsenceRequestSchema
 >;
 export type OrganizationInvitation = z.infer<
   typeof organizationInvitationSchema
@@ -1019,6 +1174,383 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/weddings/{weddingId}/planner-organizations/invitations": {
+      parameters: [
+        {
+          name: "weddingId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listWeddingOrganizationInvitations",
+        responses: {
+          "200": {
+            description: "Planner organization invitations.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationInvitationsResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Planner access is unavailable."),
+        },
+      },
+      post: {
+        operationId: "createWeddingOrganizationInvitation",
+        parameters: [
+          {
+            name: "Idempotency-Key",
+            in: "header",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateWeddingOrganizationInvitationRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Idempotent invitation replay.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "201": {
+            description: "Invitation created.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("The request is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("Planner access is unavailable."),
+          "409": problemResponse(
+            "The invitation conflicts with current state.",
+          ),
+        },
+      },
+    },
+    "/api/v1/weddings/{weddingId}/planner-organizations/invitations/{invitationId}":
+      {
+        parameters: [
+          {
+            name: "weddingId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "invitationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        delete: {
+          operationId: "revokeWeddingOrganizationInvitation",
+          responses: {
+            "204": { description: "Pending invitation revoked." },
+            "401": authenticationFailure,
+            "403": problemResponse("The request could not be completed."),
+            "404": problemResponse("The invitation is unavailable."),
+          },
+        },
+      },
+    "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}": {
+      parameters: [
+        {
+          name: "weddingId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "accessId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getWeddingOrganizationPartnerAccess",
+        responses: {
+          "200": {
+            description: "Privacy-minimized active planner access.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationPartnerAccessResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Planner access is unavailable."),
+          "404": problemResponse("Planner access is unavailable."),
+        },
+      },
+      delete: {
+        operationId: "revokeWeddingOrganizationAccess",
+        responses: {
+          "204": { description: "Planner organization access revoked." },
+          "401": authenticationFailure,
+          "403": problemResponse("Planner access is unavailable."),
+          "404": problemResponse("Planner access is unavailable."),
+        },
+      },
+    },
+    "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/restrictions":
+      {
+        parameters: [
+          {
+            name: "weddingId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "accessId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        patch: {
+          operationId: "setWeddingOrganizationStaffRestriction",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RestrictWeddingOrganizationStaffRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Couple staff restriction updated." },
+            "400": problemResponse("The restriction is invalid."),
+            "401": authenticationFailure,
+            "403": problemResponse("Planner access is unavailable."),
+            "404": problemResponse("The restriction is unavailable."),
+          },
+        },
+      },
+    "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/absence":
+      {
+        parameters: [
+          {
+            name: "weddingId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "accessId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        patch: {
+          operationId: "updateLeadPlannerAbsence",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UpdateLeadPlannerAbsenceRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "Lead planner absence updated." },
+            "400": problemResponse("The absence window is invalid."),
+            "401": authenticationFailure,
+            "403": problemResponse("Planner access is unavailable."),
+          },
+        },
+      },
+    "/api/v1/organizations/{organizationId}/wedding-invitations": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listOrganizationWeddingInvitations",
+        responses: {
+          "200": { description: "Pending wedding invitations." },
+          "401": authenticationFailure,
+          "403": problemResponse("Invitations are unavailable."),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/wedding-invitations/{invitationId}":
+      {
+        parameters: [
+          {
+            name: "organizationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "invitationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        patch: {
+          operationId: "respondWeddingOrganizationInvitation",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RespondWeddingOrganizationInvitationRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Invitation accepted or rejected.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RespondWeddingOrganizationInvitationResponse",
+                  },
+                },
+              },
+            },
+            "400": problemResponse("The response is invalid."),
+            "401": authenticationFailure,
+            "403": problemResponse("The response is not permitted."),
+            "409": problemResponse("The invitation is unavailable."),
+          },
+        },
+      },
+    "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "accessId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getWeddingOrganizationStaffAssignments",
+        responses: {
+          "200": {
+            description: "Active organization wedding access and assignments.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationAccessManagementResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "404": problemResponse("Planner access is unavailable."),
+        },
+      },
+      post: {
+        operationId: "assignWeddingOrganizationStaff",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/AssignWeddingOrganizationStaffRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Organization staff assigned to wedding.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationStaffAssignmentResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("The assignment is not permitted."),
+          "409": problemResponse(
+            "The assignment conflicts with current access.",
+          ),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff/{assignmentId}":
+      {
+        parameters: [
+          {
+            name: "organizationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "accessId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "assignmentId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        delete: {
+          operationId: "removeWeddingOrganizationStaff",
+          responses: {
+            "204": { description: "Organization staff removed from wedding." },
+            "401": authenticationFailure,
+            "403": problemResponse("The assignment is not permitted."),
+            "404": problemResponse("The assignment is unavailable."),
+          },
+        },
+      },
     "/api/v1/organizations/{organizationId}/staff": {
       parameters: [
         {
@@ -1373,6 +1905,50 @@ export const openApiDocument = {
       ),
       OrganizationInvitationsResponse: z.toJSONSchema(
         organizationInvitationsResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      CreateWeddingOrganizationInvitationRequest: z.toJSONSchema(
+        createWeddingOrganizationInvitationRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationInvitationResponse: z.toJSONSchema(
+        weddingOrganizationInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationInvitationsResponse: z.toJSONSchema(
+        weddingOrganizationInvitationsResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      RespondWeddingOrganizationInvitationRequest: z.toJSONSchema(
+        respondWeddingOrganizationInvitationRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      RespondWeddingOrganizationInvitationResponse: z.toJSONSchema(
+        respondWeddingOrganizationInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      AssignWeddingOrganizationStaffRequest: z.toJSONSchema(
+        assignWeddingOrganizationStaffRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationStaffAssignmentResponse: z.toJSONSchema(
+        weddingOrganizationStaffAssignmentResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationAccessManagementResponse: z.toJSONSchema(
+        weddingOrganizationAccessManagementResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationPartnerAccessResponse: z.toJSONSchema(
+        weddingOrganizationPartnerAccessResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      RestrictWeddingOrganizationStaffRequest: z.toJSONSchema(
+        restrictWeddingOrganizationStaffRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      UpdateLeadPlannerAbsenceRequest: z.toJSONSchema(
+        updateLeadPlannerAbsenceRequestSchema,
         { target: "draft-2020-12" },
       ),
       AcceptOrganizationInvitationRequest: z.toJSONSchema(

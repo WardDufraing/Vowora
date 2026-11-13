@@ -19,6 +19,10 @@ export {
   organizations,
   organizationMemberships,
   organizationInvitations,
+  weddingOrganizationInvitations,
+  weddingOrganizationAccesses,
+  weddingOrganizationStaffAssignments,
+  weddingOrganizationStaffRestrictions,
 } from "./schema.js";
 export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";
@@ -50,6 +54,27 @@ export {
   WeddingSettingsConflictError,
   WeddingSettingsValidationError,
 } from "./weddings.js";
+export {
+  assignOrganizationStaffToWedding,
+  issueWeddingOrganizationInvitation,
+  listOrganizationWeddingInvitations,
+  listOrganizationWeddingAccesses,
+  getWeddingOrganizationAccessManagement,
+  listWeddingOrganizationInvitations,
+  removeOrganizationStaffFromWedding,
+  resolveCurrentActorPlannerFallback,
+  respondWeddingOrganizationInvitation,
+  revokeWeddingOrganizationAccess,
+  revokeWeddingOrganizationInvitation,
+  setPlannerStaffRestriction,
+  setLeadPlannerAbsence,
+  PlannerAssignmentConflictError,
+  PlannerAssignmentUnavailableError,
+} from "./planner-assignments.js";
+export type {
+  PermissionCeilingEntry,
+  PlannerAssignmentDatabase,
+} from "./planner-assignments.js";
 export {
   acceptOrganizationInvitation,
   createOrganization,
