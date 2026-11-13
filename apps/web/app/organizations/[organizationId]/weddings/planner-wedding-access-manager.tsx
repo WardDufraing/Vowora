@@ -13,6 +13,11 @@ const messages = {
     empty: "No active wedding access",
     saved: "Assignment saved",
     error: "The change could not be saved",
+    absence: "Temporary absence",
+    absenceStart: "Starts",
+    absenceEnd: "Ends",
+    saveAbsence: "Save absence",
+    endAbsence: "End absence",
   },
   nl: {
     title: "Huwelijksteam",
@@ -24,6 +29,11 @@ const messages = {
     empty: "Geen actieve huwelijkstoegang",
     saved: "Toewijzing opgeslagen",
     error: "De wijziging kon niet worden opgeslagen",
+    absence: "Tijdelijke afwezigheid",
+    absenceStart: "Begint",
+    absenceEnd: "Eindigt",
+    saveAbsence: "Afwezigheid opslaan",
+    endAbsence: "Afwezigheid beëindigen",
   },
   fr: {
     title: "Équipe du mariage",
@@ -35,6 +45,11 @@ const messages = {
     empty: "Aucun accès actif au mariage",
     saved: "Affectation enregistrée",
     error: "Impossible d’enregistrer la modification",
+    absence: "Absence temporaire",
+    absenceStart: "Début",
+    absenceEnd: "Fin",
+    saveAbsence: "Enregistrer l’absence",
+    endAbsence: "Terminer l’absence",
   },
   de: {
     title: "Hochzeitsteam",
@@ -46,6 +61,11 @@ const messages = {
     empty: "Kein aktiver Hochzeitszugriff",
     saved: "Zuweisung gespeichert",
     error: "Änderung konnte nicht gespeichert werden",
+    absence: "Vorübergehende Abwesenheit",
+    absenceStart: "Beginn",
+    absenceEnd: "Ende",
+    saveAbsence: "Abwesenheit speichern",
+    endAbsence: "Abwesenheit beenden",
   },
 } as const;
 const permissionLabels = {
@@ -118,31 +138,52 @@ const permissionLabels = {
 type Ceiling = { area: string; actions: string[] };
 type Access = {
   id: string;
+  weddingId: string;
   weddingName: string;
   permissionCeiling: Ceiling[];
   assignments: Array<{
     id: string;
     organizationMembershipId: string;
     isLead: boolean;
+    absenceStartsAt: string | null;
+    absenceEndsAt: string | null;
   }>;
 };
-type Staff = { id: string; name: string; status: "active" | "revoked" };
+type Staff = {
+  id: string;
+  name: string;
+  email: string;
+  status: "active" | "revoked";
+};
 
 export function PlannerWeddingAccessManager({
   organizationId,
   initialAccesses,
   staff,
+  currentMembershipId,
   locale,
 }: {
   organizationId: string;
   initialAccesses: Access[];
   staff: readonly Staff[];
+  currentMembershipId?: string;
   locale: keyof typeof messages;
 }) {
   const t = messages[locale];
   const labels = permissionLabels[locale];
   const [accesses, setAccesses] = useState(initialAccesses);
   const [status, setStatus] = useState("");
+  async function refresh(accessId: string) {
+    const response = await fetch(
+      `/api/v1/organizations/${organizationId}/wedding-access/${accessId}/staff`,
+    );
+    if (!response.ok) return false;
+    const payload = await response.json();
+    setAccesses((current) =>
+      current.map((access) => (access.id === accessId ? payload.data : access)),
+    );
+    return true;
+  }
   async function save(accessId: string, form: FormData) {
     setStatus("");
     const organizationMembershipId = String(form.get("staff"));
@@ -170,23 +211,7 @@ export function PlannerWeddingAccessManager({
       },
     );
     if (!response.ok) return setStatus(t.error);
-    const payload = await response.json();
-    setAccesses((current) =>
-      current.map((access) =>
-        access.id === accessId
-          ? {
-              ...access,
-              assignments: [
-                ...access.assignments.filter(
-                  (item) =>
-                    item.organizationMembershipId !== organizationMembershipId,
-                ),
-                payload.data,
-              ],
-            }
-          : access,
-      ),
-    );
+    await refresh(accessId);
     setStatus(t.saved);
   }
   async function remove(accessId: string, assignmentId: string) {
@@ -195,18 +220,38 @@ export function PlannerWeddingAccessManager({
       { method: "DELETE" },
     );
     if (!response.ok) return setStatus(t.error);
-    setAccesses((current) =>
-      current.map((access) =>
-        access.id === accessId
-          ? {
-              ...access,
-              assignments: access.assignments.filter(
-                (item) => item.id !== assignmentId,
-              ),
-            }
-          : access,
-      ),
+    await refresh(accessId);
+  }
+  async function saveAbsence(access: Access, form: FormData) {
+    const starts = String(form.get("startsAt") ?? "");
+    const ends = String(form.get("endsAt") ?? "");
+    const response = await fetch(
+      `/api/v1/weddings/${access.weddingId}/planner-organizations/access/${access.id}/absence`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          startsAt: starts ? new Date(starts).toISOString() : null,
+          endsAt: ends ? new Date(ends).toISOString() : null,
+        }),
+      },
     );
+    if (!response.ok) return setStatus(t.error);
+    await refresh(access.id);
+    setStatus(t.saved);
+  }
+  async function endAbsence(access: Access) {
+    const response = await fetch(
+      `/api/v1/weddings/${access.weddingId}/planner-organizations/access/${access.id}/absence`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ startsAt: null, endsAt: null }),
+      },
+    );
+    if (!response.ok) return setStatus(t.error);
+    await refresh(access.id);
+    setStatus(t.saved);
   }
   return (
     <section aria-labelledby="wedding-team-title">
@@ -265,6 +310,36 @@ export function PlannerWeddingAccessManager({
                   >
                     {t.remove}
                   </button>
+                  {assignment.isLead &&
+                  assignment.organizationMembershipId ===
+                    currentMembershipId ? (
+                    <form action={(form) => saveAbsence(access, form)}>
+                      <fieldset>
+                        <legend>{t.absence}</legend>
+                        <label>
+                          {t.absenceStart}
+                          <input
+                            name="startsAt"
+                            type="datetime-local"
+                            required
+                          />
+                        </label>
+                        <label>
+                          {t.absenceEnd}
+                          <input name="endsAt" type="datetime-local" required />
+                        </label>
+                        <button>{t.saveAbsence}</button>
+                        {assignment.absenceStartsAt ? (
+                          <button
+                            type="button"
+                            onClick={() => endAbsence(access)}
+                          >
+                            {t.endAbsence}
+                          </button>
+                        ) : null}
+                      </fieldset>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -62,7 +62,7 @@ export {
   getWeddingOrganizationAccessManagement,
   listWeddingOrganizationInvitations,
   removeOrganizationStaffFromWedding,
-  resolveEligiblePlannerFallback,
+  resolveCurrentActorPlannerFallback,
   respondWeddingOrganizationInvitation,
   revokeWeddingOrganizationAccess,
   revokeWeddingOrganizationInvitation,

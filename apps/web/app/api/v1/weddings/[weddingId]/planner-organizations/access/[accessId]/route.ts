@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { problemResponse } from "../../../../../../../../lib/api";
+import { jsonResponse, problemResponse } from "../../../../../../../../lib/api";
 import {
   getAuth,
   isSafeStateChangingRequest,
@@ -7,8 +7,52 @@ import {
 import { readAuthEnvironment } from "../../../../../../../../lib/env";
 import {
   authorizeWeddingSettingsApiOperation,
+  loadPlannerOrganizationAccess,
   revokePlannerOrganizationRelationship,
 } from "../../../../../../../../lib/wedding-service";
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ weddingId: string; accessId: string }> },
+) {
+  const p = await context.params,
+    w = z.uuidv7().safeParse(p.weddingId),
+    a = z.uuidv7().safeParse(p.accessId);
+  if (!w.success || !a.success)
+    return problemResponse(request, {
+      status: 404,
+      title: "Planner access unavailable",
+      detail: "Planner access is unavailable.",
+      code: "PLANNER_ACCESS_UNAVAILABLE",
+    });
+  const op = await authorizeWeddingSettingsApiOperation(
+    getAuth(),
+    request,
+    w.data,
+  );
+  if (!op.authorized) return op.response;
+  try {
+    const access = await loadPlannerOrganizationAccess(op.operation);
+    if (!access || access.id !== a.data) throw new Error();
+    return jsonResponse(
+      {
+        data: access,
+        meta: { correlationId: op.operation.authorization.correlationId },
+      },
+      op.operation.authorization.correlationId,
+    );
+  } catch {
+    return problemResponse(
+      request,
+      {
+        status: 404,
+        title: "Planner access unavailable",
+        detail: "Planner access is unavailable.",
+        code: "PLANNER_ACCESS_UNAVAILABLE",
+      },
+      op.operation.authorization.correlationId,
+    );
+  }
+}
 export async function DELETE(
   request: Request,
   context: { params: Promise<{ weddingId: string; accessId: string }> },

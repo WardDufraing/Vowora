@@ -1,6 +1,7 @@
 import type {
   CreateWeddingOrganizationInvitationRequest,
   CreateWeddingRequest,
+  PermissionCeilingEntry,
   UpdateWeddingSettingsRequest,
 } from "@vowora/contracts";
 import {
@@ -39,6 +40,23 @@ import {
   type ApiAuthorizationResult,
 } from "./server-authorization";
 import { getRuntimeDatabase } from "./database";
+
+function publicPermissionCeiling(value: unknown): PermissionCeilingEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as { area?: unknown; actions?: unknown };
+    if (typeof candidate.area !== "string" || !Array.isArray(candidate.actions))
+      return [];
+    const actions = candidate.actions.filter(
+      (action): action is "view" | "edit" | "download_export" =>
+        action === "view" || action === "edit" || action === "download_export",
+    );
+    return actions.length
+      ? [{ area: candidate.area, actions } as PermissionCeilingEntry]
+      : [];
+  });
+}
 
 interface SessionReader {
   readonly api: {
@@ -276,7 +294,9 @@ export async function createPlannerOrganizationInvitation(input: {
         weddingId: issued.invitation.weddingId,
         organizationId: issued.invitation.organizationId,
         status: issued.invitation.status,
-        permissionCeiling: issued.invitation.permissionCeiling,
+        permissionCeiling: publicPermissionCeiling(
+          issued.invitation.permissionCeiling,
+        ),
         expiresAt: issued.invitation.expiresAt.toISOString(),
         createdAt: issued.invitation.createdAt.toISOString(),
       },
@@ -298,12 +318,31 @@ export async function loadPlannerOrganizationInvitations(
       weddingId: invitation.weddingId,
       organizationId: invitation.organizationId,
       status: invitation.status,
-      permissionCeiling: invitation.permissionCeiling,
+      permissionCeiling: publicPermissionCeiling(invitation.permissionCeiling),
       expiresAt: invitation.expiresAt.toISOString(),
       createdAt: invitation.createdAt.toISOString(),
     },
     organizationName,
   }));
+}
+export async function loadPlannerOrganizationInvitationsForActor(input: {
+  actorId: string;
+  correlationId: string;
+  weddingId: string;
+}) {
+  const database = getRuntimeDatabase().database;
+  const operation = await authorizeWeddingServerOperation(
+    { actorId: input.actorId },
+    {
+      resource: "existing",
+      recordId: input.weddingId,
+      weddingId: input.weddingId,
+      action: "edit",
+      correlationId: input.correlationId,
+    },
+    new DatabaseWeddingAuthorizationState(database),
+  );
+  return loadPlannerOrganizationInvitations(operation);
 }
 export async function loadPlannerOrganizationAccess(
   operation: AuthorizedServerOperation,
@@ -317,7 +356,7 @@ export async function loadPlannerOrganizationAccess(
     id: access.id,
     organizationId: access.organizationId,
     organizationName: access.organizationName,
-    permissionCeiling: access.permissionCeiling,
+    permissionCeiling: publicPermissionCeiling(access.permissionCeiling),
     assignments: access.assignments.map((assignment) => ({
       id: assignment.id,
       organizationMembershipId: assignment.organizationMembershipId,

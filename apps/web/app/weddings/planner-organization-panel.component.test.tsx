@@ -14,6 +14,7 @@ describe("planner organization invitation", () => {
         weddingId="019a2f36-0eb9-7000-8000-000000000001"
         locale="nl"
         initialAccess={null}
+        initialInvitations={[]}
       />,
     );
     await user.type(
@@ -48,6 +49,7 @@ describe("planner organization invitation", () => {
         weddingId="019a2f36-0eb9-7000-8000-000000000001"
         locale="en"
         initialAccess={null}
+        initialInvitations={[]}
       />,
     );
     const organization = screen.getByLabelText("Organization ID");
@@ -75,6 +77,27 @@ describe("planner organization invitation", () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(Response.json({ data: { blocked: true } }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            id: "019a2f36-0eb9-7000-8000-000000000002",
+            organizationId: "019a2f36-0eb9-7000-8000-000000000003",
+            organizationName: "Planung GmbH",
+            assignments: [
+              {
+                id: "019a2f36-0eb9-7000-8000-000000000004",
+                organizationMembershipId:
+                  "019a2f36-0eb9-7000-8000-000000000005",
+                name: "Ada Planerin",
+                role: "manager",
+                isLead: true,
+                active: false,
+                blocked: true,
+              },
+            ],
+          },
+        }),
+      )
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
@@ -82,6 +105,7 @@ describe("planner organization invitation", () => {
       <PlannerOrganizationPanel
         weddingId="019a2f36-0eb9-7000-8000-000000000001"
         locale="de"
+        initialInvitations={[]}
         initialAccess={{
           id: "019a2f36-0eb9-7000-8000-000000000002",
           organizationId: "019a2f36-0eb9-7000-8000-000000000003",
@@ -111,10 +135,56 @@ describe("planner organization invitation", () => {
       screen.getByRole("button", { name: "Organisationszugriff widerrufen" }),
     );
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.stringContaining("/planner-organizations/access/"),
       { method: "DELETE" },
     );
     expect(await screen.findByLabelText("Organisations-ID")).toBeVisible();
+  });
+  it("lists pending invitations and makes replacement explicit", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(
+      Response.json({
+        data: {
+          id: "019a2f36-0eb9-7000-8000-000000000010",
+          organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+          organizationName: "Planner Co",
+          status: "pending",
+          permissionCeiling: [{ area: "tasks", actions: ["view"] }],
+          expiresAt: "2026-12-01T00:00:00.000Z",
+          createdAt: "2026-11-17T00:00:00.000Z",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PlannerOrganizationPanel
+        weddingId="019a2f36-0eb9-7000-8000-000000000001"
+        locale="en"
+        initialAccess={null}
+        initialInvitations={[
+          {
+            id: "019a2f36-0eb9-7000-8000-000000000009",
+            organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+            organizationName: "Planner Co",
+            status: "pending",
+            permissionCeiling: [{ area: "tasks", actions: ["view"] }],
+            expiresAt: "2026-12-01T00:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Planner Co")).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Prepare replacement" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Reissue invitation" }),
+    );
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toMatchObject({
+      organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+      reissueInvitationId: "019a2f36-0eb9-7000-8000-000000000009",
+      permissionCeiling: [{ area: "tasks", actions: ["view"] }],
+    });
   });
 });

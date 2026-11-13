@@ -256,7 +256,14 @@ export async function issueWeddingOrganizationInvitation<
     if (pending)
       await call.session
         .update(weddingOrganizationInvitations)
-        .set({ status: "replaced", updatedAt: now })
+        // The self-reference keeps the lifecycle row valid while the partial
+        // pending unique index is released. It is replaced with the new id in
+        // this same transaction immediately after insertion.
+        .set({
+          status: "replaced",
+          replacedByInvitationId: pending.id,
+          updatedAt: now,
+        })
         .where(
           and(
             eq(weddingOrganizationInvitations.id, pending.id),
@@ -572,18 +579,6 @@ export async function assignOrganizationStaffToWedding<
       .for("update")
       .limit(1);
     if (!access) throw new PlannerAssignmentUnavailableError("invalid");
-    const [eligibleMember] = await call.session
-      .select({ id: organizationMemberships.id })
-      .from(organizationMemberships)
-      .where(
-        and(
-          eq(organizationMemberships.id, input.organizationMembershipId),
-          eq(organizationMemberships.organizationId, access.organizationId),
-          eq(organizationMemberships.status, "active"),
-        ),
-      )
-      .limit(1);
-    if (!eligibleMember) throw new PlannerAssignmentUnavailableError("invalid");
     assertSubset(
       input.permissions,
       access.permissionCeiling as PermissionCeilingEntry[],
@@ -598,6 +593,7 @@ export async function assignOrganizationStaffToWedding<
           eq(organizationMemberships.status, "active"),
         ),
       )
+      .for("update")
       .limit(1);
     if (!member) throw new PlannerAssignmentConflictError("ineligible");
     const [blocked] = await call.session
@@ -1149,93 +1145,118 @@ export async function revokeWeddingOrganizationAccess<
   });
 }
 
-export async function resolveEligiblePlannerFallback<
+/**
+ * Checks fallback eligibility for the actor already bound to a one-use,
+ * centrally-authorized wedding operation. This deliberately does not enumerate
+ * recipient actor ids: callers must authorize each prospective recipient and
+ * the repository revalidates that exact actor inside the tenant transaction.
+ */
+export async function resolveCurrentActorPlannerFallback<
   HKT extends PgQueryResultHKT,
 >(
   database: PlannerAssignmentDatabase<HKT>,
-  accessId: string,
+  operation: AuthorizedServerOperation,
   requested: {
     area: (typeof weddingPermissionAreas)[number];
     action: (typeof weddingPermissionActions)[number];
   },
   now = new Date(),
 ) {
-  const rows = await database
-    .select({
-      assignment: weddingOrganizationStaffAssignments,
-      role: organizationMemberships.role,
-      orgStatus: organizationMemberships.status,
-      weddingStatus: weddingMemberships.status,
-      actorId: organizationMemberships.actorId,
-      blocked: weddingOrganizationStaffRestrictions.status,
-    })
-    .from(weddingOrganizationStaffAssignments)
-    .innerJoin(
-      weddingOrganizationAccesses,
-      and(
-        eq(weddingOrganizationAccesses.id, accessId),
-        eq(weddingOrganizationAccesses.status, "active"),
-      ),
-    )
-    .innerJoin(
-      organizationMemberships,
-      eq(
-        organizationMemberships.id,
-        weddingOrganizationStaffAssignments.organizationMembershipId,
-      ),
-    )
-    .innerJoin(
-      weddingMemberships,
-      eq(
-        weddingMemberships.id,
-        weddingOrganizationStaffAssignments.weddingMembershipId,
-      ),
-    )
-    .leftJoin(
-      weddingOrganizationStaffRestrictions,
-      and(
-        eq(weddingOrganizationStaffRestrictions.accessId, accessId),
-        eq(
-          weddingOrganizationStaffRestrictions.organizationMembershipId,
-          organizationMemberships.id,
+  if (
+    !operation.authorization.activeWeddingId ||
+    operation.area !== requested.area ||
+    operation.action !== requested.action
+  )
+    throw new PlannerAssignmentUnavailableError("access_denied");
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    const [row] = await call.session
+      .select({
+        assignment: weddingOrganizationStaffAssignments,
+        role: organizationMemberships.role,
+        orgStatus: organizationMemberships.status,
+        weddingStatus: weddingMemberships.status,
+        actorId: organizationMemberships.actorId,
+        blocked: weddingOrganizationStaffRestrictions.status,
+      })
+      .from(weddingOrganizationStaffAssignments)
+      .innerJoin(
+        weddingOrganizationAccesses,
+        and(
+          eq(
+            weddingOrganizationAccesses.weddingId,
+            call.authorization.activeWeddingId!,
+          ),
+          eq(weddingOrganizationAccesses.status, "active"),
         ),
-        eq(weddingOrganizationStaffRestrictions.status, "blocked"),
-      ),
-    )
-    .where(
-      and(
-        eq(weddingOrganizationStaffAssignments.accessId, accessId),
-        eq(weddingOrganizationStaffAssignments.status, "active"),
-      ),
-    );
-  const eligible = rows.filter(
-    (row) =>
-      row.orgStatus === "active" &&
-      row.weddingStatus === "active" &&
-      row.blocked !== "blocked" &&
-      grantsPermission(
+      )
+      .innerJoin(
+        organizationMemberships,
+        eq(
+          organizationMemberships.id,
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        ),
+      )
+      .innerJoin(
+        weddingMemberships,
+        and(
+          eq(
+            weddingMemberships.id,
+            weddingOrganizationStaffAssignments.weddingMembershipId,
+          ),
+          eq(weddingMemberships.weddingId, call.authorization.activeWeddingId!),
+        ),
+      )
+      .leftJoin(
+        weddingOrganizationStaffRestrictions,
+        and(
+          eq(
+            weddingOrganizationStaffRestrictions.accessId,
+            weddingOrganizationAccesses.id,
+          ),
+          eq(
+            weddingOrganizationStaffRestrictions.organizationMembershipId,
+            organizationMemberships.id,
+          ),
+          eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+        ),
+      )
+      .where(
+        and(
+          eq(
+            weddingOrganizationStaffAssignments.accessId,
+            weddingOrganizationAccesses.id,
+          ),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+          eq(organizationMemberships.actorId, call.authorization.actorId),
+        ),
+      )
+      .limit(1);
+    if (
+      !row ||
+      row.actorId !== call.authorization.actorId ||
+      row.orgStatus !== "active" ||
+      row.weddingStatus !== "active" ||
+      row.blocked === "blocked" ||
+      !grantsPermission(
         row.assignment.permissionOverrides,
         requested.area,
         requested.action,
-      ),
-  );
-  const lead = eligible.find(
-    (row) =>
+      )
+    )
+      return { kind: "ineligible" as const };
+    const leadAvailable =
       row.assignment.isLead &&
       !(
         row.assignment.absenceStartsAt &&
         row.assignment.absenceEndsAt &&
         row.assignment.absenceStartsAt <= now &&
         row.assignment.absenceEndsAt > now
-      ),
-  );
-  if (lead) return { kind: "lead" as const, actorIds: [lead.actorId] };
-  return {
-    kind: "manager_fallback" as const,
-    actorIds: eligible
-      .filter((row) => row.role === "owner" || row.role === "manager")
-      .map((row) => row.actorId),
-  };
+      );
+    if (leadAvailable) return { kind: "lead" as const };
+    if (row.role === "owner" || row.role === "manager")
+      return { kind: "manager_fallback" as const };
+    return { kind: "ineligible" as const };
+  });
 }
 
 export async function setLeadPlannerAbsence<HKT extends PgQueryResultHKT>(

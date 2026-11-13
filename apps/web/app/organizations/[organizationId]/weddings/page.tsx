@@ -66,6 +66,12 @@ export default async function Page({
         organizationId={organizationId}
         initialAccesses={accesses}
         staff={staff}
+        currentMembershipId={
+          staff.find(
+            (member) =>
+              member.email.toLowerCase() === session.user.email.toLowerCase(),
+          )?.id
+        }
         locale={locale}
       />
     </main>

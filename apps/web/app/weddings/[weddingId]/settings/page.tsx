@@ -13,6 +13,7 @@ import {
 import { resolveWeddingShellNavigation } from "../../../../lib/workspace-navigation";
 import {
   loadPlannerOrganizationAccessForActor,
+  loadPlannerOrganizationInvitationsForActor,
   loadWeddingSettingsForActor,
 } from "../../../../lib/wedding-service";
 import { WeddingForm } from "../../wedding-form";
@@ -71,6 +72,14 @@ export default async function WeddingSettingsPage({
           weddingId: weddingId.data,
         })
       : null;
+  const plannerInvitations =
+    pageData.loaded.membership.role === "partner" && !plannerAccess
+      ? await loadPlannerOrganizationInvitationsForActor({
+          actorId: session.user.id,
+          correlationId: randomUUID(),
+          weddingId: weddingId.data,
+        })
+      : [];
   return (
     <AppShell model={pageData.navigation}>
       <div lang={locale}>
@@ -103,6 +112,16 @@ export default async function WeddingSettingsPage({
             weddingId={weddingId.data}
             locale={locale}
             initialAccess={plannerAccess}
+            initialInvitations={plannerInvitations.map(
+              ({ invitation, organizationName }) => ({
+                id: invitation.id,
+                organizationId: invitation.organizationId,
+                organizationName,
+                status: invitation.status,
+                permissionCeiling: invitation.permissionCeiling,
+                expiresAt: invitation.expiresAt,
+              }),
+            )}
           />
         ) : null}
       </div>

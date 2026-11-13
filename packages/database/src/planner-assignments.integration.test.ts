@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { count, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
   authorizeCoupleWeddingCreation,
@@ -26,7 +27,7 @@ import {
   issueWeddingOrganizationInvitation,
   listOrganizationWeddingInvitations,
   removeOrganizationStaffFromWedding,
-  resolveEligiblePlannerFallback,
+  resolveCurrentActorPlannerFallback,
   respondWeddingOrganizationInvitation,
   revokeWeddingOrganizationAccess,
   setPlannerStaffRestriction,
@@ -54,7 +55,7 @@ describe("planner organization wedding assignment", () => {
     await withIsolatedTestSchema(
       config,
       `planner-assignment-${randomUUID()}`,
-      async ({ client }) => {
+      async ({ client, schemaName }) => {
         const db = drizzle(client, { casing: "snake_case", schema });
         const partner = createUuidV7(),
           owner = createUuidV7(),
@@ -153,6 +154,18 @@ describe("planner organization wedding assignment", () => {
           "2026-01-15T00:00:00.000Z",
         );
         await expect(
+          db.insert(tables.weddingOrganizationInvitations).values({
+            weddingId: wedding.wedding.id,
+            organizationId: org.organization.id,
+            status: "accepted",
+            permissionCeiling: ceiling,
+            issuedByActorId: partner,
+            issuanceRequestId: randomUUID(),
+            issuanceRequestFingerprint: "a".repeat(64),
+            expiresAt: new Date("2026-01-15T00:00:00Z"),
+          }),
+        ).rejects.toThrow();
+        await expect(
           issueWeddingOrganizationInvitation(db, await weddingAuth(), {
             organizationId: org.organization.id,
             ceiling,
@@ -239,11 +252,107 @@ describe("planner organization wedding assignment", () => {
             permissions: [{ area: "tasks", actions: ["view"] }],
           },
         );
-        await deactivateOrganizationMember(
-          db,
-          await orgAuth(),
-          employeeMembership!.id,
-        );
+        const connection = {
+          connectionString: config.connectionString,
+          options: `-c search_path=${schemaName},public`,
+        };
+        const blocker = new pg.Client(connection);
+        const deactivationClient = new pg.Client(connection);
+        const assignmentClient = new pg.Client(connection);
+        await Promise.all([
+          blocker.connect(),
+          deactivationClient.connect(),
+          assignmentClient.connect(),
+        ]);
+        const deactivationDb = drizzle(deactivationClient, {
+          casing: "snake_case",
+          schema,
+        });
+        const assignmentDb = drizzle(assignmentClient, {
+          casing: "snake_case",
+          schema,
+        });
+        const [{ pid: deactivationPid }] = (
+          await deactivationClient.query<{ pid: number }>(
+            "SELECT pg_backend_pid() AS pid",
+          )
+        ).rows;
+        const [{ pid: assignmentPid }] = (
+          await assignmentClient.query<{ pid: number }>(
+            "SELECT pg_backend_pid() AS pid",
+          )
+        ).rows;
+        const waitForLockWaiters = async (minimum: number) => {
+          let observed: Array<{
+            query: string;
+            waitEventType: string | null;
+          }> = [];
+          for (let attempt = 0; attempt < 100; attempt++) {
+            const result = await blocker.query<{
+              query: string;
+              waitEventType: string | null;
+            }>(
+              `
+              SELECT query,
+                     wait_event_type AS "waitEventType"
+              FROM pg_stat_activity
+              WHERE pid = ANY($1::int[])
+            `,
+              [[deactivationPid!, assignmentPid!]],
+            );
+            observed = result.rows;
+            if (
+              result.rows.filter((row) => row.waitEventType === "Lock")
+                .length >= minimum
+            )
+              return;
+            await new Promise((resolve) => setTimeout(resolve, 10));
+          }
+          throw new Error(
+            `Expected ${minimum} lock waiter(s): ${JSON.stringify(observed)}`,
+          );
+        };
+        const pendingOperations: Promise<unknown>[] = [];
+        try {
+          await blocker.query("BEGIN");
+          await blocker.query(
+            "SELECT id FROM organization_memberships WHERE id = $1 FOR UPDATE",
+            [employeeMembership!.id],
+          );
+          const deactivation = deactivateOrganizationMember(
+            deactivationDb,
+            await orgAuth(),
+            employeeMembership!.id,
+          );
+          pendingOperations.push(deactivation);
+          await waitForLockWaiters(1);
+          const racingAssignment = assignOrganizationStaffToWedding(
+            assignmentDb,
+            await orgAuth(),
+            {
+              accessId: accepted.access!.id,
+              organizationMembershipId: employeeMembership!.id,
+              permissions: [{ area: "tasks", actions: ["view"] }],
+            },
+          );
+          pendingOperations.push(racingAssignment);
+          await waitForLockWaiters(2);
+          await blocker.query("COMMIT");
+          await expect(deactivation).resolves.toMatchObject({
+            id: employeeMembership!.id,
+          });
+          await expect(racingAssignment).rejects.toMatchObject({
+            reason: "ineligible",
+          });
+        } finally {
+          await blocker.query("ROLLBACK").catch(() => undefined);
+          await Promise.allSettled(pendingOperations);
+          await Promise.all([
+            blocker.end(),
+            deactivationClient.end(),
+            assignmentClient.end(),
+          ]);
+        }
         expect(
           (
             await db
@@ -294,18 +403,32 @@ describe("planner organization wedding assignment", () => {
               ]),
             ),
         ).toEqual([{ status: "revoked" }, { status: "revoked" }]);
+        const fallbackOp = (
+          actorId: string,
+          area: "tasks" | "budget",
+          action: "edit" | "view",
+        ) =>
+          authorizeWeddingServerOperation(
+            { actorId },
+            {
+              resource: "new",
+              area,
+              weddingId: wedding.wedding.id,
+              action,
+              correlationId: randomUUID(),
+            },
+            new DatabaseWeddingAuthorizationState(db),
+          );
         expect(
-          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
-            area: "tasks",
-            action: "edit",
-          }),
-        ).toEqual({ kind: "lead", actorIds: [owner] });
-        expect(
-          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
-            area: "budget",
-            action: "view",
-          }),
-        ).toEqual({ kind: "manager_fallback", actorIds: [] });
+          await resolveCurrentActorPlannerFallback(
+            db,
+            await fallbackOp(owner, "tasks", "edit"),
+            { area: "tasks", action: "edit" },
+          ),
+        ).toEqual({ kind: "lead" });
+        await expect(
+          fallbackOp(createUuidV7(), "budget", "view"),
+        ).rejects.toThrow();
         const leadOp = () =>
           authorizeWeddingServerOperation(
             { actorId: owner },
@@ -329,13 +452,13 @@ describe("planner organization wedding assignment", () => {
           new Date("2026-01-03T01:00:00Z"),
         );
         expect(
-          await resolveEligiblePlannerFallback(
+          await resolveCurrentActorPlannerFallback(
             db,
-            accepted.access!.id,
+            await fallbackOp(owner, "tasks", "edit"),
             { area: "tasks", action: "edit" },
             new Date("2026-01-04T00:00:00Z"),
           ),
-        ).toEqual({ kind: "manager_fallback", actorIds: [owner] });
+        ).toEqual({ kind: "manager_fallback" });
         await setLeadPlannerAbsence(
           db,
           await leadOp(),
@@ -343,24 +466,19 @@ describe("planner organization wedding assignment", () => {
           new Date("2026-01-04T01:00:00Z"),
         );
         expect(
-          await resolveEligiblePlannerFallback(
+          await resolveCurrentActorPlannerFallback(
             db,
-            accepted.access!.id,
+            await fallbackOp(owner, "tasks", "edit"),
             { area: "tasks", action: "edit" },
             new Date("2026-01-04T02:00:00Z"),
           ),
-        ).toEqual({ kind: "lead", actorIds: [owner] });
+        ).toEqual({ kind: "lead" });
         await setPlannerStaffRestriction(db, await weddingAuth(), {
           accessId: accepted.access!.id,
           organizationMembershipId: membership!.id,
           blocked: true,
         });
-        expect(
-          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
-            area: "tasks",
-            action: "edit",
-          }),
-        ).toEqual({ kind: "manager_fallback", actorIds: [] });
+        await expect(fallbackOp(owner, "tasks", "edit")).rejects.toThrow();
         expect(
           (
             await db

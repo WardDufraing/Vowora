@@ -8,6 +8,21 @@ import { PlannerWeddingAccessManager } from "./planner-wedding-access-manager";
 afterEach(() => vi.unstubAllGlobals());
 describe("planner wedding access management", () => {
   it("offers localized ceiling-limited assignment and removal", async () => {
+    const access = {
+      id: "019a2f36-0eb9-7000-8000-000000000001",
+      weddingId: "019a2f36-0eb9-7000-8000-000000000006",
+      weddingName: "Feier",
+      permissionCeiling: [{ area: "tasks", actions: ["view", "edit"] }],
+      assignments: [
+        {
+          id: "019a2f36-0eb9-7000-8000-000000000004",
+          organizationMembershipId: "019a2f36-0eb9-7000-8000-000000000003",
+          isLead: true,
+          absenceStartsAt: null,
+          absenceEndsAt: null,
+        },
+      ],
+    };
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(
@@ -22,7 +37,11 @@ describe("planner wedding access management", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(Response.json({ data: access }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { ...access, assignments: [] } }),
+      );
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     render(
@@ -33,17 +52,20 @@ describe("planner wedding access management", () => {
           {
             id: "019a2f36-0eb9-7000-8000-000000000003",
             name: "Alex",
+            email: "alex@example.test",
             status: "active",
           },
         ]}
         initialAccesses={[
           {
             id: "019a2f36-0eb9-7000-8000-000000000001",
+            weddingId: "019a2f36-0eb9-7000-8000-000000000006",
             weddingName: "Feier",
             permissionCeiling: [{ area: "tasks", actions: ["view", "edit"] }],
             assignments: [],
           },
         ]}
+        currentMembershipId="019a2f36-0eb9-7000-8000-000000000003"
       />,
     );
     expect(
@@ -60,6 +82,57 @@ describe("planner wedding access management", () => {
       isLead: true,
     });
     await user.click(await screen.findByRole("button", { name: "Entfernen" }));
-    expect(fetch.mock.calls[1]?.[1]).toMatchObject({ method: "DELETE" });
+    expect(fetch.mock.calls[2]?.[1]).toMatchObject({ method: "DELETE" });
+  });
+  it("lets the current lead set an absence and reloads authoritative state", async () => {
+    const access = {
+      id: "019a2f36-0eb9-7000-8000-000000000001",
+      weddingId: "019a2f36-0eb9-7000-8000-000000000006",
+      weddingName: "Wedding",
+      permissionCeiling: [{ area: "tasks", actions: ["view", "edit"] }],
+      assignments: [
+        {
+          id: "019a2f36-0eb9-7000-8000-000000000004",
+          organizationMembershipId: "019a2f36-0eb9-7000-8000-000000000003",
+          isLead: true,
+          absenceStartsAt: null,
+          absenceEndsAt: null,
+        },
+      ],
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ data: { updated: true } }))
+      .mockResolvedValueOnce(Response.json({ data: access }));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PlannerWeddingAccessManager
+        organizationId="019a2f36-0eb9-7000-8000-000000000002"
+        locale="en"
+        currentMembershipId="019a2f36-0eb9-7000-8000-000000000003"
+        staff={[
+          {
+            id: "019a2f36-0eb9-7000-8000-000000000003",
+            name: "Alex",
+            email: "alex@example.test",
+            status: "active",
+          },
+        ]}
+        initialAccesses={[access]}
+      />,
+    );
+    await user.type(screen.getByLabelText("Starts"), "2026-12-01T09:00");
+    await user.type(screen.getByLabelText("Ends"), "2026-12-02T09:00");
+    await user.click(screen.getByRole("button", { name: "Save absence" }));
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("/absence"),
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("/wedding-access/"),
+    );
   });
 });

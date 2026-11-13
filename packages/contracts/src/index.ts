@@ -264,6 +264,23 @@ export const weddingOrganizationInvitationResponseSchema = z.strictObject({
 export const respondWeddingOrganizationInvitationRequestSchema = z.strictObject(
   { decision: z.enum(["accept", "reject"]) },
 );
+export const respondWeddingOrganizationInvitationResponseSchema =
+  z.strictObject({
+    data: z.strictObject({
+      accepted: z.boolean(),
+      access: z
+        .strictObject({
+          id: z.uuidv7(),
+          weddingId: z.uuidv7(),
+          organizationId: z.uuidv7(),
+          status: z.literal("active"),
+          permissionCeiling: z.array(permissionCeilingEntrySchema),
+          grantedAt: z.iso.datetime(),
+        })
+        .optional(),
+    }),
+    meta: responseMetadataSchema,
+  });
 export const assignWeddingOrganizationStaffRequestSchema = z.strictObject({
   organizationMembershipId: z.uuidv7(),
   permissions: z.array(permissionCeilingEntrySchema).max(11),
@@ -306,6 +323,26 @@ export const weddingOrganizationAccessManagementResponseSchema = z.strictObject(
     meta: responseMetadataSchema,
   },
 );
+export const weddingOrganizationPartnerAccessResponseSchema = z.strictObject({
+  data: z.strictObject({
+    id: z.uuidv7(),
+    organizationId: z.uuidv7(),
+    organizationName: z.string().min(1),
+    permissionCeiling: z.array(permissionCeilingEntrySchema),
+    assignments: z.array(
+      z.strictObject({
+        id: z.uuidv7(),
+        organizationMembershipId: z.uuidv7(),
+        name: z.string().min(1),
+        role: z.enum(["owner", "manager", "employee"]),
+        isLead: z.boolean(),
+        active: z.boolean(),
+        blocked: z.boolean(),
+      }),
+    ),
+  }),
+  meta: responseMetadataSchema,
+});
 export const restrictWeddingOrganizationStaffRequestSchema = z.strictObject({
   organizationMembershipId: z.uuidv7(),
   blocked: z.boolean(),
@@ -1184,8 +1221,26 @@ export const openApiDocument = {
           },
         },
         responses: {
-          "200": { description: "Idempotent invitation replay." },
-          "201": { description: "Invitation created." },
+          "200": {
+            description: "Idempotent invitation replay.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
+          "201": {
+            description: "Invitation created.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationInvitationResponse",
+                },
+              },
+            },
+          },
           "400": problemResponse("The request is invalid."),
           "401": authenticationFailure,
           "403": problemResponse("Planner access is unavailable."),
@@ -1236,6 +1291,24 @@ export const openApiDocument = {
           schema: { type: "string", format: "uuid" },
         },
       ],
+      get: {
+        operationId: "getWeddingOrganizationPartnerAccess",
+        responses: {
+          "200": {
+            description: "Privacy-minimized active planner access.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationPartnerAccessResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Planner access is unavailable."),
+          "404": problemResponse("Planner access is unavailable."),
+        },
+      },
       delete: {
         operationId: "revokeWeddingOrganizationAccess",
         responses: {
@@ -1276,9 +1349,10 @@ export const openApiDocument = {
           },
           responses: {
             "200": { description: "Couple staff restriction updated." },
+            "400": problemResponse("The restriction is invalid."),
             "401": authenticationFailure,
             "403": problemResponse("Planner access is unavailable."),
-            "409": problemResponse("The restriction could not be changed."),
+            "404": problemResponse("The restriction is unavailable."),
           },
         },
       },
@@ -1312,9 +1386,9 @@ export const openApiDocument = {
           },
           responses: {
             "200": { description: "Lead planner absence updated." },
+            "400": problemResponse("The absence window is invalid."),
             "401": authenticationFailure,
             "403": problemResponse("Planner access is unavailable."),
-            "409": problemResponse("The absence could not be changed."),
           },
         },
       },
@@ -1365,7 +1439,17 @@ export const openApiDocument = {
             },
           },
           responses: {
-            "200": { description: "Invitation accepted or rejected." },
+            "200": {
+              description: "Invitation accepted or rejected.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/RespondWeddingOrganizationInvitationResponse",
+                  },
+                },
+              },
+            },
+            "400": problemResponse("The response is invalid."),
             "401": authenticationFailure,
             "403": problemResponse("The response is not permitted."),
             "409": problemResponse("The invitation is unavailable."),
@@ -1839,6 +1923,10 @@ export const openApiDocument = {
         respondWeddingOrganizationInvitationRequestSchema,
         { target: "draft-2020-12" },
       ),
+      RespondWeddingOrganizationInvitationResponse: z.toJSONSchema(
+        respondWeddingOrganizationInvitationResponseSchema,
+        { target: "draft-2020-12" },
+      ),
       AssignWeddingOrganizationStaffRequest: z.toJSONSchema(
         assignWeddingOrganizationStaffRequestSchema,
         { target: "draft-2020-12" },
@@ -1849,6 +1937,10 @@ export const openApiDocument = {
       ),
       WeddingOrganizationAccessManagementResponse: z.toJSONSchema(
         weddingOrganizationAccessManagementResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationPartnerAccessResponse: z.toJSONSchema(
+        weddingOrganizationPartnerAccessResponseSchema,
         { target: "draft-2020-12" },
       ),
       RestrictWeddingOrganizationStaffRequest: z.toJSONSchema(

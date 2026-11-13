@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const { authorize, revoke, safeRequest } = vi.hoisted(() => ({
+const { authorize, load, revoke, safeRequest } = vi.hoisted(() => ({
   authorize: vi.fn(),
+  load: vi.fn(),
   revoke: vi.fn(),
   safeRequest: vi.fn(),
 }));
@@ -13,9 +14,10 @@ vi.mock("../../../../../../../../lib/env", () => ({
 }));
 vi.mock("../../../../../../../../lib/wedding-service", () => ({
   authorizeWeddingSettingsApiOperation: authorize,
+  loadPlannerOrganizationAccess: load,
   revokePlannerOrganizationRelationship: revoke,
 }));
-import { DELETE } from "./route";
+import { DELETE, GET } from "./route";
 const weddingId = "019a2f36-0eb9-7000-8000-000000000001",
   accessId = "019a2f36-0eb9-7000-8000-000000000002";
 const operation = {
@@ -28,8 +30,18 @@ beforeEach(() => {
   safeRequest.mockReturnValue(true);
   authorize.mockResolvedValue({ authorized: true, operation });
   revoke.mockResolvedValue(true);
+  load.mockResolvedValue({ id: accessId, assignments: [] });
 });
 describe("planner access revocation API", () => {
+  it("loads only the exact authorized access DTO", async () => {
+    const response = await GET(new Request("https://app.test"), { params });
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toEqual({
+      id: accessId,
+      assignments: [],
+    });
+    expect(load).toHaveBeenCalledWith(operation);
+  });
   it("rejects CSRF before authorization", async () => {
     safeRequest.mockReturnValue(false);
     expect(

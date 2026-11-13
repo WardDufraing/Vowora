@@ -649,6 +649,16 @@ export const weddingOrganizationInvitations = pgTable(
       "wedding_organization_invitations_fingerprint",
       sql`${table.issuanceRequestFingerprint} ~ '^[0-9a-f]{64}$'`,
     ),
+    check(
+      "wedding_organization_invitations_lifecycle_consistent",
+      sql`(
+        (${table.status} = 'pending' AND ${table.acceptedByActorId} IS NULL AND ${table.acceptedAt} IS NULL AND ${table.rejectedByActorId} IS NULL AND ${table.rejectedAt} IS NULL AND ${table.revokedByActorId} IS NULL AND ${table.revokedAt} IS NULL AND ${table.replacedByInvitationId} IS NULL) OR
+        (${table.status} = 'accepted' AND ${table.acceptedByActorId} IS NOT NULL AND ${table.acceptedAt} IS NOT NULL AND ${table.rejectedByActorId} IS NULL AND ${table.rejectedAt} IS NULL AND ${table.revokedByActorId} IS NULL AND ${table.revokedAt} IS NULL AND ${table.replacedByInvitationId} IS NULL) OR
+        (${table.status} = 'rejected' AND ${table.acceptedByActorId} IS NULL AND ${table.acceptedAt} IS NULL AND ${table.rejectedByActorId} IS NOT NULL AND ${table.rejectedAt} IS NOT NULL AND ${table.revokedByActorId} IS NULL AND ${table.revokedAt} IS NULL AND ${table.replacedByInvitationId} IS NULL) OR
+        (${table.status} = 'revoked' AND ${table.acceptedByActorId} IS NULL AND ${table.acceptedAt} IS NULL AND ${table.rejectedByActorId} IS NULL AND ${table.rejectedAt} IS NULL AND ${table.revokedByActorId} IS NOT NULL AND ${table.revokedAt} IS NOT NULL AND ${table.replacedByInvitationId} IS NULL) OR
+        (${table.status} = 'replaced' AND ${table.acceptedByActorId} IS NULL AND ${table.acceptedAt} IS NULL AND ${table.rejectedByActorId} IS NULL AND ${table.rejectedAt} IS NULL AND ${table.revokedByActorId} IS NULL AND ${table.revokedAt} IS NULL AND ${table.replacedByInvitationId} IS NOT NULL)
+      )`,
+    ),
     uniqueIndex("wedding_organization_invitation_request_unique_idx").on(
       table.weddingId,
       table.issuedByActorId,
