@@ -10,7 +10,72 @@ import {
   isSafeStateChangingRequest,
 } from "../../../../../../../../lib/auth";
 import { readAuthEnvironment } from "../../../../../../../../lib/env";
-import { assignPlannerWeddingStaff } from "../../../../../../../../lib/organization-service";
+import {
+  assignPlannerWeddingStaff,
+  loadPlannerWeddingAccesses,
+} from "../../../../../../../../lib/organization-service";
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ organizationId: string; accessId: string }> },
+) {
+  const correlationId = correlationIdFor(request);
+  const p = await context.params;
+  const organizationId = z.uuidv7().safeParse(p.organizationId);
+  const accessId = z.uuidv7().safeParse(p.accessId);
+  const session = await getAuth()
+    .api.getSession({
+      headers: request.headers,
+      query: { disableCookieCache: true, disableRefresh: true },
+    })
+    .catch(() => null);
+  if (!session)
+    return problemResponse(
+      request,
+      {
+        status: 401,
+        title: "Authentication required",
+        detail: "Sign in to view staff.",
+        code: "AUTHENTICATION_REQUIRED",
+      },
+      correlationId,
+    );
+  if (!organizationId.success || !accessId.success)
+    return problemResponse(
+      request,
+      {
+        status: 404,
+        title: "Access unavailable",
+        detail: "Planner access is unavailable.",
+        code: "PLANNER_ACCESS_UNAVAILABLE",
+      },
+      correlationId,
+    );
+  try {
+    const access = (
+      await loadPlannerWeddingAccesses({
+        actorId: session.user.id,
+        correlationId,
+        organizationId: organizationId.data,
+      })
+    ).find((item) => item.id === accessId.data);
+    if (!access) throw new Error();
+    return jsonResponse(
+      { data: access, meta: { correlationId } },
+      correlationId,
+    );
+  } catch {
+    return problemResponse(
+      request,
+      {
+        status: 404,
+        title: "Access unavailable",
+        detail: "Planner access is unavailable.",
+        code: "PLANNER_ACCESS_UNAVAILABLE",
+      },
+      correlationId,
+    );
+  }
+}
 export async function POST(
   request: Request,
   context: { params: Promise<{ organizationId: string; accessId: string }> },

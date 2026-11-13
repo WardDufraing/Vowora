@@ -24,6 +24,7 @@ import {
   revokeWeddingOrganizationInvitation,
   revokeWeddingOrganizationAccess,
   setPlannerStaffRestriction,
+  getWeddingOrganizationAccessManagement,
   setLeadPlannerAbsence,
 } from "@vowora/database";
 import {
@@ -256,28 +257,96 @@ export async function createPlannerOrganizationInvitation(input: {
     input.weddingId,
   );
   if (!authorized.authorized) return authorized;
+  const issued = await issueWeddingOrganizationInvitation(
+    getRuntimeDatabase().database,
+    authorized.operation,
+    {
+      organizationId: input.body.organizationId,
+      ceiling: input.body.permissionCeiling,
+      requestId: input.issuanceRequestId,
+      reissueInvitationId: input.body.reissueInvitationId,
+    },
+  );
   return {
     authorized: true as const,
     correlationId: authorized.operation.authorization.correlationId,
-    result: await issueWeddingOrganizationInvitation(
-      getRuntimeDatabase().database,
-      authorized.operation,
-      {
-        organizationId: input.body.organizationId,
-        ceiling: input.body.permissionCeiling,
-        requestId: input.issuanceRequestId,
-        reissueInvitationId: input.body.reissueInvitationId,
+    result: {
+      invitation: {
+        id: issued.invitation.id,
+        weddingId: issued.invitation.weddingId,
+        organizationId: issued.invitation.organizationId,
+        status: issued.invitation.status,
+        permissionCeiling: issued.invitation.permissionCeiling,
+        expiresAt: issued.invitation.expiresAt.toISOString(),
+        createdAt: issued.invitation.createdAt.toISOString(),
       },
-    ),
+      organizationName: issued.organizationName,
+      replayed: issued.replayed,
+    },
   };
 }
-export function loadPlannerOrganizationInvitations(
+export async function loadPlannerOrganizationInvitations(
   operation: AuthorizedServerOperation,
 ) {
-  return listWeddingOrganizationInvitations(
+  const rows = await listWeddingOrganizationInvitations(
     getRuntimeDatabase().database,
     operation,
   );
+  return rows.map(({ invitation, organizationName }) => ({
+    invitation: {
+      id: invitation.id,
+      weddingId: invitation.weddingId,
+      organizationId: invitation.organizationId,
+      status: invitation.status,
+      permissionCeiling: invitation.permissionCeiling,
+      expiresAt: invitation.expiresAt.toISOString(),
+      createdAt: invitation.createdAt.toISOString(),
+    },
+    organizationName,
+  }));
+}
+export async function loadPlannerOrganizationAccess(
+  operation: AuthorizedServerOperation,
+) {
+  const access = await getWeddingOrganizationAccessManagement(
+    getRuntimeDatabase().database,
+    operation,
+  );
+  if (!access) return null;
+  return {
+    id: access.id,
+    organizationId: access.organizationId,
+    organizationName: access.organizationName,
+    permissionCeiling: access.permissionCeiling,
+    assignments: access.assignments.map((assignment) => ({
+      id: assignment.id,
+      organizationMembershipId: assignment.organizationMembershipId,
+      name: assignment.name,
+      role: assignment.role,
+      isLead: assignment.isLead,
+      active: assignment.assignmentStatus === "active",
+      blocked: assignment.restrictionStatus === "blocked",
+    })),
+  };
+}
+export async function loadPlannerOrganizationAccessForActor(input: {
+  actorId: string;
+  correlationId: string;
+  weddingId: string;
+}) {
+  const database = getRuntimeDatabase().database;
+  const operation = await authorizeWeddingServerOperation(
+    { actorId: input.actorId },
+    {
+      resource: "existing",
+      recordId: input.weddingId,
+      weddingId: input.weddingId,
+      action: "edit",
+      correlationId: input.correlationId,
+    },
+    new DatabaseWeddingAuthorizationState(database),
+  );
+  return loadPlannerOrganizationAccess(operation);
 }
 export function revokePlannerOrganizationInvitation(
   operation: AuthorizedServerOperation,

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { count, eq } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { describe, expect, it } from "vitest";
 import {
@@ -19,11 +19,13 @@ import {
 import {
   createOrganization,
   DatabaseOrganizationAuthorizationState,
+  deactivateOrganizationMember,
 } from "./organizations.js";
 import {
   assignOrganizationStaffToWedding,
   issueWeddingOrganizationInvitation,
   listOrganizationWeddingInvitations,
+  removeOrganizationStaffFromWedding,
   resolveEligiblePlannerFallback,
   respondWeddingOrganizationInvitation,
   revokeWeddingOrganizationAccess,
@@ -38,6 +40,7 @@ const schema = {
   weddings: tables.weddings,
   weddingMemberships: tables.weddingMemberships,
   organizations: tables.organizations,
+  organizationInvitations: tables.organizationInvitations,
   organizationMemberships: tables.organizationMemberships,
   weddingOrganizationInvitations: tables.weddingOrganizationInvitations,
   weddingOrganizationAccesses: tables.weddingOrganizationAccesses,
@@ -54,7 +57,8 @@ describe("planner organization wedding assignment", () => {
       async ({ client }) => {
         const db = drizzle(client, { casing: "snake_case", schema });
         const partner = createUuidV7(),
-          owner = createUuidV7();
+          owner = createUuidV7(),
+          employee = createUuidV7();
         await db.insert(tables.user).values([
           {
             id: partner,
@@ -66,6 +70,12 @@ describe("planner organization wedding assignment", () => {
             id: owner,
             name: "Owner",
             email: "owner@example.test",
+            emailVerified: true,
+          },
+          {
+            id: employee,
+            name: "Employee",
+            email: "employee@example.test",
             emailVerified: true,
           },
         ]);
@@ -89,6 +99,16 @@ describe("planner organization wedding assignment", () => {
             name: "Planner",
           }),
         );
+        const [employeeMembership] = await db
+          .insert(tables.organizationMemberships)
+          .values({
+            organizationId: org.organization.id,
+            actorId: employee,
+            role: "employee",
+            status: "active",
+            permissionOverrides: [],
+          })
+          .returning();
         const weddingAuth = () =>
           authorizeWeddingServerOperation(
             { actorId: partner },
@@ -164,23 +184,143 @@ describe("planner organization wedding assignment", () => {
             isLead: true,
           },
         );
-        expect(
-          await resolveEligiblePlannerFallback(db, accepted.access!.id),
-        ).toEqual({ kind: "lead", actorIds: [owner] });
-        const leadOp = await authorizeWeddingServerOperation(
-          { actorId: owner },
+        const employeeAssignment = await assignOrganizationStaffToWedding(
+          db,
+          await orgAuth(),
           {
-            resource: "new",
-            area: "tasks",
-            weddingId: wedding.wedding.id,
+            accessId: accepted.access!.id,
+            organizationMembershipId: employeeMembership!.id,
+            permissions: [{ area: "tasks", actions: ["view"] }],
+          },
+        );
+        const secondWedding = await createCoupleWedding(
+          db,
+          authorizeCoupleWeddingCreation({
+            actorId: partner,
+            correlationId: randomUUID(),
+            creationRequestId: randomUUID(),
+            name: "Second wedding",
+            weddingDate: null,
+            timeZone: "Europe/Brussels",
+          }),
+        );
+        const secondWeddingOperation = await authorizeWeddingServerOperation(
+          { actorId: partner },
+          {
+            resource: "existing",
+            recordId: secondWedding.wedding.id,
+            weddingId: secondWedding.wedding.id,
             action: "edit",
             correlationId: randomUUID(),
           },
           new DatabaseWeddingAuthorizationState(db),
         );
+        const secondInvitation = await issueWeddingOrganizationInvitation(
+          db,
+          secondWeddingOperation,
+          {
+            organizationId: org.organization.id,
+            ceiling: [{ area: "tasks", actions: ["view"] }],
+            requestId: randomUUID(),
+          },
+        );
+        const secondAccess = await respondWeddingOrganizationInvitation(
+          db,
+          await orgAuth(),
+          secondInvitation.invitation.id,
+          "accept",
+        );
+        const secondEmployeeAssignment = await assignOrganizationStaffToWedding(
+          db,
+          await orgAuth(),
+          {
+            accessId: secondAccess.access!.id,
+            organizationMembershipId: employeeMembership!.id,
+            permissions: [{ area: "tasks", actions: ["view"] }],
+          },
+        );
+        await deactivateOrganizationMember(
+          db,
+          await orgAuth(),
+          employeeMembership!.id,
+        );
+        expect(
+          (
+            await db
+              .select()
+              .from(tables.weddingOrganizationStaffAssignments)
+              .where(
+                eq(
+                  tables.weddingOrganizationStaffAssignments.id,
+                  employeeAssignment.id,
+                ),
+              )
+          )[0],
+        ).toMatchObject({ status: "revoked", isLead: false });
+        expect(
+          (
+            await db
+              .select()
+              .from(tables.weddingMemberships)
+              .where(
+                eq(
+                  tables.weddingMemberships.id,
+                  employeeAssignment.weddingMembershipId,
+                ),
+              )
+          )[0],
+        ).toMatchObject({ status: "revoked" });
+        expect(
+          await db
+            .select({
+              status: tables.weddingOrganizationStaffAssignments.status,
+            })
+            .from(tables.weddingOrganizationStaffAssignments)
+            .where(
+              inArray(tables.weddingOrganizationStaffAssignments.id, [
+                employeeAssignment.id,
+                secondEmployeeAssignment.id,
+              ]),
+            ),
+        ).toEqual([{ status: "revoked" }, { status: "revoked" }]);
+        expect(
+          await db
+            .select({ status: tables.weddingMemberships.status })
+            .from(tables.weddingMemberships)
+            .where(
+              inArray(tables.weddingMemberships.id, [
+                employeeAssignment.weddingMembershipId,
+                secondEmployeeAssignment.weddingMembershipId,
+              ]),
+            ),
+        ).toEqual([{ status: "revoked" }, { status: "revoked" }]);
+        expect(
+          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
+            area: "tasks",
+            action: "edit",
+          }),
+        ).toEqual({ kind: "lead", actorIds: [owner] });
+        expect(
+          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
+            area: "budget",
+            action: "view",
+          }),
+        ).toEqual({ kind: "manager_fallback", actorIds: [] });
+        const leadOp = () =>
+          authorizeWeddingServerOperation(
+            { actorId: owner },
+            {
+              resource: "new",
+              area: "tasks",
+              weddingId: wedding.wedding.id,
+              action: "edit",
+              correlationId: randomUUID(),
+            },
+            new DatabaseWeddingAuthorizationState(db),
+          );
         await setLeadPlannerAbsence(
           db,
-          leadOp,
+          await leadOp(),
           {
             accessId: accepted.access!.id,
             startsAt: new Date("2026-01-03T00:00:00Z"),
@@ -192,16 +332,34 @@ describe("planner organization wedding assignment", () => {
           await resolveEligiblePlannerFallback(
             db,
             accepted.access!.id,
+            { area: "tasks", action: "edit" },
             new Date("2026-01-04T00:00:00Z"),
           ),
         ).toEqual({ kind: "manager_fallback", actorIds: [owner] });
+        await setLeadPlannerAbsence(
+          db,
+          await leadOp(),
+          { accessId: accepted.access!.id, startsAt: null, endsAt: null },
+          new Date("2026-01-04T01:00:00Z"),
+        );
+        expect(
+          await resolveEligiblePlannerFallback(
+            db,
+            accepted.access!.id,
+            { area: "tasks", action: "edit" },
+            new Date("2026-01-04T02:00:00Z"),
+          ),
+        ).toEqual({ kind: "lead", actorIds: [owner] });
         await setPlannerStaffRestriction(db, await weddingAuth(), {
           accessId: accepted.access!.id,
           organizationMembershipId: membership!.id,
           blocked: true,
         });
         expect(
-          await resolveEligiblePlannerFallback(db, accepted.access!.id),
+          await resolveEligiblePlannerFallback(db, accepted.access!.id, {
+            area: "tasks",
+            action: "edit",
+          }),
         ).toEqual({ kind: "manager_fallback", actorIds: [] });
         expect(
           (
@@ -216,6 +374,51 @@ describe("planner organization wedding assignment", () => {
               )
           )[0],
         ).toMatchObject({ status: "revoked" });
+        const auditCountAfterBlock = (
+          await db.select({ value: count() }).from(tables.auditEvents)
+        )[0]!.value;
+        await setPlannerStaffRestriction(db, await weddingAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          blocked: true,
+        });
+        expect(
+          (await db.select({ value: count() }).from(tables.auditEvents))[0]!
+            .value,
+        ).toBe(auditCountAfterBlock);
+        await setPlannerStaffRestriction(db, await weddingAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          blocked: false,
+        });
+        const reassigned = await assignOrganizationStaffToWedding(
+          db,
+          await orgAuth(),
+          {
+            accessId: accepted.access!.id,
+            organizationMembershipId: membership!.id,
+            permissions: [{ area: "tasks", actions: ["view"] }],
+            isLead: false,
+          },
+        );
+        expect(reassigned.id).toBe(assignment.id);
+        await removeOrganizationStaffFromWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          assignmentId: reassigned.id,
+        });
+        expect(
+          (
+            await db
+              .select()
+              .from(tables.weddingOrganizationStaffAssignments)
+              .where(
+                eq(
+                  tables.weddingOrganizationStaffAssignments.id,
+                  reassigned.id,
+                ),
+              )
+          )[0],
+        ).toMatchObject({ status: "revoked", isLead: false });
         expect(
           (await db.select({ value: count() }).from(tables.auditEvents))[0]!
             .value,
@@ -228,7 +431,14 @@ describe("planner organization wedding assignment", () => {
           ),
         ).toBe(true);
         expect(
-          (await db.select().from(tables.weddingOrganizationAccesses))[0],
+          (
+            await db
+              .select()
+              .from(tables.weddingOrganizationAccesses)
+              .where(
+                eq(tables.weddingOrganizationAccesses.id, accepted.access!.id),
+              )
+          )[0],
         ).toMatchObject({ status: "revoked" });
       },
     );
@@ -342,6 +552,17 @@ describe("planner organization wedding assignment", () => {
           .select()
           .from(tables.organizationMemberships)
           .where(eq(tables.organizationMemberships.actorId, ownerA));
+        const [otherMember] = await db
+          .select()
+          .from(tables.organizationMemberships)
+          .where(eq(tables.organizationMemberships.actorId, ownerB));
+        await expect(
+          setPlannerStaffRestriction(db, await wa(), {
+            accessId: accepted.access!.id,
+            organizationMembershipId: otherMember!.id,
+            blocked: true,
+          }),
+        ).rejects.toMatchObject({ reason: "invalid" });
         await expect(
           assignOrganizationStaffToWedding(
             db,

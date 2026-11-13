@@ -2,6 +2,7 @@ import type {
   AssignWeddingOrganizationStaffRequest,
   CreateOrganizationInvitationRequest,
   CreateOrganizationRequest,
+  PermissionCeilingEntry,
 } from "@vowora/contracts";
 import {
   acceptOrganizationInvitation,
@@ -17,7 +18,9 @@ import {
   OrganizationInvitationUnavailableError,
   assignOrganizationStaffToWedding,
   listOrganizationWeddingInvitations,
+  listOrganizationWeddingAccesses,
   respondWeddingOrganizationInvitation,
+  removeOrganizationStaffFromWedding,
 } from "@vowora/database";
 import {
   authorizeOrganizationCreation,
@@ -27,6 +30,34 @@ import {
 } from "@vowora/domain";
 
 import { getRuntimeDatabase } from "./database";
+
+function permissionEntries(value: unknown): PermissionCeilingEntry[] {
+  if (!Array.isArray(value)) return [];
+  const grouped = new Map<string, Set<"view" | "edit" | "download_export">>();
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const grant = item as {
+      area?: string;
+      action?: string;
+      effect?: string;
+      scope?: string;
+    };
+    if (grant.effect !== "allow" || grant.scope !== "workspace") continue;
+    if (
+      grant.action !== "view" &&
+      grant.action !== "edit" &&
+      grant.action !== "download_export"
+    )
+      continue;
+    const actions = grouped.get(grant.area ?? "") ?? new Set();
+    actions.add(grant.action);
+    grouped.set(grant.area ?? "", actions);
+  }
+  return [...grouped].map(([area, actions]) => ({
+    area,
+    actions: [...actions],
+  })) as PermissionCeilingEntry[];
+}
 
 export function createPlannerOrganization(input: {
   readonly actorId: string;
@@ -162,10 +193,49 @@ export async function loadPlannerWeddingInvitations(input: {
   correlationId: string;
   organizationId: string;
 }) {
-  return listOrganizationWeddingInvitations(
+  const rows = await listOrganizationWeddingInvitations(
     getRuntimeDatabase().database,
     await authorizeManagement(input),
   );
+  return rows.map(({ invitation, weddingName }) => ({
+    invitation: {
+      id: invitation.id,
+      weddingId: invitation.weddingId,
+      organizationId: invitation.organizationId,
+      status: invitation.status,
+      permissionCeiling: invitation.permissionCeiling,
+      expiresAt: invitation.expiresAt.toISOString(),
+      createdAt: invitation.createdAt.toISOString(),
+    },
+    weddingName,
+  }));
+}
+export async function loadPlannerWeddingAccesses(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+}) {
+  const accesses = await listOrganizationWeddingAccesses(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+  );
+  return accesses.map((access) => ({
+    id: access.id,
+    weddingId: access.weddingId,
+    weddingName: access.weddingName,
+    status: access.status,
+    permissionCeiling: access.permissionCeiling as PermissionCeilingEntry[],
+    assignments: access.assignments.map((assignment) => ({
+      id: assignment.id,
+      organizationMembershipId: assignment.organizationMembershipId,
+      role: assignment.role,
+      status: assignment.status,
+      isLead: assignment.isLead,
+      permissions: permissionEntries(assignment.permissions),
+      absenceStartsAt: assignment.absenceStartsAt?.toISOString() ?? null,
+      absenceEndsAt: assignment.absenceEndsAt?.toISOString() ?? null,
+    })),
+  }));
 }
 export async function respondToPlannerWeddingInvitation(input: {
   actorId: string;
@@ -174,12 +244,25 @@ export async function respondToPlannerWeddingInvitation(input: {
   invitationId: string;
   decision: "accept" | "reject";
 }) {
-  return respondWeddingOrganizationInvitation(
+  const result = await respondWeddingOrganizationInvitation(
     getRuntimeDatabase().database,
     await authorizeManagement(input),
     input.invitationId,
     input.decision,
   );
+  return {
+    accepted: result.accepted,
+    access: result.access
+      ? {
+          id: result.access.id,
+          weddingId: result.access.weddingId,
+          organizationId: result.access.organizationId,
+          status: result.access.status,
+          permissionCeiling: result.access.permissionCeiling,
+          grantedAt: result.access.grantedAt.toISOString(),
+        }
+      : undefined,
+  };
 }
 export async function assignPlannerWeddingStaff(input: {
   actorId: string;
@@ -188,7 +271,7 @@ export async function assignPlannerWeddingStaff(input: {
   accessId: string;
   request: AssignWeddingOrganizationStaffRequest;
 }) {
-  return assignOrganizationStaffToWedding(
+  const assignment = await assignOrganizationStaffToWedding(
     getRuntimeDatabase().database,
     await authorizeManagement(input),
     {
@@ -197,5 +280,26 @@ export async function assignPlannerWeddingStaff(input: {
       permissions: input.request.permissions,
       isLead: input.request.isLead,
     },
+  );
+  return {
+    id: assignment.id,
+    accessId: assignment.accessId,
+    organizationMembershipId: assignment.organizationMembershipId,
+    status: assignment.status,
+    isLead: assignment.isLead,
+    permissions: permissionEntries(assignment.permissionOverrides),
+  };
+}
+export async function removePlannerWeddingStaff(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  accessId: string;
+  assignmentId: string;
+}) {
+  return removeOrganizationStaffFromWedding(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+    { accessId: input.accessId, assignmentId: input.assignmentId },
   );
 }

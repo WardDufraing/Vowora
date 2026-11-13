@@ -2,7 +2,12 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { getAuth } from "../../../../lib/auth";
-import { loadPlannerWeddingInvitations } from "../../../../lib/organization-service";
+import {
+  loadOrganizationStaff,
+  loadPlannerWeddingAccesses,
+  loadPlannerWeddingInvitations,
+} from "../../../../lib/organization-service";
+import { PlannerWeddingAccessManager } from "./planner-wedding-access-manager";
 import { PlannerWeddingInvitations } from "./planner-wedding-invitations";
 export default async function Page({
   params,
@@ -20,27 +25,49 @@ export default async function Page({
   const raw = (await searchParams).locale;
   const locale = raw === "nl" || raw === "fr" || raw === "de" ? raw : "en";
   let invitations;
+  let accesses;
+  let staff;
   try {
-    invitations = await loadPlannerWeddingInvitations({
-      actorId: session.user.id,
-      correlationId: randomUUID(),
-      organizationId,
-    });
+    [invitations, accesses, staff] = await Promise.all([
+      loadPlannerWeddingInvitations({
+        actorId: session.user.id,
+        correlationId: randomUUID(),
+        organizationId,
+      }),
+      loadPlannerWeddingAccesses({
+        actorId: session.user.id,
+        correlationId: randomUUID(),
+        organizationId,
+      }),
+      loadOrganizationStaff({
+        actorId: session.user.id,
+        correlationId: randomUUID(),
+        organizationId,
+      }),
+    ]);
   } catch {
     notFound();
   }
   const initial = invitations.map(({ invitation, weddingName }) => ({
     invitation: {
       id: invitation.id,
-      expiresAt: invitation.expiresAt.toISOString(),
+      expiresAt: invitation.expiresAt,
     },
     weddingName,
   }));
   return (
-    <PlannerWeddingInvitations
-      organizationId={organizationId}
-      initial={initial}
-      locale={locale}
-    />
+    <main lang={locale}>
+      <PlannerWeddingInvitations
+        organizationId={organizationId}
+        initial={initial}
+        locale={locale}
+      />
+      <PlannerWeddingAccessManager
+        organizationId={organizationId}
+        initialAccesses={accesses}
+        staff={staff}
+        locale={locale}
+      />
+    </main>
   );
 }

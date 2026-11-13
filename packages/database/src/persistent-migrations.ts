@@ -123,7 +123,13 @@ function expectedColumnPrivileges(
     return new Set([
       "SELECT",
       "INSERT",
-      ...(["last_opened_at", "updated_at"].includes(columnName)
+      ...([
+        "last_opened_at",
+        "status",
+        "permission_overrides",
+        "permission_scope_version",
+        "updated_at",
+      ].includes(columnName)
         ? ["UPDATE"]
         : []),
     ]);
@@ -192,7 +198,6 @@ function expectedColumnPrivileges(
       ],
       wedding_organization_accesses: [
         "status",
-        "permission_ceiling",
         "permission_scope_version",
         "revoked_by_actor_id",
         "revoked_at",
@@ -206,7 +211,6 @@ function expectedColumnPrivileges(
         "revoked_at",
         "absence_starts_at",
         "absence_ends_at",
-        "absence_exceptions",
         "updated_at",
       ],
       wedding_organization_staff_restrictions: [
@@ -437,7 +441,7 @@ async function reconcileRuntimeGrants(
       `GRANT SELECT, INSERT ON TABLE ${memberships} TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("last_opened_at", "updated_at") ON TABLE ${memberships} TO ${role}`,
+      `GRANT UPDATE ("last_opened_at", "status", "permission_overrides", "permission_scope_version", "updated_at") ON TABLE ${memberships} TO ${role}`,
     );
     await client.query(
       `GRANT SELECT, INSERT ON TABLE ${invitations} TO ${role}`,
@@ -467,10 +471,10 @@ async function reconcileRuntimeGrants(
       `GRANT UPDATE ("status", "accepted_by_actor_id", "rejected_by_actor_id", "revoked_by_actor_id", "accepted_at", "rejected_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE "wedding_organization_invitations" TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("status", "permission_ceiling", "permission_scope_version", "revoked_by_actor_id", "revoked_at", "updated_at") ON TABLE "wedding_organization_accesses" TO ${role}`,
+      `GRANT UPDATE ("status", "permission_scope_version", "revoked_by_actor_id", "revoked_at", "updated_at") ON TABLE "wedding_organization_accesses" TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("status", "is_lead", "permission_overrides", "permission_scope_version", "revoked_at", "absence_starts_at", "absence_ends_at", "absence_exceptions", "updated_at") ON TABLE "wedding_organization_staff_assignments" TO ${role}`,
+      `GRANT UPDATE ("status", "is_lead", "permission_overrides", "permission_scope_version", "revoked_at", "absence_starts_at", "absence_ends_at", "updated_at") ON TABLE "wedding_organization_staff_assignments" TO ${role}`,
     );
     await client.query(
       `GRANT UPDATE ("status", "changed_by_actor_id", "blocked_at", "lifted_at", "updated_at") ON TABLE "wedding_organization_staff_restrictions" TO ${role}`,

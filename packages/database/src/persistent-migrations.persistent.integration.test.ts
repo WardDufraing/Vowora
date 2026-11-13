@@ -223,12 +223,16 @@ describe("persistent migration workflow", () => {
       );
       await expect(
         runtime.query(
-          "UPDATE wedding_memberships SET status = 'revoked' WHERE wedding_id = $1",
+          "UPDATE wedding_memberships SET role = 'planner' WHERE wedding_id = $1",
           [weddingId],
         ),
       ).rejects.toThrow(/permission denied/);
       await runtime.query(
-        "UPDATE wedding_memberships SET last_opened_at = now(), updated_at = now() WHERE wedding_id = $1",
+        `UPDATE wedding_memberships
+            SET status = 'active', permission_overrides = '[]'::jsonb,
+                permission_scope_version = permission_scope_version + 1,
+                last_opened_at = now(), updated_at = now()
+          WHERE wedding_id = $1`,
         [weddingId],
       );
       await runtime.query(

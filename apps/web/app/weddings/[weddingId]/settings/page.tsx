@@ -11,7 +11,10 @@ import {
   weddingMessages,
 } from "../../../../lib/wedding-messages";
 import { resolveWeddingShellNavigation } from "../../../../lib/workspace-navigation";
-import { loadWeddingSettingsForActor } from "../../../../lib/wedding-service";
+import {
+  loadPlannerOrganizationAccessForActor,
+  loadWeddingSettingsForActor,
+} from "../../../../lib/wedding-service";
 import { WeddingForm } from "../../wedding-form";
 import { PartnerInvitationForm } from "../../partner-invitation-form";
 import { PlannerOrganizationPanel } from "../../planner-organization-panel";
@@ -60,6 +63,14 @@ export default async function WeddingSettingsPage({
     return <WorkspaceUnavailable kind="wedding" locale={locale} />;
   }
   const messages = weddingMessages(locale);
+  const plannerAccess =
+    pageData.loaded.membership.role === "partner"
+      ? await loadPlannerOrganizationAccessForActor({
+          actorId: session.user.id,
+          correlationId: randomUUID(),
+          weddingId: weddingId.data,
+        })
+      : null;
   return (
     <AppShell model={pageData.navigation}>
       <div lang={locale}>
@@ -87,7 +98,13 @@ export default async function WeddingSettingsPage({
           locale={locale}
           messages={messages}
         />
-        <PlannerOrganizationPanel weddingId={weddingId.data} locale={locale} />
+        {pageData.loaded.membership.role === "partner" ? (
+          <PlannerOrganizationPanel
+            weddingId={weddingId.data}
+            locale={locale}
+            initialAccess={plannerAccess}
+          />
+        ) : null}
       </div>
     </AppShell>
   );

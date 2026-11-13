@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -125,6 +125,25 @@ function assertSubset(
   const allowed = new Set(validateCeiling(ceiling));
   if (validateCeiling(requested).some((key) => !allowed.has(key)))
     throw new PlannerAssignmentConflictError("ineligible");
+}
+function grantsPermission(
+  value: unknown,
+  area: (typeof weddingPermissionAreas)[number],
+  action: (typeof weddingPermissionActions)[number],
+) {
+  return (
+    Array.isArray(value) &&
+    value.some((entry) => {
+      if (!entry || typeof entry !== "object") return false;
+      const grant = entry as Partial<PermissionOverride>;
+      return (
+        grant.area === area &&
+        grant.action === action &&
+        grant.effect === "allow" &&
+        grant.scope === "workspace"
+      );
+    })
+  );
 }
 function assertWeddingManagement(operation: AuthorizedServerOperation) {
   if (
@@ -553,6 +572,18 @@ export async function assignOrganizationStaffToWedding<
       .for("update")
       .limit(1);
     if (!access) throw new PlannerAssignmentUnavailableError("invalid");
+    const [eligibleMember] = await call.session
+      .select({ id: organizationMemberships.id })
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.id, input.organizationMembershipId),
+          eq(organizationMemberships.organizationId, access.organizationId),
+          eq(organizationMemberships.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!eligibleMember) throw new PlannerAssignmentUnavailableError("invalid");
     assertSubset(
       input.permissions,
       access.permissionCeiling as PermissionCeilingEntry[],
@@ -584,61 +615,247 @@ export async function assignOrganizationStaffToWedding<
       )
       .limit(1);
     if (blocked) throw new PlannerAssignmentConflictError("ineligible");
-    if (input.isLead) {
-      const [lead] = await call.session
-        .select({ id: weddingOrganizationStaffAssignments.id })
-        .from(weddingOrganizationStaffAssignments)
+    if (input.isLead)
+      await call.session
+        .update(weddingOrganizationStaffAssignments)
+        .set({ isLead: false, updatedAt: now })
         .where(
           and(
             eq(weddingOrganizationStaffAssignments.accessId, access.id),
             eq(weddingOrganizationStaffAssignments.isLead, true),
             eq(weddingOrganizationStaffAssignments.status, "active"),
           ),
-        )
-        .limit(1);
-      if (lead) throw new PlannerAssignmentConflictError("lead_exists");
-    }
-    const [weddingMember] = await call.session
-      .insert(weddingMemberships)
-      .values({
-        weddingId: access.weddingId,
-        actorId: member.actorId,
-        role: "planner",
-        status: "active",
-        accessExpiresAt: null,
-        permissionOverrides: overrides(input.permissions),
-        permissionScopeVersion: 1,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoNothing()
-      .returning();
+        );
+    const grants = overrides(input.permissions);
+    const [existingAssignment] = await call.session
+      .select()
+      .from(weddingOrganizationStaffAssignments)
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+            member.id,
+          ),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    let weddingMember = existingAssignment
+      ? (
+          await call.session
+            .update(weddingMemberships)
+            .set({
+              status: "active",
+              permissionOverrides: grants,
+              permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
+              updatedAt: now,
+            })
+            .where(
+              eq(weddingMemberships.id, existingAssignment.weddingMembershipId),
+            )
+            .returning()
+        )[0]
+      : undefined;
+    if (!weddingMember)
+      [weddingMember] = await call.session
+        .insert(weddingMemberships)
+        .values({
+          weddingId: access.weddingId,
+          actorId: member.actorId,
+          role: "planner",
+          status: "active",
+          accessExpiresAt: null,
+          permissionOverrides: grants,
+          permissionScopeVersion: 1,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing()
+        .returning();
     if (!weddingMember) throw new PlannerAssignmentConflictError("ineligible");
-    const [assignment] = await call.session
-      .insert(weddingOrganizationStaffAssignments)
-      .values({
-        accessId: access.id,
-        organizationMembershipId: member.id,
-        weddingMembershipId: weddingMember.id,
-        status: "active",
-        isLead: input.isLead ?? false,
-        permissionOverrides: overrides(input.permissions),
-        permissionScopeVersion: 1,
-        assignedByActorId: call.authorization.actorId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+    const [assignment] = existingAssignment
+      ? await call.session
+          .update(weddingOrganizationStaffAssignments)
+          .set({
+            status: "active",
+            isLead: input.isLead ?? false,
+            permissionOverrides: grants,
+            permissionScopeVersion: sql`${weddingOrganizationStaffAssignments.permissionScopeVersion} + 1`,
+            revokedAt: null,
+            absenceStartsAt: null,
+            absenceEndsAt: null,
+            updatedAt: now,
+          })
+          .where(
+            eq(weddingOrganizationStaffAssignments.id, existingAssignment.id),
+          )
+          .returning()
+      : await call.session
+          .insert(weddingOrganizationStaffAssignments)
+          .values({
+            accessId: access.id,
+            organizationMembershipId: member.id,
+            weddingMembershipId: weddingMember.id,
+            status: "active",
+            isLead: input.isLead ?? false,
+            permissionOverrides: grants,
+            permissionScopeVersion: 1,
+            assignedByActorId: call.authorization.actorId,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
     await facts(
       call.authorization,
       call.session,
-      "wedding.organization_staff_assigned",
+      existingAssignment
+        ? "wedding.organization_staff_updated"
+        : "wedding.organization_staff_assigned",
       "wedding_organization_staff_assignment",
       assignment!.id,
       { weddingId: access.weddingId, isLead: input.isLead ?? false },
       now,
     );
     return assignment!;
+  });
+}
+
+export async function listOrganizationWeddingAccesses<
+  HKT extends PgQueryResultHKT,
+>(
+  database: PlannerAssignmentDatabase<HKT>,
+  operation: AuthorizedServerOperation,
+) {
+  assertOrganizationManagement(operation);
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    const organizationId = call.authorization.activeOrganizationId!;
+    const accessRows = await call.session
+      .select({
+        id: weddingOrganizationAccesses.id,
+        weddingId: weddingOrganizationAccesses.weddingId,
+        weddingName: weddings.name,
+        status: weddingOrganizationAccesses.status,
+        permissionCeiling: weddingOrganizationAccesses.permissionCeiling,
+      })
+      .from(weddingOrganizationAccesses)
+      .innerJoin(
+        weddings,
+        eq(weddings.id, weddingOrganizationAccesses.weddingId),
+      )
+      .where(
+        and(
+          eq(weddingOrganizationAccesses.organizationId, organizationId),
+          eq(weddingOrganizationAccesses.status, "active"),
+        ),
+      );
+    const result = [];
+    for (const access of accessRows) {
+      const assignments = await call.session
+        .select({
+          id: weddingOrganizationStaffAssignments.id,
+          organizationMembershipId:
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+          role: organizationMemberships.role,
+          status: weddingOrganizationStaffAssignments.status,
+          isLead: weddingOrganizationStaffAssignments.isLead,
+          permissions: weddingOrganizationStaffAssignments.permissionOverrides,
+          absenceStartsAt: weddingOrganizationStaffAssignments.absenceStartsAt,
+          absenceEndsAt: weddingOrganizationStaffAssignments.absenceEndsAt,
+        })
+        .from(weddingOrganizationStaffAssignments)
+        .innerJoin(
+          organizationMemberships,
+          eq(
+            organizationMemberships.id,
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+          ),
+        )
+        .where(
+          and(
+            eq(weddingOrganizationStaffAssignments.accessId, access.id),
+            eq(weddingOrganizationStaffAssignments.status, "active"),
+            eq(organizationMemberships.status, "active"),
+          ),
+        );
+      result.push({ ...access, assignments });
+    }
+    return result;
+  });
+}
+
+export async function getWeddingOrganizationAccessManagement<
+  HKT extends PgQueryResultHKT,
+>(
+  database: PlannerAssignmentDatabase<HKT>,
+  operation: AuthorizedServerOperation,
+) {
+  assertWeddingManagement(operation);
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    const [access] = await call.session
+      .select({
+        id: weddingOrganizationAccesses.id,
+        organizationId: weddingOrganizationAccesses.organizationId,
+        organizationName: organizations.name,
+        permissionCeiling: weddingOrganizationAccesses.permissionCeiling,
+      })
+      .from(weddingOrganizationAccesses)
+      .innerJoin(
+        organizations,
+        eq(organizations.id, weddingOrganizationAccesses.organizationId),
+      )
+      .where(
+        and(
+          eq(
+            weddingOrganizationAccesses.weddingId,
+            call.authorization.activeWeddingId!,
+          ),
+          eq(weddingOrganizationAccesses.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!access) return null;
+    const assignments = await call.session
+      .select({
+        id: weddingOrganizationStaffAssignments.id,
+        organizationMembershipId:
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        name: user.name,
+        role: organizationMemberships.role,
+        assignmentStatus: weddingOrganizationStaffAssignments.status,
+        isLead: weddingOrganizationStaffAssignments.isLead,
+        restrictionStatus: weddingOrganizationStaffRestrictions.status,
+      })
+      .from(weddingOrganizationStaffAssignments)
+      .innerJoin(
+        organizationMemberships,
+        eq(
+          organizationMemberships.id,
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        ),
+      )
+      .innerJoin(user, eq(user.id, organizationMemberships.actorId))
+      .leftJoin(
+        weddingOrganizationStaffRestrictions,
+        and(
+          eq(weddingOrganizationStaffRestrictions.accessId, access.id),
+          eq(
+            weddingOrganizationStaffRestrictions.organizationMembershipId,
+            organizationMemberships.id,
+          ),
+        ),
+      )
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(organizationMemberships.status, "active"),
+          or(
+            eq(weddingOrganizationStaffAssignments.status, "active"),
+            eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+          ),
+        ),
+      );
+    return { ...access, assignments };
   });
 }
 
@@ -668,6 +885,19 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
       .for("update")
       .limit(1);
     if (!access) throw new PlannerAssignmentUnavailableError("invalid");
+    const [restrictedMember] = await call.session
+      .select({ id: organizationMemberships.id })
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.id, input.organizationMembershipId),
+          eq(organizationMemberships.organizationId, access.organizationId),
+          eq(organizationMemberships.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!restrictedMember)
+      throw new PlannerAssignmentUnavailableError("invalid");
     const [existing] = await call.session
       .select()
       .from(weddingOrganizationStaffRestrictions)
@@ -681,6 +911,11 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
         ),
       )
       .limit(1);
+    if (
+      (input.blocked && existing?.status === "blocked") ||
+      (!input.blocked && (!existing || existing.status === "lifted"))
+    )
+      return true;
     if (input.blocked) {
       if (existing)
         await call.session
@@ -709,6 +944,7 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
           status: "revoked",
           isLead: false,
           revokedAt: now,
+          permissionScopeVersion: sql`${weddingOrganizationStaffAssignments.permissionScopeVersion} + 1`,
           updatedAt: now,
         })
         .where(
@@ -728,7 +964,11 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
       if (assignments.length)
         await call.session
           .update(weddingMemberships)
-          .set({ status: "revoked", updatedAt: now })
+          .set({
+            status: "revoked",
+            permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
+            updatedAt: now,
+          })
           .where(
             inArray(
               weddingMemberships.id,
@@ -753,6 +993,78 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
         : "wedding.organization_staff_unblocked",
       "organization_membership",
       input.organizationMembershipId,
+      {},
+      now,
+    );
+    return true;
+  });
+}
+
+export async function removeOrganizationStaffFromWedding<
+  HKT extends PgQueryResultHKT,
+>(
+  database: PlannerAssignmentDatabase<HKT>,
+  operation: AuthorizedServerOperation,
+  input: { accessId: string; assignmentId: string },
+  now = new Date(),
+) {
+  assertOrganizationManagement(operation);
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    const [assignment] = await call.session
+      .select({
+        id: weddingOrganizationStaffAssignments.id,
+        weddingMembershipId:
+          weddingOrganizationStaffAssignments.weddingMembershipId,
+      })
+      .from(weddingOrganizationStaffAssignments)
+      .innerJoin(
+        weddingOrganizationAccesses,
+        and(
+          eq(
+            weddingOrganizationAccesses.id,
+            weddingOrganizationStaffAssignments.accessId,
+          ),
+          eq(weddingOrganizationAccesses.id, input.accessId),
+          eq(
+            weddingOrganizationAccesses.organizationId,
+            call.authorization.activeOrganizationId!,
+          ),
+          eq(weddingOrganizationAccesses.status, "active"),
+        ),
+      )
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.id, input.assignmentId),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+        ),
+      )
+      .for("update", { of: weddingOrganizationStaffAssignments })
+      .limit(1);
+    if (!assignment) throw new PlannerAssignmentUnavailableError("invalid");
+    await call.session
+      .update(weddingOrganizationStaffAssignments)
+      .set({
+        status: "revoked",
+        isLead: false,
+        revokedAt: now,
+        permissionScopeVersion: sql`${weddingOrganizationStaffAssignments.permissionScopeVersion} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(weddingOrganizationStaffAssignments.id, assignment.id));
+    await call.session
+      .update(weddingMemberships)
+      .set({
+        status: "revoked",
+        permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(weddingMemberships.id, assignment.weddingMembershipId));
+    await facts(
+      call.authorization,
+      call.session,
+      "wedding.organization_staff_removed",
+      "wedding_organization_staff_assignment",
+      assignment.id,
       {},
       now,
     );
@@ -842,6 +1154,10 @@ export async function resolveEligiblePlannerFallback<
 >(
   database: PlannerAssignmentDatabase<HKT>,
   accessId: string,
+  requested: {
+    area: (typeof weddingPermissionAreas)[number];
+    action: (typeof weddingPermissionActions)[number];
+  },
   now = new Date(),
 ) {
   const rows = await database
@@ -896,7 +1212,12 @@ export async function resolveEligiblePlannerFallback<
     (row) =>
       row.orgStatus === "active" &&
       row.weddingStatus === "active" &&
-      row.blocked !== "blocked",
+      row.blocked !== "blocked" &&
+      grantsPermission(
+        row.assignment.permissionOverrides,
+        requested.area,
+        requested.action,
+      ),
   );
   const lead = eligible.find(
     (row) =>

@@ -189,6 +189,7 @@ test(
         "/api/v1/organizations/{organizationId}/wedding-invitations",
         "/api/v1/organizations/{organizationId}/wedding-invitations/{invitationId}",
         "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff",
+        "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff/{assignmentId}",
         "/api/v1/organizations/{organizationId}/staff",
         "/api/v1/organizations/{organizationId}/staff/{membershipId}",
         "/api/v1/organizations/{organizationId}/invitations",

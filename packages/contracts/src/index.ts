@@ -269,6 +269,43 @@ export const assignWeddingOrganizationStaffRequestSchema = z.strictObject({
   permissions: z.array(permissionCeilingEntrySchema).max(11),
   isLead: z.boolean().optional(),
 });
+export const weddingOrganizationStaffAssignmentSchema = z.strictObject({
+  id: z.uuidv7(),
+  accessId: z.uuidv7(),
+  organizationMembershipId: z.uuidv7(),
+  status: z.enum(["active", "revoked"]),
+  isLead: z.boolean(),
+  permissions: z.array(permissionCeilingEntrySchema),
+});
+export const weddingOrganizationStaffAssignmentResponseSchema = z.strictObject({
+  data: weddingOrganizationStaffAssignmentSchema,
+  meta: responseMetadataSchema,
+});
+export const weddingOrganizationAccessManagementSchema = z.strictObject({
+  id: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  weddingName: z.string().min(1),
+  status: z.literal("active"),
+  permissionCeiling: z.array(permissionCeilingEntrySchema),
+  assignments: z.array(
+    z.strictObject({
+      id: z.uuidv7(),
+      organizationMembershipId: z.uuidv7(),
+      role: z.enum(["owner", "manager", "employee"]),
+      status: z.literal("active"),
+      isLead: z.boolean(),
+      permissions: z.array(permissionCeilingEntrySchema),
+      absenceStartsAt: z.iso.datetime().nullable(),
+      absenceEndsAt: z.iso.datetime().nullable(),
+    }),
+  ),
+});
+export const weddingOrganizationAccessManagementResponseSchema = z.strictObject(
+  {
+    data: weddingOrganizationAccessManagementSchema,
+    meta: responseMetadataSchema,
+  },
+);
 export const restrictWeddingOrganizationStaffRequestSchema = z.strictObject({
   organizationMembershipId: z.uuidv7(),
   blocked: z.boolean(),
@@ -1350,6 +1387,23 @@ export const openApiDocument = {
           schema: { type: "string", format: "uuid" },
         },
       ],
+      get: {
+        operationId: "getWeddingOrganizationStaffAssignments",
+        responses: {
+          "200": {
+            description: "Active organization wedding access and assignments.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationAccessManagementResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "404": problemResponse("Planner access is unavailable."),
+        },
+      },
       post: {
         operationId: "assignWeddingOrganizationStaff",
         requestBody: {
@@ -1363,7 +1417,16 @@ export const openApiDocument = {
           },
         },
         responses: {
-          "201": { description: "Organization staff assigned to wedding." },
+          "201": {
+            description: "Organization staff assigned to wedding.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/WeddingOrganizationStaffAssignmentResponse",
+                },
+              },
+            },
+          },
           "401": authenticationFailure,
           "403": problemResponse("The assignment is not permitted."),
           "409": problemResponse(
@@ -1372,6 +1435,38 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff/{assignmentId}":
+      {
+        parameters: [
+          {
+            name: "organizationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "accessId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "assignmentId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        delete: {
+          operationId: "removeWeddingOrganizationStaff",
+          responses: {
+            "204": { description: "Organization staff removed from wedding." },
+            "401": authenticationFailure,
+            "403": problemResponse("The assignment is not permitted."),
+            "404": problemResponse("The assignment is unavailable."),
+          },
+        },
+      },
     "/api/v1/organizations/{organizationId}/staff": {
       parameters: [
         {
@@ -1746,6 +1841,14 @@ export const openApiDocument = {
       ),
       AssignWeddingOrganizationStaffRequest: z.toJSONSchema(
         assignWeddingOrganizationStaffRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationStaffAssignmentResponse: z.toJSONSchema(
+        weddingOrganizationStaffAssignmentResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationAccessManagementResponse: z.toJSONSchema(
+        weddingOrganizationAccessManagementResponseSchema,
         { target: "draft-2020-12" },
       ),
       RestrictWeddingOrganizationStaffRequest: z.toJSONSchema(
