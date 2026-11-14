@@ -16,6 +16,7 @@ import { createUuidV7 } from "./uuid.js";
 import {
   createCoupleWedding,
   DatabaseWeddingAuthorizationState,
+  readWeddingWorkspaceEntryState,
 } from "./weddings.js";
 import {
   createOrganization,
@@ -59,6 +60,7 @@ describe("planner organization wedding assignment", () => {
         const db = drizzle(client, { casing: "snake_case", schema });
         const partner = createUuidV7(),
           owner = createUuidV7(),
+          manager = createUuidV7(),
           employee = createUuidV7();
         await db.insert(tables.user).values([
           {
@@ -77,6 +79,12 @@ describe("planner organization wedding assignment", () => {
             id: employee,
             name: "Employee",
             email: "employee@example.test",
+            emailVerified: true,
+          },
+          {
+            id: manager,
+            name: "Manager",
+            email: "manager@example.test",
             emailVerified: true,
           },
         ]);
@@ -106,6 +114,16 @@ describe("planner organization wedding assignment", () => {
             organizationId: org.organization.id,
             actorId: employee,
             role: "employee",
+            status: "active",
+            permissionOverrides: [],
+          })
+          .returning();
+        const [managerMembership] = await db
+          .insert(tables.organizationMemberships)
+          .values({
+            organizationId: org.organization.id,
+            actorId: manager,
+            role: "manager",
             status: "active",
             permissionOverrides: [],
           })
@@ -197,6 +215,11 @@ describe("planner organization wedding assignment", () => {
             isLead: true,
           },
         );
+        expect(
+          (
+            await readWeddingWorkspaceEntryState(db, { actorId: owner })
+          ).accessibleWorkspaces.map((workspace) => workspace.weddingId),
+        ).toContain(wedding.wedding.id);
         const employeeAssignment = await assignOrganizationStaffToWedding(
           db,
           await orgAuth(),
@@ -206,6 +229,11 @@ describe("planner organization wedding assignment", () => {
             permissions: [{ area: "tasks", actions: ["view"] }],
           },
         );
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: managerMembership!.id,
+          permissions: [{ area: "tasks", actions: ["view", "edit"] }],
+        });
         const secondWedding = await createCoupleWedding(
           db,
           authorizeCoupleWeddingCreation({
@@ -378,7 +406,7 @@ describe("planner organization wedding assignment", () => {
                 ),
               )
           )[0],
-        ).toMatchObject({ status: "revoked" });
+        ).toMatchObject({ status: "active", role: "planner" });
         expect(
           await db
             .select({
@@ -402,7 +430,7 @@ describe("planner organization wedding assignment", () => {
                 secondEmployeeAssignment.weddingMembershipId,
               ]),
             ),
-        ).toEqual([{ status: "revoked" }, { status: "revoked" }]);
+        ).toEqual([{ status: "active" }, { status: "active" }]);
         const fallbackOp = (
           actorId: string,
           area: "tasks" | "budget",
@@ -426,6 +454,13 @@ describe("planner organization wedding assignment", () => {
             { area: "tasks", action: "edit" },
           ),
         ).toEqual({ kind: "lead" });
+        expect(
+          await resolveCurrentActorPlannerFallback(
+            db,
+            await fallbackOp(manager, "tasks", "edit"),
+            { area: "tasks", action: "edit" },
+          ),
+        ).toEqual({ kind: "ineligible" });
         await expect(
           fallbackOp(createUuidV7(), "budget", "view"),
         ).rejects.toThrow();
@@ -458,6 +493,14 @@ describe("planner organization wedding assignment", () => {
             { area: "tasks", action: "edit" },
             new Date("2026-01-04T00:00:00Z"),
           ),
+        ).toEqual({ kind: "ineligible" });
+        expect(
+          await resolveCurrentActorPlannerFallback(
+            db,
+            await fallbackOp(manager, "tasks", "edit"),
+            { area: "tasks", action: "edit" },
+            new Date("2026-01-04T00:00:00Z"),
+          ),
         ).toEqual({ kind: "manager_fallback" });
         await setLeadPlannerAbsence(
           db,
@@ -480,6 +523,10 @@ describe("planner organization wedding assignment", () => {
         });
         await expect(fallbackOp(owner, "tasks", "edit")).rejects.toThrow();
         expect(
+          (await readWeddingWorkspaceEntryState(db, { actorId: owner }))
+            .accessibleWorkspaces,
+        ).toEqual([]);
+        expect(
           (
             await db
               .select()
@@ -491,7 +538,7 @@ describe("planner organization wedding assignment", () => {
                 ),
               )
           )[0],
-        ).toMatchObject({ status: "revoked" });
+        ).toMatchObject({ status: "active", role: "planner" });
         const auditCountAfterBlock = (
           await db.select({ value: count() }).from(tables.auditEvents)
         )[0]!.value;
@@ -520,10 +567,19 @@ describe("planner organization wedding assignment", () => {
           },
         );
         expect(reassigned.id).toBe(assignment.id);
+        expect(
+          (
+            await readWeddingWorkspaceEntryState(db, { actorId: owner })
+          ).accessibleWorkspaces.map((workspace) => workspace.weddingId),
+        ).toContain(wedding.wedding.id);
         await removeOrganizationStaffFromWedding(db, await orgAuth(), {
           accessId: accepted.access!.id,
           assignmentId: reassigned.id,
         });
+        expect(
+          (await readWeddingWorkspaceEntryState(db, { actorId: owner }))
+            .accessibleWorkspaces,
+        ).toEqual([]);
         expect(
           (
             await db

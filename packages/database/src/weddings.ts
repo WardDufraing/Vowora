@@ -19,8 +19,12 @@ import {
 } from "./audit-outbox.js";
 import {
   auditEvents,
+  organizationMemberships,
   outboxEvents,
   weddingMemberships,
+  weddingOrganizationAccesses,
+  weddingOrganizationStaffAssignments,
+  weddingOrganizationStaffRestrictions,
   weddings,
 } from "./schema.js";
 import {
@@ -288,6 +292,89 @@ function workspaceProjection(row: {
 }
 
 /**
+ * Planner wedding-membership rows are immutable shell/identity markers. Their
+ * current authority comes exclusively from an active organization access and
+ * staff assignment, so revocation never requires broad UPDATE privileges on
+ * the shared membership table (and cannot accidentally mutate partners).
+ */
+async function activePlannerMembershipIds<HKT extends PgQueryResultHKT>(
+  database: WeddingDatabase<HKT>,
+  actorId: string,
+): Promise<ReadonlySet<string>> {
+  const rows = await database
+    .select({ id: weddingMemberships.id })
+    .from(weddingMemberships)
+    .innerJoin(
+      weddingOrganizationStaffAssignments,
+      and(
+        eq(
+          weddingOrganizationStaffAssignments.weddingMembershipId,
+          weddingMemberships.id,
+        ),
+        eq(weddingOrganizationStaffAssignments.status, "active"),
+      ),
+    )
+    .innerJoin(
+      weddingOrganizationAccesses,
+      and(
+        eq(
+          weddingOrganizationAccesses.id,
+          weddingOrganizationStaffAssignments.accessId,
+        ),
+        eq(weddingOrganizationAccesses.weddingId, weddingMemberships.weddingId),
+        eq(weddingOrganizationAccesses.status, "active"),
+      ),
+    )
+    .innerJoin(
+      organizationMemberships,
+      and(
+        eq(
+          organizationMemberships.id,
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        ),
+        eq(organizationMemberships.actorId, actorId),
+        eq(organizationMemberships.status, "active"),
+      ),
+    )
+    .leftJoin(
+      weddingOrganizationStaffRestrictions,
+      and(
+        eq(
+          weddingOrganizationStaffRestrictions.accessId,
+          weddingOrganizationAccesses.id,
+        ),
+        eq(
+          weddingOrganizationStaffRestrictions.organizationMembershipId,
+          organizationMemberships.id,
+        ),
+        eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+      ),
+    )
+    .where(
+      and(
+        eq(weddingMemberships.actorId, actorId),
+        eq(weddingMemberships.role, "planner"),
+        isNull(weddingOrganizationStaffRestrictions.id),
+      ),
+    );
+  return new Set(rows.map((row) => row.id));
+}
+
+function keepAuthoritativeMemberships(
+  rows: readonly {
+    readonly wedding: typeof weddings.$inferSelect;
+    readonly membership: typeof weddingMemberships.$inferSelect;
+  }[],
+  activePlannerIds: ReadonlySet<string>,
+) {
+  return rows.filter(
+    (row) =>
+      row.membership.role !== "planner" ||
+      activePlannerIds.has(row.membership.id),
+  );
+}
+
+/**
  * Resolves the normal app entry without changing recency. It deliberately
  * inspects the actor's most recent inaccessible membership only to decide
  * whether a chooser is required; inaccessible wedding details are never
@@ -303,6 +390,8 @@ export async function readWeddingWorkspaceEntryState<
   const [lastOpenedMembership] = await database
     .select({
       accessExpiresAt: weddingMemberships.accessExpiresAt,
+      id: weddingMemberships.id,
+      role: weddingMemberships.role,
       status: weddingMemberships.status,
       weddingId: weddingMemberships.weddingId,
     })
@@ -313,7 +402,7 @@ export async function readWeddingWorkspaceEntryState<
       weddingMemberships.weddingId,
     )
     .limit(1);
-  const accessibleRows = await database
+  const candidateRows = await database
     .select({ wedding: weddings, membership: weddingMemberships })
     .from(weddingMemberships)
     .innerJoin(weddings, eq(weddings.id, weddingMemberships.weddingId))
@@ -328,12 +417,23 @@ export async function readWeddingWorkspaceEntryState<
       ),
     )
     .orderBy(desc(weddingMemberships.lastOpenedAt), weddings.id);
+  const activePlannerIds = await activePlannerMembershipIds(
+    database,
+    input.actorId,
+  );
+  const accessibleRows = keepAuthoritativeMemberships(
+    candidateRows,
+    activePlannerIds,
+  );
   return Object.freeze({
     accessibleWorkspaces: Object.freeze(
       accessibleRows.map(workspaceProjection),
     ),
     lastOpenedAccessibleWeddingId:
-      lastOpenedMembership && accessibleMembership(lastOpenedMembership, now)
+      lastOpenedMembership &&
+      accessibleMembership(lastOpenedMembership, now) &&
+      (lastOpenedMembership.role !== "planner" ||
+        activePlannerIds.has(lastOpenedMembership.id))
         ? lastOpenedMembership.weddingId
         : null,
   });
@@ -356,9 +456,13 @@ export async function listAccessibleWeddingWorkspaces<
 ): Promise<readonly AccessibleWeddingWorkspace[]> {
   const now = input.now ?? new Date();
   return database.transaction(async (transaction) => {
-    await transaction
-      .update(weddingMemberships)
-      .set({ lastOpenedAt: now, updatedAt: now })
+    const activePlannerIds = await activePlannerMembershipIds(
+      transaction,
+      input.actorId,
+    );
+    const [openedMembership] = await transaction
+      .select({ id: weddingMemberships.id, role: weddingMemberships.role })
+      .from(weddingMemberships)
       .where(
         and(
           eq(weddingMemberships.actorId, input.actorId),
@@ -369,9 +473,29 @@ export async function listAccessibleWeddingWorkspaces<
             gt(weddingMemberships.accessExpiresAt, now),
           ),
         ),
-      );
+      )
+      .limit(1);
+    if (
+      openedMembership &&
+      (openedMembership.role !== "planner" ||
+        activePlannerIds.has(openedMembership.id))
+    )
+      await transaction
+        .update(weddingMemberships)
+        .set({ lastOpenedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(weddingMemberships.actorId, input.actorId),
+            eq(weddingMemberships.weddingId, input.openedWeddingId),
+            eq(weddingMemberships.status, "active"),
+            or(
+              isNull(weddingMemberships.accessExpiresAt),
+              gt(weddingMemberships.accessExpiresAt, now),
+            ),
+          ),
+        );
 
-    const rows = await transaction
+    const candidateRows = await transaction
       .select({ wedding: weddings, membership: weddingMemberships })
       .from(weddingMemberships)
       .innerJoin(weddings, eq(weddings.id, weddingMemberships.weddingId))
@@ -386,6 +510,7 @@ export async function listAccessibleWeddingWorkspaces<
         ),
       )
       .orderBy(desc(weddingMemberships.lastOpenedAt), weddings.id);
+    const rows = keepAuthoritativeMemberships(candidateRows, activePlannerIds);
 
     return Object.freeze(rows.map(workspaceProjection));
   });
@@ -522,6 +647,74 @@ export class DatabaseWeddingAuthorizationState<
       )
       .limit(1);
     if (!row) return undefined;
+    if (row.role === "planner") {
+      const [derived] = await this.session(input.authorizationSession)
+        .select({
+          accessVersion: weddingOrganizationAccesses.permissionScopeVersion,
+          assignmentVersion:
+            weddingOrganizationStaffAssignments.permissionScopeVersion,
+          organizationVersion: organizationMemberships.permissionScopeVersion,
+          permissionOverrides:
+            weddingOrganizationStaffAssignments.permissionOverrides,
+        })
+        .from(weddingOrganizationStaffAssignments)
+        .innerJoin(
+          weddingOrganizationAccesses,
+          and(
+            eq(
+              weddingOrganizationAccesses.id,
+              weddingOrganizationStaffAssignments.accessId,
+            ),
+            eq(weddingOrganizationAccesses.weddingId, input.weddingId),
+            eq(weddingOrganizationAccesses.status, "active"),
+          ),
+        )
+        .innerJoin(
+          organizationMemberships,
+          and(
+            eq(
+              organizationMemberships.id,
+              weddingOrganizationStaffAssignments.organizationMembershipId,
+            ),
+            eq(organizationMemberships.actorId, input.actorId),
+            eq(organizationMemberships.status, "active"),
+          ),
+        )
+        .leftJoin(
+          weddingOrganizationStaffRestrictions,
+          and(
+            eq(
+              weddingOrganizationStaffRestrictions.accessId,
+              weddingOrganizationAccesses.id,
+            ),
+            eq(
+              weddingOrganizationStaffRestrictions.organizationMembershipId,
+              organizationMemberships.id,
+            ),
+            eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+          ),
+        )
+        .where(
+          and(
+            eq(weddingOrganizationStaffAssignments.weddingMembershipId, row.id),
+            eq(weddingOrganizationStaffAssignments.status, "active"),
+            isNull(weddingOrganizationStaffRestrictions.id),
+          ),
+        )
+        .limit(1);
+      if (!derived) return undefined;
+      return {
+        membership: {
+          actorId: row.actorId,
+          weddingId: row.weddingId,
+          role: row.role,
+          status: "active",
+          accessExpiresAt: null,
+          permissionOverrides: derived.permissionOverrides,
+        },
+        permissionScopeVersion: `planner:${derived.accessVersion}:${derived.assignmentVersion}:${derived.organizationVersion}`,
+      };
+    }
     return {
       membership: {
         actorId: row.actorId,

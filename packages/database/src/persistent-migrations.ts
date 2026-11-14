@@ -123,13 +123,7 @@ function expectedColumnPrivileges(
     return new Set([
       "SELECT",
       "INSERT",
-      ...([
-        "last_opened_at",
-        "status",
-        "permission_overrides",
-        "permission_scope_version",
-        "updated_at",
-      ].includes(columnName)
+      ...(["last_opened_at", "updated_at"].includes(columnName)
         ? ["UPDATE"]
         : []),
     ]);
@@ -441,7 +435,7 @@ async function reconcileRuntimeGrants(
       `GRANT SELECT, INSERT ON TABLE ${memberships} TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("last_opened_at", "status", "permission_overrides", "permission_scope_version", "updated_at") ON TABLE ${memberships} TO ${role}`,
+      `GRANT UPDATE ("last_opened_at", "updated_at") ON TABLE ${memberships} TO ${role}`,
     );
     await client.query(
       `GRANT SELECT, INSERT ON TABLE ${invitations} TO ${role}`,

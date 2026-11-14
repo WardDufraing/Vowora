@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -637,20 +637,27 @@ export async function assignOrganizationStaffToWedding<
       )
       .for("update")
       .limit(1);
+    // The assignment is the authoritative, revocable planner capability. The
+    // wedding-membership row is an immutable identity/shell marker after it is
+    // inserted; runtime SQL deliberately has no privilege to rewrite its
+    // authority fields (which also protects partner rows).
     let weddingMember = existingAssignment
       ? (
           await call.session
-            .update(weddingMemberships)
-            .set({
-              status: "active",
-              permissionOverrides: grants,
-              permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
-              updatedAt: now,
-            })
+            .select()
+            .from(weddingMemberships)
             .where(
-              eq(weddingMemberships.id, existingAssignment.weddingMembershipId),
+              and(
+                eq(
+                  weddingMemberships.id,
+                  existingAssignment.weddingMembershipId,
+                ),
+                eq(weddingMemberships.weddingId, access.weddingId),
+                eq(weddingMemberships.actorId, member.actorId),
+                eq(weddingMemberships.role, "planner"),
+              ),
             )
-            .returning()
+            .limit(1)
         )[0]
       : undefined;
     if (!weddingMember)
@@ -934,7 +941,7 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
           createdAt: now,
           updatedAt: now,
         });
-      const assignments = await call.session
+      await call.session
         .update(weddingOrganizationStaffAssignments)
         .set({
           status: "revoked",
@@ -952,25 +959,7 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
             ),
             eq(weddingOrganizationStaffAssignments.status, "active"),
           ),
-        )
-        .returning({
-          weddingMembershipId:
-            weddingOrganizationStaffAssignments.weddingMembershipId,
-        });
-      if (assignments.length)
-        await call.session
-          .update(weddingMemberships)
-          .set({
-            status: "revoked",
-            permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
-            updatedAt: now,
-          })
-          .where(
-            inArray(
-              weddingMemberships.id,
-              assignments.map((row) => row.weddingMembershipId),
-            ),
-          );
+        );
     } else if (existing)
       await call.session
         .update(weddingOrganizationStaffRestrictions)
@@ -1047,14 +1036,6 @@ export async function removeOrganizationStaffFromWedding<
         updatedAt: now,
       })
       .where(eq(weddingOrganizationStaffAssignments.id, assignment.id));
-    await call.session
-      .update(weddingMemberships)
-      .set({
-        status: "revoked",
-        permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
-        updatedAt: now,
-      })
-      .where(eq(weddingMemberships.id, assignment.weddingMembershipId));
     await facts(
       call.authorization,
       call.session,
@@ -1114,24 +1095,7 @@ export async function revokeWeddingOrganizationAccess<
           eq(weddingOrganizationStaffAssignments.status, "active"),
         ),
       )
-      .returning({
-        weddingMembershipId:
-          weddingOrganizationStaffAssignments.weddingMembershipId,
-      });
-    if (assignments.length)
-      await call.session
-        .update(weddingMemberships)
-        .set({
-          status: "revoked",
-          permissionScopeVersion: sql`${weddingMemberships.permissionScopeVersion} + 1`,
-          updatedAt: now,
-        })
-        .where(
-          inArray(
-            weddingMemberships.id,
-            assignments.map((row) => row.weddingMembershipId),
-          ),
-        );
+      .returning({ id: weddingOrganizationStaffAssignments.id });
     await facts(
       call.authorization,
       call.session,
@@ -1169,91 +1133,112 @@ export async function resolveCurrentActorPlannerFallback<
   )
     throw new PlannerAssignmentUnavailableError("access_denied");
   return withAuthorizedTenantTransaction(database, operation, async (call) => {
-    const [row] = await call.session
-      .select({
-        assignment: weddingOrganizationStaffAssignments,
-        role: organizationMemberships.role,
-        orgStatus: organizationMemberships.status,
-        weddingStatus: weddingMemberships.status,
-        actorId: organizationMemberships.actorId,
-        blocked: weddingOrganizationStaffRestrictions.status,
-      })
-      .from(weddingOrganizationStaffAssignments)
-      .innerJoin(
-        weddingOrganizationAccesses,
-        and(
-          eq(
-            weddingOrganizationAccesses.weddingId,
-            call.authorization.activeWeddingId!,
+    const selection = {
+      assignment: weddingOrganizationStaffAssignments,
+      role: organizationMemberships.role,
+      orgStatus: organizationMemberships.status,
+      weddingStatus: weddingMemberships.status,
+      actorId: organizationMemberships.actorId,
+      blocked: weddingOrganizationStaffRestrictions.status,
+    } as const;
+    const baseQuery = () =>
+      call.session
+        .select(selection)
+        .from(weddingOrganizationStaffAssignments)
+        .innerJoin(
+          weddingOrganizationAccesses,
+          and(
+            eq(
+              weddingOrganizationAccesses.weddingId,
+              call.authorization.activeWeddingId!,
+            ),
+            eq(weddingOrganizationAccesses.status, "active"),
+            eq(
+              weddingOrganizationStaffAssignments.accessId,
+              weddingOrganizationAccesses.id,
+            ),
           ),
-          eq(weddingOrganizationAccesses.status, "active"),
-        ),
-      )
-      .innerJoin(
-        organizationMemberships,
-        eq(
-          organizationMemberships.id,
-          weddingOrganizationStaffAssignments.organizationMembershipId,
-        ),
-      )
-      .innerJoin(
-        weddingMemberships,
-        and(
+        )
+        .innerJoin(
+          organizationMemberships,
           eq(
-            weddingMemberships.id,
-            weddingOrganizationStaffAssignments.weddingMembershipId,
-          ),
-          eq(weddingMemberships.weddingId, call.authorization.activeWeddingId!),
-        ),
-      )
-      .leftJoin(
-        weddingOrganizationStaffRestrictions,
-        and(
-          eq(
-            weddingOrganizationStaffRestrictions.accessId,
-            weddingOrganizationAccesses.id,
-          ),
-          eq(
-            weddingOrganizationStaffRestrictions.organizationMembershipId,
             organizationMemberships.id,
+            weddingOrganizationStaffAssignments.organizationMembershipId,
           ),
-          eq(weddingOrganizationStaffRestrictions.status, "blocked"),
-        ),
-      )
+        )
+        .innerJoin(
+          weddingMemberships,
+          and(
+            eq(
+              weddingMemberships.id,
+              weddingOrganizationStaffAssignments.weddingMembershipId,
+            ),
+            eq(
+              weddingMemberships.weddingId,
+              call.authorization.activeWeddingId!,
+            ),
+          ),
+        )
+        .leftJoin(
+          weddingOrganizationStaffRestrictions,
+          and(
+            eq(
+              weddingOrganizationStaffRestrictions.accessId,
+              weddingOrganizationAccesses.id,
+            ),
+            eq(
+              weddingOrganizationStaffRestrictions.organizationMembershipId,
+              organizationMemberships.id,
+            ),
+            eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+          ),
+        );
+    const [row] = await baseQuery()
       .where(
         and(
-          eq(
-            weddingOrganizationStaffAssignments.accessId,
-            weddingOrganizationAccesses.id,
-          ),
           eq(weddingOrganizationStaffAssignments.status, "active"),
           eq(organizationMemberships.actorId, call.authorization.actorId),
         ),
       )
       .limit(1);
-    if (
-      !row ||
-      row.actorId !== call.authorization.actorId ||
-      row.orgStatus !== "active" ||
-      row.weddingStatus !== "active" ||
-      row.blocked === "blocked" ||
-      !grantsPermission(
-        row.assignment.permissionOverrides,
-        requested.area,
-        requested.action,
+    const [lead] = await baseQuery()
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+          eq(weddingOrganizationStaffAssignments.isLead, true),
+        ),
       )
-    )
-      return { kind: "ineligible" as const };
-    const leadAvailable =
-      row.assignment.isLead &&
-      !(
-        row.assignment.absenceStartsAt &&
-        row.assignment.absenceEndsAt &&
-        row.assignment.absenceStartsAt <= now &&
-        row.assignment.absenceEndsAt > now
+      .limit(1);
+    const eligible = (candidate: typeof row) =>
+      Boolean(
+        candidate &&
+        candidate.orgStatus === "active" &&
+        candidate.weddingStatus === "active" &&
+        candidate.blocked !== "blocked" &&
+        grantsPermission(
+          candidate.assignment.permissionOverrides,
+          requested.area,
+          requested.action,
+        ),
       );
-    if (leadAvailable) return { kind: "lead" as const };
-    if (row.role === "owner" || row.role === "manager")
+    const leadIsAbsent = Boolean(
+      lead?.assignment.absenceStartsAt &&
+      lead.assignment.absenceEndsAt &&
+      lead.assignment.absenceStartsAt <= now &&
+      lead.assignment.absenceEndsAt > now,
+    );
+    if (eligible(lead) && !leadIsAbsent) {
+      return lead!.actorId === call.authorization.actorId
+        ? ({ kind: "lead" } as const)
+        : ({ kind: "ineligible" } as const);
+    }
+    if (!eligible(row) || row!.actorId !== call.authorization.actorId)
+      return { kind: "ineligible" as const };
+    // An unavailable lead is the person being bypassed, even when that person
+    // also holds an organization-manager role. Fallback must select a distinct
+    // eligible manager and never route the work back to the absent lead.
+    if (row!.assignment.isLead) return { kind: "ineligible" as const };
+    if (row!.role === "owner" || row!.role === "manager")
       return { kind: "manager_fallback" as const };
     return { kind: "ineligible" as const };
   });
