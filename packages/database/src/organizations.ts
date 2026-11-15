@@ -555,6 +555,7 @@ export async function acceptOrganizationInvitation<
     ) {
       return Object.freeze({
         organizationId: invitation.organizationId,
+        role: invitation.role as OrganizationRole,
         replayed: true,
       });
     }
@@ -600,6 +601,7 @@ export async function acceptOrganizationInvitation<
       )
         return Object.freeze({
           organizationId: invitation.organizationId,
+          role: invitation.role as OrganizationRole,
           replayed: true,
         });
       throw new OrganizationInvitationUnavailableError("already_claimed");
@@ -634,6 +636,7 @@ export async function acceptOrganizationInvitation<
       ) {
         return Object.freeze({
           organizationId: invitation.organizationId,
+          role: invitation.role as OrganizationRole,
           replayed: true,
         });
       }
@@ -670,6 +673,7 @@ export async function acceptOrganizationInvitation<
     );
     return Object.freeze({
       organizationId: invitation.organizationId,
+      role: invitation.role as OrganizationRole,
       replayed: false,
     });
   });

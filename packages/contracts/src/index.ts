@@ -359,7 +359,10 @@ export const acceptOrganizationInvitationRequestSchema = z.strictObject({
   accept: z.literal(true),
 });
 export const acceptOrganizationInvitationResponseSchema = z.strictObject({
-  data: z.strictObject({ organizationId: z.uuidv7() }),
+  data: z.strictObject({
+    organizationId: z.uuidv7(),
+    role: z.enum(["owner", "manager", "employee"]),
+  }),
   meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
 });
 export const organizationMembersResponseSchema = z.strictObject({

@@ -20,7 +20,10 @@ describe("organization invitation acceptance", () => {
       "fetch",
       vi.fn().mockResolvedValue(
         Response.json({
-          data: { organizationId: "019a2f36-0eb9-7000-8000-000000000002" },
+          data: {
+            organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+            role: "manager",
+          },
         }),
       ),
     );
@@ -40,6 +43,36 @@ describe("organization invitation acceptance", () => {
     expect(push).toHaveBeenCalledWith(
       "/organizations/019a2f36-0eb9-7000-8000-000000000002/staff?locale=de",
     );
+  });
+
+  it("sends employees directly to their localized wedding workspace entry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: {
+            organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+            role: "employee",
+          },
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(
+      <OrganizationInvitationAcceptance
+        endpoint="/api/accept"
+        expired={false}
+        locale="nl"
+        messages={organizationMessages("nl")}
+        organizationName="North Star"
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Uitnodiging accepteren" }),
+    );
+
+    expect(push).toHaveBeenCalledWith("/weddings?locale=nl");
   });
 
   it("shows the localized replacement instruction without an accept action when expired", () => {

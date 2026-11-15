@@ -36,11 +36,16 @@ export function OrganizationInvitationAcceptance({
       });
       if (!response.ok) throw new Error();
       const body = (await response.json()) as {
-        data: { organizationId: string };
+        data: {
+          organizationId: string;
+          role: "owner" | "manager" | "employee";
+        };
       };
       setAccepted(true);
       router.push(
-        `/organizations/${body.data.organizationId}/staff?locale=${locale}`,
+        body.data.role === "employee"
+          ? `/weddings?locale=${locale}`
+          : `/organizations/${body.data.organizationId}/staff?locale=${locale}`,
       );
     } catch {
       setError(messages.error);
