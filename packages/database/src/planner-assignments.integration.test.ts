@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
   authorizeCoupleWeddingCreation,
   authorizeOrganizationCreation,
+  authorizeOrganizationLeadTransfer,
   authorizeOrganizationServerOperation,
   authorizeWeddingServerOperation,
 } from "@vowora/domain";
@@ -26,13 +27,18 @@ import {
 import {
   assignOrganizationStaffToWedding,
   issueWeddingOrganizationInvitation,
+  getWeddingOrganizationAccessManagement,
+  listCurrentLeadWeddingAccesses,
+  listWeddingOrganizationInvitations,
   listOrganizationWeddingInvitations,
   removeOrganizationStaffFromWedding,
   resolveCurrentActorPlannerFallback,
   respondWeddingOrganizationInvitation,
   revokeWeddingOrganizationAccess,
+  revokeWeddingOrganizationInvitation,
   setPlannerStaffRestriction,
   setLeadPlannerAbsence,
+  transferCurrentLeadPlanner,
 } from "./planner-assignments.js";
 const config = parseTestMigrationConfig(process.env);
 const schema = {
@@ -61,7 +67,8 @@ describe("planner organization wedding assignment", () => {
         const partner = createUuidV7(),
           owner = createUuidV7(),
           manager = createUuidV7(),
-          employee = createUuidV7();
+          employee = createUuidV7(),
+          foreignOwner = createUuidV7();
         await db.insert(tables.user).values([
           {
             id: partner,
@@ -87,6 +94,12 @@ describe("planner organization wedding assignment", () => {
             email: "manager@example.test",
             emailVerified: true,
           },
+          {
+            id: foreignOwner,
+            name: "Foreign owner",
+            email: "foreign-owner@example.test",
+            emailVerified: true,
+          },
         ]);
         const wedding = await createCoupleWedding(
           db,
@@ -108,6 +121,24 @@ describe("planner organization wedding assignment", () => {
             name: "Planner",
           }),
         );
+        const foreignOrg = await createOrganization(
+          db,
+          authorizeOrganizationCreation({
+            actorId: foreignOwner,
+            correlationId: randomUUID(),
+            creationRequestId: randomUUID(),
+            name: "Foreign planner",
+          }),
+        );
+        const [foreignMembership] = await db
+          .select()
+          .from(tables.organizationMemberships)
+          .where(
+            eq(
+              tables.organizationMemberships.organizationId,
+              foreignOrg.organization.id,
+            ),
+          );
         const [employeeMembership] = await db
           .insert(tables.organizationMemberships)
           .values({
@@ -155,6 +186,10 @@ describe("planner organization wedding assignment", () => {
         const ceiling = [
           {
             area: "tasks" as const,
+            actions: ["view" as const, "edit" as const],
+          },
+          {
+            area: "settings" as const,
             actions: ["view" as const, "edit" as const],
           },
         ];
@@ -232,8 +267,250 @@ describe("planner organization wedding assignment", () => {
         await assignOrganizationStaffToWedding(db, await orgAuth(), {
           accessId: accepted.access!.id,
           organizationMembershipId: managerMembership!.id,
-          permissions: [{ area: "tasks", actions: ["view", "edit"] }],
+          permissions: [
+            { area: "tasks", actions: ["view", "edit"] },
+            { area: "settings", actions: ["view", "edit"] },
+          ],
         });
+
+        // A regular employee who is the canonical current lead can transfer
+        // only the lead designation to another already eligible assignee.
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: employeeMembership!.id,
+          permissions: [{ area: "tasks", actions: ["view"] }],
+          isLead: true,
+        });
+        const leadTransfer = authorizeOrganizationLeadTransfer({
+          actorId: employee,
+          correlationId: randomUUID(),
+          organizationId: org.organization.id,
+          accessId: accepted.access!.id,
+          targetOrganizationMembershipId: managerMembership!.id,
+        });
+        await expect(
+          listCurrentLeadWeddingAccesses(db, {
+            actorId: employee,
+            organizationId: org.organization.id,
+          }),
+        ).resolves.toMatchObject({
+          accesses: [
+            {
+              id: accepted.access!.id,
+              currentMembershipId: employeeMembership!.id,
+              assignments: expect.arrayContaining([
+                expect.objectContaining({
+                  organizationMembershipId: managerMembership!.id,
+                }),
+              ]),
+            },
+          ],
+        });
+        await expect(
+          listCurrentLeadWeddingAccesses(db, {
+            actorId: employee,
+            organizationId: createUuidV7(),
+          }),
+        ).resolves.toEqual({ accesses: [], staff: [] });
+        await expect(
+          transferCurrentLeadPlanner(db, leadTransfer),
+        ).resolves.toMatchObject({
+          organizationMembershipId: managerMembership!.id,
+          isLead: true,
+        });
+        await expect(
+          transferCurrentLeadPlanner(db, leadTransfer),
+        ).rejects.toThrow();
+        await expect(
+          transferCurrentLeadPlanner(
+            db,
+            authorizeOrganizationLeadTransfer({
+              actorId: employee,
+              correlationId: randomUUID(),
+              organizationId: org.organization.id,
+              accessId: accepted.access!.id,
+              targetOrganizationMembershipId: foreignMembership!.id,
+            }),
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await expect(
+          transferCurrentLeadPlanner(
+            db,
+            authorizeOrganizationLeadTransfer({
+              actorId: manager,
+              correlationId: randomUUID(),
+              organizationId: org.organization.id,
+              accessId: accepted.access!.id,
+              targetOrganizationMembershipId: managerMembership!.id,
+            }),
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await expect(
+          transferCurrentLeadPlanner(
+            db,
+            authorizeOrganizationLeadTransfer({
+              actorId: manager,
+              correlationId: randomUUID(),
+              organizationId: org.organization.id,
+              accessId: accepted.access!.id,
+              targetOrganizationMembershipId: foreignMembership!.id,
+            }),
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        const transferConnection = {
+          connectionString: config.connectionString,
+          options: `-c search_path=${schemaName},public`,
+        };
+        const transferClientA = new pg.Client(transferConnection);
+        const transferClientB = new pg.Client(transferConnection);
+        await Promise.all([
+          transferClientA.connect(),
+          transferClientB.connect(),
+        ]);
+        const transferDbA = drizzle(transferClientA, {
+          casing: "snake_case",
+          schema,
+        });
+        const transferDbB = drizzle(transferClientB, {
+          casing: "snake_case",
+          schema,
+        });
+        let racingTransfers: PromiseSettledResult<unknown>[];
+        try {
+          racingTransfers = await Promise.allSettled([
+            transferCurrentLeadPlanner(
+              transferDbA,
+              authorizeOrganizationLeadTransfer({
+                actorId: manager,
+                correlationId: randomUUID(),
+                organizationId: org.organization.id,
+                accessId: accepted.access!.id,
+                targetOrganizationMembershipId: employeeMembership!.id,
+              }),
+            ),
+            transferCurrentLeadPlanner(
+              transferDbB,
+              authorizeOrganizationLeadTransfer({
+                actorId: manager,
+                correlationId: randomUUID(),
+                organizationId: org.organization.id,
+                accessId: accepted.access!.id,
+                targetOrganizationMembershipId: membership!.id,
+              }),
+            ),
+          ]);
+        } finally {
+          await Promise.all([transferClientA.end(), transferClientB.end()]);
+        }
+        expect(
+          racingTransfers.filter((result) => result.status === "fulfilled"),
+        ).toHaveLength(1);
+        expect(
+          racingTransfers.filter((result) => result.status === "rejected"),
+        ).toHaveLength(1);
+        await expect(
+          db
+            .select({ value: count() })
+            .from(tables.weddingOrganizationStaffAssignments)
+            .where(
+              and(
+                eq(
+                  tables.weddingOrganizationStaffAssignments.accessId,
+                  accepted.access!.id,
+                ),
+                eq(tables.weddingOrganizationStaffAssignments.status, "active"),
+                eq(tables.weddingOrganizationStaffAssignments.isLead, true),
+              ),
+            ),
+        ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          transferCurrentLeadPlanner(
+            db,
+            authorizeOrganizationLeadTransfer({
+              actorId: createUuidV7(),
+              correlationId: randomUUID(),
+              organizationId: org.organization.id,
+              accessId: accepted.access!.id,
+              targetOrganizationMembershipId: membership!.id,
+            }),
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          permissions: [{ area: "tasks", actions: ["view", "edit"] }],
+          isLead: true,
+        });
+
+        const plannerSettingsAuth = () =>
+          authorizeWeddingServerOperation(
+            { actorId: manager },
+            {
+              resource: "existing",
+              recordId: wedding.wedding.id,
+              area: "settings",
+              weddingId: wedding.wedding.id,
+              action: "edit",
+              correlationId: randomUUID(),
+            },
+            new DatabaseWeddingAuthorizationState(db),
+          );
+        // An assigned planner's settings grant never stands in for the
+        // couple's partner-only organization access/restriction authority.
+        const [auditBeforeDenials] = await db
+          .select({ value: count() })
+          .from(tables.auditEvents);
+        const [outboxBeforeDenials] = await db
+          .select({ value: count() })
+          .from(tables.outboxEvents);
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            issueWeddingOrganizationInvitation(db, operation, {
+              organizationId: org.organization.id,
+              ceiling,
+              requestId: randomUUID(),
+            }),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            listWeddingOrganizationInvitations(db, operation),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            revokeWeddingOrganizationInvitation(
+              db,
+              operation,
+              issued.invitation.id,
+            ),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            getWeddingOrganizationAccessManagement(db, operation),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            setPlannerStaffRestriction(db, operation, {
+              accessId: accepted.access!.id,
+              organizationMembershipId: employeeMembership!.id,
+              blocked: true,
+            }),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          plannerSettingsAuth().then((operation) =>
+            revokeWeddingOrganizationAccess(db, operation, accepted.access!.id),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          db.select({ value: count() }).from(tables.auditEvents),
+        ).resolves.toEqual([auditBeforeDenials]);
+        await expect(
+          db.select({ value: count() }).from(tables.outboxEvents),
+        ).resolves.toEqual([outboxBeforeDenials]);
         const secondWedding = await createCoupleWedding(
           db,
           authorizeCoupleWeddingCreation({
@@ -271,6 +548,25 @@ describe("planner organization wedding assignment", () => {
           secondInvitation.invitation.id,
           "accept",
         );
+        const [auditBeforeCrossWeddingDenial] = await db
+          .select({ value: count() })
+          .from(tables.auditEvents);
+        const [outboxBeforeCrossWeddingDenial] = await db
+          .select({ value: count() })
+          .from(tables.outboxEvents);
+        await expect(
+          revokeWeddingOrganizationAccess(
+            db,
+            secondWeddingOperation,
+            accepted.access!.id,
+          ),
+        ).rejects.toThrow();
+        await expect(
+          db.select({ value: count() }).from(tables.auditEvents),
+        ).resolves.toEqual([auditBeforeCrossWeddingDenial]);
+        await expect(
+          db.select({ value: count() }).from(tables.outboxEvents),
+        ).resolves.toEqual([outboxBeforeCrossWeddingDenial]);
         const secondEmployeeAssignment = await assignOrganizationStaffToWedding(
           db,
           await orgAuth(),
@@ -665,6 +961,32 @@ describe("planner organization wedding assignment", () => {
               )
           )[0],
         ).toMatchObject({ status: "revoked" });
+        await db
+          .update(tables.weddingMemberships)
+          .set({ status: "revoked", permissionScopeVersion: 2 })
+          .where(
+            and(
+              eq(tables.weddingMemberships.weddingId, wedding.wedding.id),
+              eq(tables.weddingMemberships.actorId, partner),
+            ),
+          );
+        const [auditBeforeRevokedPartnerDenial] = await db
+          .select({ value: count() })
+          .from(tables.auditEvents);
+        const [outboxBeforeRevokedPartnerDenial] = await db
+          .select({ value: count() })
+          .from(tables.outboxEvents);
+        await expect(
+          weddingAuth().then((operation) =>
+            listWeddingOrganizationInvitations(db, operation),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          db.select({ value: count() }).from(tables.auditEvents),
+        ).resolves.toEqual([auditBeforeRevokedPartnerDenial]);
+        await expect(
+          db.select({ value: count() }).from(tables.outboxEvents),
+        ).resolves.toEqual([outboxBeforeRevokedPartnerDenial]);
       },
     );
   });

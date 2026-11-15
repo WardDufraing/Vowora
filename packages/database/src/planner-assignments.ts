@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
 
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
   createAuditEventEnvelope,
   createOutboxEventEnvelope,
+  consumeAuthorizedOrganizationLeadTransfer,
+  type AuthorizedOrganizationLeadTransfer,
   type AuthorizedServerOperation,
   type PermissionOverride,
   weddingPermissionActions,
@@ -162,6 +164,30 @@ function assertOrganizationManagement(operation: AuthorizedServerOperation) {
     throw new PlannerAssignmentUnavailableError("access_denied");
 }
 
+async function assertActiveWeddingPartner<HKT extends PgQueryResultHKT>(
+  session: Pick<PlannerAssignmentDatabase<HKT>, "select">,
+  authorization: AuthorizedServerOperation["authorization"],
+) {
+  const [membership] = await session
+    .select({ id: weddingMemberships.id })
+    .from(weddingMemberships)
+    .where(
+      and(
+        eq(weddingMemberships.weddingId, authorization.activeWeddingId!),
+        eq(weddingMemberships.actorId, authorization.actorId),
+        eq(weddingMemberships.role, "partner"),
+        eq(weddingMemberships.status, "active"),
+        or(
+          isNull(weddingMemberships.accessExpiresAt),
+          gt(weddingMemberships.accessExpiresAt, sql`current_timestamp`),
+        ),
+      ),
+    )
+    .for("update", { of: weddingMemberships })
+    .limit(1);
+  if (!membership) throw new PlannerAssignmentUnavailableError("access_denied");
+}
+
 export async function issueWeddingOrganizationInvitation<
   HKT extends PgQueryResultHKT,
 >(
@@ -186,6 +212,7 @@ export async function issueWeddingOrganizationInvitation<
       visibility: "wedding_shared",
     });
     const weddingId = call.authorization.activeWeddingId!;
+    await assertActiveWeddingPartner(call.session, call.authorization);
     await call.session
       .select({ id: weddings.id })
       .from(weddings)
@@ -350,8 +377,9 @@ export async function listWeddingOrganizationInvitations<
   operation: AuthorizedServerOperation,
 ) {
   assertWeddingManagement(operation);
-  return withAuthorizedTenantTransaction(database, operation, async (call) =>
-    call.session
+  return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    await assertActiveWeddingPartner(call.session, call.authorization);
+    return call.session
       .select({
         invitation: weddingOrganizationInvitations,
         organizationName: organizations.name,
@@ -366,8 +394,8 @@ export async function listWeddingOrganizationInvitations<
           weddingOrganizationInvitations.weddingId,
           call.authorization.activeWeddingId!,
         ),
-      ),
-  );
+      );
+  });
 }
 export async function revokeWeddingOrganizationInvitation<
   HKT extends PgQueryResultHKT,
@@ -379,6 +407,7 @@ export async function revokeWeddingOrganizationInvitation<
 ) {
   assertWeddingManagement(operation);
   return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    await assertActiveWeddingPartner(call.session, call.authorization);
     const [row] = await call.session
       .update(weddingOrganizationInvitations)
       .set({
@@ -724,6 +753,152 @@ export async function assignOrganizationStaffToWedding<
   });
 }
 
+export async function transferCurrentLeadPlanner<HKT extends PgQueryResultHKT>(
+  database: PlannerAssignmentDatabase<HKT>,
+  capability: AuthorizedOrganizationLeadTransfer,
+  now = new Date(),
+) {
+  return database.transaction(async (transaction) => {
+    const [access] = await transaction
+      .select()
+      .from(weddingOrganizationAccesses)
+      .where(
+        and(
+          eq(weddingOrganizationAccesses.id, capability.accessId),
+          eq(
+            weddingOrganizationAccesses.organizationId,
+            capability.organizationId,
+          ),
+          eq(weddingOrganizationAccesses.status, "active"),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!access) throw new PlannerAssignmentUnavailableError("access_denied");
+    const selection = {
+      assignment: weddingOrganizationStaffAssignments,
+      actorId: organizationMemberships.actorId,
+      organizationStatus: organizationMemberships.status,
+      weddingStatus: weddingMemberships.status,
+      weddingRole: weddingMemberships.role,
+      restrictionStatus: weddingOrganizationStaffRestrictions.status,
+    } as const;
+    const assignmentQuery = () =>
+      transaction
+        .select(selection)
+        .from(weddingOrganizationStaffAssignments)
+        .innerJoin(
+          organizationMemberships,
+          eq(
+            organizationMemberships.id,
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+          ),
+        )
+        .innerJoin(
+          weddingMemberships,
+          eq(
+            weddingMemberships.id,
+            weddingOrganizationStaffAssignments.weddingMembershipId,
+          ),
+        )
+        .leftJoin(
+          weddingOrganizationStaffRestrictions,
+          and(
+            eq(
+              weddingOrganizationStaffRestrictions.accessId,
+              weddingOrganizationStaffAssignments.accessId,
+            ),
+            eq(
+              weddingOrganizationStaffRestrictions.organizationMembershipId,
+              weddingOrganizationStaffAssignments.organizationMembershipId,
+            ),
+            eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+          ),
+        );
+    const [currentLead] = await assignmentQuery()
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+          eq(weddingOrganizationStaffAssignments.isLead, true),
+          eq(organizationMemberships.actorId, capability.actorId),
+          eq(organizationMemberships.status, "active"),
+          eq(weddingMemberships.weddingId, access.weddingId),
+          eq(weddingMemberships.status, "active"),
+          eq(weddingMemberships.role, "planner"),
+        ),
+      )
+      .for("update", { of: weddingOrganizationStaffAssignments })
+      .limit(1);
+    const [target] = await assignmentQuery()
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+          eq(
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+            capability.targetOrganizationMembershipId,
+          ),
+          eq(organizationMemberships.organizationId, access.organizationId),
+          eq(organizationMemberships.status, "active"),
+          eq(weddingMemberships.weddingId, access.weddingId),
+          eq(weddingMemberships.status, "active"),
+          eq(weddingMemberships.role, "planner"),
+        ),
+      )
+      .for("update", { of: weddingOrganizationStaffAssignments })
+      .limit(1);
+    if (
+      !currentLead ||
+      currentLead.restrictionStatus === "blocked" ||
+      !target ||
+      target.restrictionStatus === "blocked" ||
+      target.assignment.id === currentLead.assignment.id ||
+      currentLead.organizationStatus !== "active" ||
+      currentLead.weddingStatus !== "active" ||
+      currentLead.weddingRole !== "planner" ||
+      target.organizationStatus !== "active" ||
+      target.weddingStatus !== "active" ||
+      target.weddingRole !== "planner"
+    )
+      throw new PlannerAssignmentUnavailableError("access_denied");
+    const consumed = await consumeAuthorizedOrganizationLeadTransfer(
+      capability,
+      access.weddingId,
+    );
+    await transaction
+      .update(weddingOrganizationStaffAssignments)
+      .set({ isLead: false, updatedAt: now })
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(weddingOrganizationStaffAssignments.isLead, true),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+        ),
+      );
+    const [updated] = await transaction
+      .update(weddingOrganizationStaffAssignments)
+      .set({ isLead: true, updatedAt: now })
+      .where(eq(weddingOrganizationStaffAssignments.id, target.assignment.id))
+      .returning();
+    if (!updated) throw new PlannerAssignmentUnavailableError("stale");
+    await facts(
+      consumed.authorization,
+      transaction,
+      "wedding.lead_planner_changed",
+      "wedding_organization_staff_assignment",
+      updated.id,
+      {
+        previousOrganizationMembershipId:
+          currentLead.assignment.organizationMembershipId,
+        organizationMembershipId: updated.organizationMembershipId,
+      },
+      now,
+    );
+    return updated;
+  });
+}
+
 export async function listOrganizationWeddingAccesses<
   HKT extends PgQueryResultHKT,
 >(
@@ -787,6 +962,181 @@ export async function listOrganizationWeddingAccesses<
   });
 }
 
+/**
+ * Minimal read projection for an employee who is the canonical current lead.
+ * It deliberately returns only weddings led by the authenticated actor and
+ * staff who are already active assignments for those weddings. It does not
+ * confer organization-management access.
+ */
+export async function listCurrentLeadWeddingAccesses<
+  HKT extends PgQueryResultHKT,
+>(
+  database: PlannerAssignmentDatabase<HKT>,
+  input: { readonly actorId: string; readonly organizationId: string },
+) {
+  const leadRows = await database
+    .select({
+      id: weddingOrganizationAccesses.id,
+      weddingId: weddingOrganizationAccesses.weddingId,
+      weddingName: weddings.name,
+      status: weddingOrganizationAccesses.status,
+      permissionCeiling: weddingOrganizationAccesses.permissionCeiling,
+      currentMembershipId: organizationMemberships.id,
+    })
+    .from(weddingOrganizationStaffAssignments)
+    .innerJoin(
+      weddingOrganizationAccesses,
+      and(
+        eq(
+          weddingOrganizationAccesses.id,
+          weddingOrganizationStaffAssignments.accessId,
+        ),
+        eq(weddingOrganizationAccesses.organizationId, input.organizationId),
+        eq(weddingOrganizationAccesses.status, "active"),
+      ),
+    )
+    .innerJoin(
+      organizationMemberships,
+      and(
+        eq(
+          organizationMemberships.id,
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        ),
+        eq(organizationMemberships.actorId, input.actorId),
+        eq(organizationMemberships.status, "active"),
+      ),
+    )
+    .innerJoin(
+      weddingMemberships,
+      and(
+        eq(
+          weddingMemberships.id,
+          weddingOrganizationStaffAssignments.weddingMembershipId,
+        ),
+        eq(weddingMemberships.weddingId, weddingOrganizationAccesses.weddingId),
+        eq(weddingMemberships.actorId, input.actorId),
+        eq(weddingMemberships.role, "planner"),
+        eq(weddingMemberships.status, "active"),
+      ),
+    )
+    .innerJoin(weddings, eq(weddings.id, weddingOrganizationAccesses.weddingId))
+    .leftJoin(
+      weddingOrganizationStaffRestrictions,
+      and(
+        eq(
+          weddingOrganizationStaffRestrictions.accessId,
+          weddingOrganizationStaffAssignments.accessId,
+        ),
+        eq(
+          weddingOrganizationStaffRestrictions.organizationMembershipId,
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        ),
+        eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+      ),
+    )
+    .where(
+      and(
+        eq(weddingOrganizationStaffAssignments.status, "active"),
+        eq(weddingOrganizationStaffAssignments.isLead, true),
+        isNull(weddingOrganizationStaffRestrictions.id),
+      ),
+    );
+
+  const accesses = [];
+  const staffById = new Map<
+    string,
+    { id: string; name: string; email: string; status: "active" }
+  >();
+  for (const access of leadRows) {
+    const assignments = await database
+      .select({
+        id: weddingOrganizationStaffAssignments.id,
+        organizationMembershipId:
+          weddingOrganizationStaffAssignments.organizationMembershipId,
+        role: organizationMemberships.role,
+        status: weddingOrganizationStaffAssignments.status,
+        isLead: weddingOrganizationStaffAssignments.isLead,
+        permissions: weddingOrganizationStaffAssignments.permissionOverrides,
+        absenceStartsAt: weddingOrganizationStaffAssignments.absenceStartsAt,
+        absenceEndsAt: weddingOrganizationStaffAssignments.absenceEndsAt,
+        name: user.name,
+        email: user.email,
+      })
+      .from(weddingOrganizationStaffAssignments)
+      .innerJoin(
+        organizationMemberships,
+        and(
+          eq(
+            organizationMemberships.id,
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+          ),
+          eq(organizationMemberships.organizationId, input.organizationId),
+          eq(organizationMemberships.status, "active"),
+        ),
+      )
+      .innerJoin(user, eq(user.id, organizationMemberships.actorId))
+      .innerJoin(
+        weddingMemberships,
+        and(
+          eq(
+            weddingMemberships.id,
+            weddingOrganizationStaffAssignments.weddingMembershipId,
+          ),
+          eq(weddingMemberships.weddingId, access.weddingId),
+          eq(weddingMemberships.role, "planner"),
+          eq(weddingMemberships.status, "active"),
+        ),
+      )
+      .leftJoin(
+        weddingOrganizationStaffRestrictions,
+        and(
+          eq(
+            weddingOrganizationStaffRestrictions.accessId,
+            weddingOrganizationStaffAssignments.accessId,
+          ),
+          eq(
+            weddingOrganizationStaffRestrictions.organizationMembershipId,
+            weddingOrganizationStaffAssignments.organizationMembershipId,
+          ),
+          eq(weddingOrganizationStaffRestrictions.status, "blocked"),
+        ),
+      )
+      .where(
+        and(
+          eq(weddingOrganizationStaffAssignments.accessId, access.id),
+          eq(weddingOrganizationStaffAssignments.status, "active"),
+          isNull(weddingOrganizationStaffRestrictions.id),
+        ),
+      );
+    for (const assignment of assignments)
+      staffById.set(assignment.organizationMembershipId, {
+        id: assignment.organizationMembershipId,
+        name: assignment.name,
+        email: assignment.email,
+        status: "active",
+      });
+    accesses.push({
+      id: access.id,
+      weddingId: access.weddingId,
+      weddingName: access.weddingName,
+      status: access.status,
+      permissionCeiling: access.permissionCeiling,
+      assignments: assignments.map((assignment) => ({
+        id: assignment.id,
+        organizationMembershipId: assignment.organizationMembershipId,
+        role: assignment.role,
+        status: assignment.status,
+        isLead: assignment.isLead,
+        permissions: assignment.permissions,
+        absenceStartsAt: assignment.absenceStartsAt,
+        absenceEndsAt: assignment.absenceEndsAt,
+      })),
+      currentMembershipId: access.currentMembershipId,
+    });
+  }
+  return { accesses, staff: [...staffById.values()] };
+}
+
 export async function getWeddingOrganizationAccessManagement<
   HKT extends PgQueryResultHKT,
 >(
@@ -795,6 +1145,7 @@ export async function getWeddingOrganizationAccessManagement<
 ) {
   assertWeddingManagement(operation);
   return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    await assertActiveWeddingPartner(call.session, call.authorization);
     const [access] = await call.session
       .select({
         id: weddingOrganizationAccesses.id,
@@ -874,6 +1225,7 @@ export async function setPlannerStaffRestriction<HKT extends PgQueryResultHKT>(
 ) {
   assertWeddingManagement(operation);
   return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    await assertActiveWeddingPartner(call.session, call.authorization);
     const weddingId = call.authorization.activeWeddingId!;
     const [access] = await call.session
       .select()
@@ -1059,6 +1411,7 @@ export async function revokeWeddingOrganizationAccess<
 ) {
   assertWeddingManagement(operation);
   return withAuthorizedTenantTransaction(database, operation, async (call) => {
+    await assertActiveWeddingPartner(call.session, call.authorization);
     const [access] = await call.session
       .update(weddingOrganizationAccesses)
       .set({

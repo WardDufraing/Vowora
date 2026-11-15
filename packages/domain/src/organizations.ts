@@ -23,8 +23,17 @@ const claimSchema = z
     path: ["invitation"],
   });
 
+const leadTransferSchema = z.strictObject({
+  actorId: z.uuidv7(),
+  correlationId: z.uuid(),
+  organizationId: z.uuidv7(),
+  accessId: z.uuidv7(),
+  targetOrganizationMembershipId: z.uuidv7(),
+});
+
 declare const organizationCreationBrand: unique symbol;
 declare const organizationClaimBrand: unique symbol;
+declare const organizationLeadTransferBrand: unique symbol;
 
 export type AuthorizedOrganizationCreation = Readonly<
   z.output<typeof creationSchema>
@@ -32,6 +41,9 @@ export type AuthorizedOrganizationCreation = Readonly<
 export type AuthorizedOrganizationInvitationClaim = Readonly<
   z.output<typeof claimSchema>
 > & { readonly [organizationClaimBrand]: true };
+export type AuthorizedOrganizationLeadTransfer = Readonly<
+  z.output<typeof leadTransferSchema>
+> & { readonly [organizationLeadTransferBrand]: true };
 
 export class OrganizationAuthorizationError extends Error {
   constructor(readonly fields: readonly string[]) {
@@ -44,6 +56,8 @@ const issuedCreations = new WeakSet<object>();
 const availableCreations = new WeakSet<object>();
 const issuedClaims = new WeakSet<object>();
 const availableClaims = new WeakSet<object>();
+const issuedLeadTransfers = new WeakSet<object>();
+const availableLeadTransfers = new WeakSet<object>();
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -78,6 +92,17 @@ export function authorizeOrganizationInvitationClaim(
   ) as AuthorizedOrganizationInvitationClaim;
   issuedClaims.add(command);
   availableClaims.add(command);
+  return command;
+}
+
+export function authorizeOrganizationLeadTransfer(
+  input: unknown,
+): AuthorizedOrganizationLeadTransfer {
+  const command = Object.freeze(
+    parse(leadTransferSchema, input),
+  ) as AuthorizedOrganizationLeadTransfer;
+  issuedLeadTransfers.add(command);
+  availableLeadTransfers.add(command);
   return command;
 }
 
@@ -151,6 +176,41 @@ export async function consumeAuthorizedOrganizationInvitationClaim(
       command.actorId,
       command.correlationId,
       organizationId,
+    ),
+    command,
+  });
+}
+
+/**
+ * Consumes a one-use current-actor command only after persistence has locked
+ * and revalidated the canonical current-lead and target assignment rows.
+ */
+export async function consumeAuthorizedOrganizationLeadTransfer(
+  value: unknown,
+  weddingId: string,
+) {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !issuedLeadTransfers.has(value) ||
+    !availableLeadTransfers.delete(value)
+  ) {
+    throw new OrganizationAuthorizationError(["authorization"]);
+  }
+  const command = value as AuthorizedOrganizationLeadTransfer;
+  const parsedWeddingId = z.uuidv7().safeParse(weddingId);
+  if (!parsedWeddingId.success)
+    throw new OrganizationAuthorizationError(["weddingId"]);
+  return Object.freeze({
+    authorization: await resolveAuthorizationContext(
+      {
+        actorId: command.actorId,
+        activeWeddingId: parsedWeddingId.data,
+        activeOrganizationId: command.organizationId,
+        permissionScopeVersion: `lead-transfer:${command.accessId}`,
+        correlationId: command.correlationId,
+      },
+      { authorize: async () => true },
     ),
     command,
   });

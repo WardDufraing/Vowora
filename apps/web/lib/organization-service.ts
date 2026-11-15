@@ -19,12 +19,15 @@ import {
   assignOrganizationStaffToWedding,
   listOrganizationWeddingInvitations,
   listOrganizationWeddingAccesses,
+  listCurrentLeadWeddingAccesses,
   respondWeddingOrganizationInvitation,
   removeOrganizationStaffFromWedding,
+  transferCurrentLeadPlanner,
 } from "@vowora/database";
 import {
   authorizeOrganizationCreation,
   authorizeOrganizationInvitationClaim,
+  authorizeOrganizationLeadTransfer,
   authorizeOrganizationServerOperation,
   OrganizationAuthorizationError,
 } from "@vowora/domain";
@@ -215,10 +218,20 @@ export async function loadPlannerWeddingAccesses(input: {
   correlationId: string;
   organizationId: string;
 }) {
-  const accesses = await listOrganizationWeddingAccesses(
-    getRuntimeDatabase().database,
-    await authorizeManagement(input),
-  );
+  let accesses;
+  try {
+    accesses = await listOrganizationWeddingAccesses(
+      getRuntimeDatabase().database,
+      await authorizeManagement(input),
+    );
+  } catch {
+    const lead = await listCurrentLeadWeddingAccesses(
+      getRuntimeDatabase().database,
+      input,
+    );
+    if (lead.accesses.length === 0) throw new Error("access unavailable");
+    accesses = lead.accesses;
+  }
   return accesses.map((access) => ({
     id: access.id,
     weddingId: access.weddingId,
@@ -236,6 +249,38 @@ export async function loadPlannerWeddingAccesses(input: {
       absenceEndsAt: assignment.absenceEndsAt?.toISOString() ?? null,
     })),
   }));
+}
+
+export async function loadCurrentLeadWeddingContext(input: {
+  actorId: string;
+  organizationId: string;
+}) {
+  const context = await listCurrentLeadWeddingAccesses(
+    getRuntimeDatabase().database,
+    input,
+  );
+  if (context.accesses.length === 0) throw new Error("access unavailable");
+  return {
+    accesses: context.accesses.map((access) => ({
+      id: access.id,
+      weddingId: access.weddingId,
+      weddingName: access.weddingName,
+      status: access.status,
+      permissionCeiling: access.permissionCeiling as PermissionCeilingEntry[],
+      assignments: access.assignments.map((assignment) => ({
+        id: assignment.id,
+        organizationMembershipId: assignment.organizationMembershipId,
+        role: assignment.role,
+        status: assignment.status,
+        isLead: assignment.isLead,
+        permissions: permissionEntries(assignment.permissions),
+        absenceStartsAt: assignment.absenceStartsAt?.toISOString() ?? null,
+        absenceEndsAt: assignment.absenceEndsAt?.toISOString() ?? null,
+      })),
+    })),
+    staff: context.staff,
+    currentMembershipId: context.accesses[0]!.currentMembershipId,
+  };
 }
 export async function respondToPlannerWeddingInvitation(input: {
   actorId: string;
@@ -271,9 +316,33 @@ export async function assignPlannerWeddingStaff(input: {
   accessId: string;
   request: AssignWeddingOrganizationStaffRequest;
 }) {
+  let managementOperation;
+  try {
+    managementOperation = await authorizeManagement(input);
+  } catch (error) {
+    if (!input.request.isLead) throw error;
+    const assignment = await transferCurrentLeadPlanner(
+      getRuntimeDatabase().database,
+      authorizeOrganizationLeadTransfer({
+        actorId: input.actorId,
+        correlationId: input.correlationId,
+        organizationId: input.organizationId,
+        accessId: input.accessId,
+        targetOrganizationMembershipId: input.request.organizationMembershipId,
+      }),
+    );
+    return {
+      id: assignment.id,
+      accessId: assignment.accessId,
+      organizationMembershipId: assignment.organizationMembershipId,
+      status: assignment.status,
+      isLead: assignment.isLead,
+      permissions: permissionEntries(assignment.permissionOverrides),
+    };
+  }
   const assignment = await assignOrganizationStaffToWedding(
     getRuntimeDatabase().database,
-    await authorizeManagement(input),
+    managementOperation,
     {
       accessId: input.accessId,
       organizationMembershipId: input.request.organizationMembershipId,

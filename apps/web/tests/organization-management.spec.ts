@@ -39,3 +39,33 @@ test("planner organization wedding management is localized and discoverable", as
   ).toBe(true);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+test("an employee current lead sees only lead transfer and absence controls", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/organization-management-review?locale=de&mode=lead");
+
+  await expect(page.getByRole("link", { name: "Mitarbeitende" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("button", { name: "Zuweisung speichern" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Entfernen" })).toHaveCount(0);
+  await expect(page.getByLabel("Neue leitende Planung")).toHaveValue(
+    "019a2f36-0eb9-7000-8000-000000000007",
+  );
+  await expect(
+    page.getByRole("button", { name: "Leitung übertragen" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Abwesenheit speichern" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

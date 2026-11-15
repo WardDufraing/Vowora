@@ -29,4 +29,24 @@ describe("organization management navigation", () => {
       "/organizations/019a2f36-0eb9-7000-8000-000000000002/weddings?locale=nl",
     );
   });
+
+  it("does not expose manager-only staff navigation to a current lead", () => {
+    render(
+      <OrganizationNavigation
+        active="weddings"
+        locale="de"
+        messages={organizationMessages("de")}
+        organizationId="019a2f36-0eb9-7000-8000-000000000002"
+        showStaff={false}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "Mitarbeitende" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hochzeiten" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
 });

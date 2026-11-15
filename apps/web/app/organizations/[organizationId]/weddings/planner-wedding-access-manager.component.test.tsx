@@ -135,4 +135,101 @@ describe("planner wedding access management", () => {
       expect.stringContaining("/wedding-access/"),
     );
   });
+
+  it("lets an employee current lead transfer only the lead designation", async () => {
+    const currentMembershipId = "019a2f36-0eb9-7000-8000-000000000003";
+    const nextMembershipId = "019a2f36-0eb9-7000-8000-000000000005";
+    const access = {
+      id: "019a2f36-0eb9-7000-8000-000000000001",
+      weddingId: "019a2f36-0eb9-7000-8000-000000000006",
+      weddingName: "Wedding",
+      permissionCeiling: [{ area: "tasks", actions: ["view", "edit"] }],
+      assignments: [
+        {
+          id: "019a2f36-0eb9-7000-8000-000000000004",
+          organizationMembershipId: currentMembershipId,
+          isLead: true,
+          absenceStartsAt: null,
+          absenceEndsAt: null,
+        },
+        {
+          id: "019a2f36-0eb9-7000-8000-000000000007",
+          organizationMembershipId: nextMembershipId,
+          isLead: false,
+          absenceStartsAt: null,
+          absenceEndsAt: null,
+        },
+      ],
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            id: access.assignments[1]!.id,
+            accessId: access.id,
+            organizationMembershipId: nextMembershipId,
+            status: "active",
+            isLead: true,
+            permissions: [{ area: "tasks", actions: ["view"] }],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            ...access,
+            assignments: access.assignments.map((assignment) => ({
+              ...assignment,
+              isLead: assignment.organizationMembershipId === nextMembershipId,
+            })),
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PlannerWeddingAccessManager
+        organizationId="019a2f36-0eb9-7000-8000-000000000002"
+        locale="en"
+        currentMembershipId={currentMembershipId}
+        canManageAssignments={false}
+        staff={[
+          {
+            id: currentMembershipId,
+            name: "Current lead",
+            email: "current@example.test",
+            status: "active",
+          },
+          {
+            id: nextMembershipId,
+            name: "Next lead",
+            email: "next@example.test",
+            status: "active",
+          },
+        ]}
+        initialAccesses={[access]}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Save assignment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove" }),
+    ).not.toBeInTheDocument();
+    await user.selectOptions(
+      screen.getByLabelText("New lead"),
+      nextMembershipId,
+    );
+    await user.click(screen.getByRole("button", { name: "Transfer lead" }));
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body))).toEqual({
+      organizationMembershipId: nextMembershipId,
+      permissions: [],
+      isLead: true,
+    });
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("/wedding-access/"),
+    );
+  });
 });

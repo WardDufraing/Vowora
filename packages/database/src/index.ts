@@ -59,6 +59,7 @@ export {
   issueWeddingOrganizationInvitation,
   listOrganizationWeddingInvitations,
   listOrganizationWeddingAccesses,
+  listCurrentLeadWeddingAccesses,
   getWeddingOrganizationAccessManagement,
   listWeddingOrganizationInvitations,
   removeOrganizationStaffFromWedding,
@@ -68,6 +69,7 @@ export {
   revokeWeddingOrganizationInvitation,
   setPlannerStaffRestriction,
   setLeadPlannerAbsence,
+  transferCurrentLeadPlanner,
   PlannerAssignmentConflictError,
   PlannerAssignmentUnavailableError,
 } from "./planner-assignments.js";

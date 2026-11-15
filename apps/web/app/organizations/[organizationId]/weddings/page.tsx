@@ -8,6 +8,7 @@ import {
 } from "../../../../lib/organization-messages";
 import {
   loadOrganizationStaff,
+  loadCurrentLeadWeddingContext,
   loadPlannerWeddingAccesses,
   loadPlannerWeddingInvitations,
 } from "../../../../lib/organization-service";
@@ -29,9 +30,16 @@ export default async function Page({
   if (!session) notFound();
   const locale = organizationLocale((await searchParams).locale);
   const messages = organizationMessages(locale);
-  let invitations;
-  let accesses;
-  let staff;
+  let invitations: Awaited<ReturnType<typeof loadPlannerWeddingInvitations>>;
+  let accesses: Awaited<ReturnType<typeof loadPlannerWeddingAccesses>>;
+  let staff: readonly {
+    id: string;
+    name: string;
+    email: string;
+    status: "active" | "revoked";
+  }[];
+  let currentMembershipId: string | undefined;
+  let canManageAssignments = true;
   try {
     [invitations, accesses, staff] = await Promise.all([
       loadPlannerWeddingInvitations({
@@ -51,7 +59,19 @@ export default async function Page({
       }),
     ]);
   } catch {
-    notFound();
+    try {
+      const lead = await loadCurrentLeadWeddingContext({
+        actorId: session.user.id,
+        organizationId,
+      });
+      invitations = [];
+      accesses = lead.accesses;
+      staff = lead.staff;
+      currentMembershipId = lead.currentMembershipId;
+      canManageAssignments = false;
+    } catch {
+      notFound();
+    }
   }
   const initial = invitations.map(({ invitation, weddingName }) => ({
     invitation: {
@@ -67,7 +87,9 @@ export default async function Page({
         locale={locale}
         messages={messages}
         organizationId={organizationId}
+        showStaff={canManageAssignments}
       />
+      {!canManageAssignments ? <h1>{messages.weddingsNavigation}</h1> : null}
       <PlannerWeddingInvitations
         organizationId={organizationId}
         initial={initial}
@@ -78,11 +100,13 @@ export default async function Page({
         initialAccesses={accesses}
         staff={staff}
         currentMembershipId={
+          currentMembershipId ??
           staff.find(
             (member) =>
               member.email.toLowerCase() === session.user.email.toLowerCase(),
           )?.id
         }
+        canManageAssignments={canManageAssignments}
         locale={locale}
       />
     </main>

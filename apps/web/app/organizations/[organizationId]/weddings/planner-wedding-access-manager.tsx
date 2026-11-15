@@ -18,6 +18,8 @@ const messages = {
     absenceEnd: "Ends",
     saveAbsence: "Save absence",
     endAbsence: "End absence",
+    transferLead: "Transfer lead",
+    transferTo: "New lead",
   },
   nl: {
     title: "Huwelijksteam",
@@ -34,6 +36,8 @@ const messages = {
     absenceEnd: "Eindigt",
     saveAbsence: "Afwezigheid opslaan",
     endAbsence: "Afwezigheid beëindigen",
+    transferLead: "Hoofdplanner overdragen",
+    transferTo: "Nieuwe hoofdplanner",
   },
   fr: {
     title: "Équipe du mariage",
@@ -50,6 +54,8 @@ const messages = {
     absenceEnd: "Fin",
     saveAbsence: "Enregistrer l’absence",
     endAbsence: "Terminer l’absence",
+    transferLead: "Transférer le rôle principal",
+    transferTo: "Nouveau planificateur principal",
   },
   de: {
     title: "Hochzeitsteam",
@@ -66,6 +72,8 @@ const messages = {
     absenceEnd: "Ende",
     saveAbsence: "Abwesenheit speichern",
     endAbsence: "Abwesenheit beenden",
+    transferLead: "Leitung übertragen",
+    transferTo: "Neue leitende Planung",
   },
 } as const;
 const permissionLabels = {
@@ -161,12 +169,14 @@ export function PlannerWeddingAccessManager({
   initialAccesses,
   staff,
   currentMembershipId,
+  canManageAssignments = true,
   locale,
 }: {
   organizationId: string;
   initialAccesses: Access[];
   staff: readonly Staff[];
   currentMembershipId?: string;
+  canManageAssignments?: boolean;
   locale: keyof typeof messages;
 }) {
   const t = messages[locale];
@@ -222,6 +232,25 @@ export function PlannerWeddingAccessManager({
     if (!response.ok) return setStatus(t.error);
     await refresh(accessId);
   }
+  async function transferLead(accessId: string, form: FormData) {
+    setStatus("");
+    const organizationMembershipId = String(form.get("newLead"));
+    const response = await fetch(
+      `/api/v1/organizations/${organizationId}/wedding-access/${accessId}/staff`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          organizationMembershipId,
+          permissions: [],
+          isLead: true,
+        }),
+      },
+    );
+    if (!response.ok) return setStatus(t.error);
+    await refresh(accessId);
+    setStatus(t.saved);
+  }
   async function saveAbsence(access: Access, form: FormData) {
     const starts = String(form.get("startsAt") ?? "");
     const ends = String(form.get("endsAt") ?? "");
@@ -262,41 +291,43 @@ export function PlannerWeddingAccessManager({
         accesses.map((access) => (
           <article key={access.id}>
             <h3>{access.weddingName}</h3>
-            <form action={(form) => save(access.id, form)}>
-              <label>
-                {t.staff}
-                <select name="staff" required>
-                  {staff
-                    .filter((item) => item.status === "active")
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <fieldset>
-                <legend>{t.permissions}</legend>
-                {access.permissionCeiling.flatMap((entry) =>
-                  entry.actions.map((action) => (
-                    <label key={`${entry.area}:${action}`}>
-                      <input
-                        type="checkbox"
-                        name="permission"
-                        value={`${entry.area}:${action}`}
-                      />
-                      {labels[entry.area as keyof typeof labels]}:{" "}
-                      {labels[action as keyof typeof labels]}
-                    </label>
-                  )),
-                )}
-              </fieldset>
-              <label>
-                <input name="lead" type="checkbox" />
-                {t.lead}
-              </label>
-              <button>{t.assign}</button>
-            </form>
+            {canManageAssignments ? (
+              <form action={(form) => save(access.id, form)}>
+                <label>
+                  {t.staff}
+                  <select name="staff" required>
+                    {staff
+                      .filter((item) => item.status === "active")
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <fieldset>
+                  <legend>{t.permissions}</legend>
+                  {access.permissionCeiling.flatMap((entry) =>
+                    entry.actions.map((action) => (
+                      <label key={`${entry.area}:${action}`}>
+                        <input
+                          type="checkbox"
+                          name="permission"
+                          value={`${entry.area}:${action}`}
+                        />
+                        {labels[entry.area as keyof typeof labels]}:{" "}
+                        {labels[action as keyof typeof labels]}
+                      </label>
+                    )),
+                  )}
+                </fieldset>
+                <label>
+                  <input name="lead" type="checkbox" />
+                  {t.lead}
+                </label>
+                <button>{t.assign}</button>
+              </form>
+            ) : null}
             <ul>
               {access.assignments.map((assignment) => (
                 <li key={assignment.id}>
@@ -304,41 +335,81 @@ export function PlannerWeddingAccessManager({
                     (item) => item.id === assignment.organizationMembershipId,
                   )?.name ?? t.staff}
                   {assignment.isLead ? ` — ${t.lead}` : ""}
-                  <button
-                    type="button"
-                    onClick={() => remove(access.id, assignment.id)}
-                  >
-                    {t.remove}
-                  </button>
+                  {canManageAssignments ? (
+                    <button
+                      type="button"
+                      onClick={() => remove(access.id, assignment.id)}
+                    >
+                      {t.remove}
+                    </button>
+                  ) : null}
                   {assignment.isLead &&
                   assignment.organizationMembershipId ===
                     currentMembershipId ? (
-                    <form action={(form) => saveAbsence(access, form)}>
-                      <fieldset>
-                        <legend>{t.absence}</legend>
-                        <label>
-                          {t.absenceStart}
-                          <input
-                            name="startsAt"
-                            type="datetime-local"
-                            required
-                          />
-                        </label>
-                        <label>
-                          {t.absenceEnd}
-                          <input name="endsAt" type="datetime-local" required />
-                        </label>
-                        <button>{t.saveAbsence}</button>
-                        {assignment.absenceStartsAt ? (
-                          <button
-                            type="button"
-                            onClick={() => endAbsence(access)}
-                          >
-                            {t.endAbsence}
-                          </button>
-                        ) : null}
-                      </fieldset>
-                    </form>
+                    <>
+                      {access.assignments.some(
+                        (candidate) =>
+                          candidate.organizationMembershipId !==
+                          currentMembershipId,
+                      ) ? (
+                        <form action={(form) => transferLead(access.id, form)}>
+                          <label>
+                            {t.transferTo}
+                            <select name="newLead" required>
+                              {access.assignments
+                                .filter(
+                                  (candidate) =>
+                                    candidate.organizationMembershipId !==
+                                    currentMembershipId,
+                                )
+                                .map((candidate) => (
+                                  <option
+                                    key={candidate.id}
+                                    value={candidate.organizationMembershipId}
+                                  >
+                                    {staff.find(
+                                      (item) =>
+                                        item.id ===
+                                        candidate.organizationMembershipId,
+                                    )?.name ?? t.staff}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <button>{t.transferLead}</button>
+                        </form>
+                      ) : null}
+                      <form action={(form) => saveAbsence(access, form)}>
+                        <fieldset>
+                          <legend>{t.absence}</legend>
+                          <label>
+                            {t.absenceStart}
+                            <input
+                              name="startsAt"
+                              type="datetime-local"
+                              required
+                            />
+                          </label>
+                          <label>
+                            {t.absenceEnd}
+                            <input
+                              name="endsAt"
+                              type="datetime-local"
+                              required
+                            />
+                          </label>
+                          <button>{t.saveAbsence}</button>
+                          {assignment.absenceStartsAt ? (
+                            <button
+                              type="button"
+                              onClick={() => endAbsence(access)}
+                            >
+                              {t.endAbsence}
+                            </button>
+                          ) : null}
+                        </fieldset>
+                      </form>
+                    </>
                   ) : null}
                 </li>
               ))}
