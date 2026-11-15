@@ -447,6 +447,57 @@ describe("planner organization wedding assignment", () => {
             },
             new DatabaseWeddingAuthorizationState(db),
           );
+
+        // Without a designated lead, a distinct assigned manager with the
+        // exact requested operation receives the approved manager fallback.
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          permissions: [{ area: "tasks", actions: ["view", "edit"] }],
+          isLead: false,
+        });
+        const managerCapability = await fallbackOp(manager, "tasks", "edit");
+        await expect(
+          resolveCurrentActorPlannerFallback(db, managerCapability, {
+            area: "tasks",
+            action: "view",
+          }),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await expect(
+          resolveCurrentActorPlannerFallback(db, managerCapability, {
+            area: "tasks",
+            action: "edit",
+          }),
+        ).resolves.toEqual({ kind: "manager_fallback" });
+        await expect(
+          resolveCurrentActorPlannerFallback(db, managerCapability, {
+            area: "tasks",
+            action: "edit",
+          }),
+        ).rejects.toThrow();
+
+        // A designated lead who lacks the requested operation does not block
+        // a distinct eligible manager, and fallback still grants no wider
+        // permission than the manager's own assignment.
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          permissions: [{ area: "tasks", actions: ["view"] }],
+          isLead: true,
+        });
+        await expect(
+          resolveCurrentActorPlannerFallback(
+            db,
+            await fallbackOp(manager, "tasks", "edit"),
+            { area: "tasks", action: "edit" },
+          ),
+        ).resolves.toEqual({ kind: "manager_fallback" });
+        await assignOrganizationStaffToWedding(db, await orgAuth(), {
+          accessId: accepted.access!.id,
+          organizationMembershipId: membership!.id,
+          permissions: [{ area: "tasks", actions: ["view", "edit"] }],
+          isLead: true,
+        });
         expect(
           await resolveCurrentActorPlannerFallback(
             db,

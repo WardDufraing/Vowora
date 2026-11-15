@@ -60,8 +60,8 @@ export function PlannerWeddingInvitations({
     else setError(t.error);
   }
   return (
-    <main>
-      <h1>{t.title}</h1>
+    <section aria-labelledby="wedding-invitations-title">
+      <h1 id="wedding-invitations-title">{t.title}</h1>
       {items.length === 0 ? (
         <p>{t.empty}</p>
       ) : (
@@ -83,6 +83,6 @@ export function PlannerWeddingInvitations({
         </ul>
       )}
       <p role="alert">{error}</p>
-    </main>
+    </section>
   );
 }

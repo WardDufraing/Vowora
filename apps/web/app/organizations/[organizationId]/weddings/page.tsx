@@ -3,12 +3,17 @@ import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { getAuth } from "../../../../lib/auth";
 import {
+  organizationLocale,
+  organizationMessages,
+} from "../../../../lib/organization-messages";
+import {
   loadOrganizationStaff,
   loadPlannerWeddingAccesses,
   loadPlannerWeddingInvitations,
 } from "../../../../lib/organization-service";
 import { PlannerWeddingAccessManager } from "./planner-wedding-access-manager";
 import { PlannerWeddingInvitations } from "./planner-wedding-invitations";
+import { OrganizationNavigation } from "../organization-navigation";
 export default async function Page({
   params,
   searchParams,
@@ -22,8 +27,8 @@ export default async function Page({
     query: { disableCookieCache: true, disableRefresh: true },
   });
   if (!session) notFound();
-  const raw = (await searchParams).locale;
-  const locale = raw === "nl" || raw === "fr" || raw === "de" ? raw : "en";
+  const locale = organizationLocale((await searchParams).locale);
+  const messages = organizationMessages(locale);
   let invitations;
   let accesses;
   let staff;
@@ -56,7 +61,13 @@ export default async function Page({
     weddingName,
   }));
   return (
-    <main lang={locale}>
+    <main className="account-page" id="main-content" lang={locale}>
+      <OrganizationNavigation
+        active="weddings"
+        locale={locale}
+        messages={messages}
+        organizationId={organizationId}
+      />
       <PlannerWeddingInvitations
         organizationId={organizationId}
         initial={initial}
