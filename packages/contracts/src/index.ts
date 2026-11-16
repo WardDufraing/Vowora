@@ -323,6 +323,24 @@ export const weddingOrganizationAccessManagementResponseSchema = z.strictObject(
     meta: responseMetadataSchema,
   },
 );
+export const weddingOrganizationLeadAccessSchema = z.strictObject({
+  id: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  weddingName: z.string().min(1),
+  assignments: z.array(
+    z.strictObject({
+      id: z.uuidv7(),
+      organizationMembershipId: z.uuidv7(),
+      isLead: z.boolean(),
+      absenceStartsAt: z.iso.datetime().nullable().optional(),
+      absenceEndsAt: z.iso.datetime().nullable().optional(),
+    }),
+  ),
+});
+export const weddingOrganizationLeadAccessResponseSchema = z.strictObject({
+  data: weddingOrganizationLeadAccessSchema,
+  meta: responseMetadataSchema,
+});
 export const weddingOrganizationPartnerAccessResponseSchema = z.strictObject({
   data: z.strictObject({
     id: z.uuidv7(),
@@ -1482,7 +1500,14 @@ export const openApiDocument = {
             content: {
               "application/json": {
                 schema: {
-                  $ref: "#/components/schemas/WeddingOrganizationAccessManagementResponse",
+                  oneOf: [
+                    {
+                      $ref: "#/components/schemas/WeddingOrganizationAccessManagementResponse",
+                    },
+                    {
+                      $ref: "#/components/schemas/WeddingOrganizationLeadAccessResponse",
+                    },
+                  ],
                 },
               },
             },
@@ -1940,6 +1965,10 @@ export const openApiDocument = {
       ),
       WeddingOrganizationAccessManagementResponse: z.toJSONSchema(
         weddingOrganizationAccessManagementResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      WeddingOrganizationLeadAccessResponse: z.toJSONSchema(
+        weddingOrganizationLeadAccessResponseSchema,
         { target: "draft-2020-12" },
       ),
       WeddingOrganizationPartnerAccessResponse: z.toJSONSchema(
