@@ -89,7 +89,6 @@ describe("planner wedding access management", () => {
       id: "019a2f36-0eb9-7000-8000-000000000001",
       weddingId: "019a2f36-0eb9-7000-8000-000000000006",
       weddingName: "Wedding",
-      permissionCeiling: [{ area: "tasks", actions: ["view", "edit"] }],
       assignments: [
         {
           id: "019a2f36-0eb9-7000-8000-000000000004",
@@ -198,13 +197,11 @@ describe("planner wedding access management", () => {
           {
             id: currentMembershipId,
             name: "Current lead",
-            email: "current@example.test",
             status: "active",
           },
           {
             id: nextMembershipId,
             name: "Next lead",
-            email: "next@example.test",
             status: "active",
           },
         ]}

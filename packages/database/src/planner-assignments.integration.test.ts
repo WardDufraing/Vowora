@@ -288,12 +288,11 @@ describe("planner organization wedding assignment", () => {
           accessId: accepted.access!.id,
           targetOrganizationMembershipId: managerMembership!.id,
         });
-        await expect(
-          listCurrentLeadWeddingAccesses(db, {
-            actorId: employee,
-            organizationId: org.organization.id,
-          }),
-        ).resolves.toMatchObject({
+        const leadContext = await listCurrentLeadWeddingAccesses(db, {
+          actorId: employee,
+          organizationId: org.organization.id,
+        });
+        expect(leadContext).toMatchObject({
           accesses: [
             {
               id: accepted.access!.id,
@@ -306,6 +305,21 @@ describe("planner organization wedding assignment", () => {
             },
           ],
         });
+        expect(leadContext.accesses[0]).not.toHaveProperty("permissionCeiling");
+        expect(leadContext.accesses[0]).not.toHaveProperty("status");
+        for (const colleague of leadContext.staff) {
+          expect(colleague).not.toHaveProperty("email");
+          expect(colleague).not.toHaveProperty("role");
+        }
+        for (const candidate of leadContext.accesses[0]!.assignments) {
+          expect(candidate).not.toHaveProperty("role");
+          expect(candidate).not.toHaveProperty("status");
+          expect(candidate).not.toHaveProperty("permissions");
+          if (candidate.organizationMembershipId !== employeeMembership!.id) {
+            expect(candidate).not.toHaveProperty("absenceStartsAt");
+            expect(candidate).not.toHaveProperty("absenceEndsAt");
+          }
+        }
         await expect(
           listCurrentLeadWeddingAccesses(db, {
             actorId: employee,

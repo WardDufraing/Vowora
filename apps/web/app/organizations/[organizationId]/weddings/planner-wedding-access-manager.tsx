@@ -148,19 +148,19 @@ type Access = {
   id: string;
   weddingId: string;
   weddingName: string;
-  permissionCeiling: Ceiling[];
+  permissionCeiling?: Ceiling[];
   assignments: Array<{
     id: string;
     organizationMembershipId: string;
     isLead: boolean;
-    absenceStartsAt: string | null;
-    absenceEndsAt: string | null;
+    absenceStartsAt?: string | null;
+    absenceEndsAt?: string | null;
   }>;
 };
 type Staff = {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   status: "active" | "revoked";
 };
 
@@ -307,7 +307,7 @@ export function PlannerWeddingAccessManager({
                 </label>
                 <fieldset>
                   <legend>{t.permissions}</legend>
-                  {access.permissionCeiling.flatMap((entry) =>
+                  {(access.permissionCeiling ?? []).flatMap((entry) =>
                     entry.actions.map((action) => (
                       <label key={`${entry.area}:${action}`}>
                         <input

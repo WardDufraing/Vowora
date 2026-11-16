@@ -12,6 +12,7 @@ import {
 import { readAuthEnvironment } from "../../../../../../../../lib/env";
 import {
   assignPlannerWeddingStaff,
+  loadCurrentLeadWeddingContext,
   loadPlannerWeddingAccesses,
 } from "../../../../../../../../lib/organization-service";
 export async function GET(
@@ -51,13 +52,23 @@ export async function GET(
       correlationId,
     );
   try {
-    const access = (
-      await loadPlannerWeddingAccesses({
-        actorId: session.user.id,
-        correlationId,
-        organizationId: organizationId.data,
-      })
-    ).find((item) => item.id === accessId.data);
+    let access;
+    try {
+      access = (
+        await loadPlannerWeddingAccesses({
+          actorId: session.user.id,
+          correlationId,
+          organizationId: organizationId.data,
+        })
+      ).find((item) => item.id === accessId.data);
+    } catch {
+      access = (
+        await loadCurrentLeadWeddingContext({
+          actorId: session.user.id,
+          organizationId: organizationId.data,
+        })
+      ).accesses.find((item) => item.id === accessId.data);
+    }
     if (!access) throw new Error();
     return jsonResponse(
       { data: access, meta: { correlationId } },

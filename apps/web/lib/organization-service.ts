@@ -218,20 +218,10 @@ export async function loadPlannerWeddingAccesses(input: {
   correlationId: string;
   organizationId: string;
 }) {
-  let accesses;
-  try {
-    accesses = await listOrganizationWeddingAccesses(
-      getRuntimeDatabase().database,
-      await authorizeManagement(input),
-    );
-  } catch {
-    const lead = await listCurrentLeadWeddingAccesses(
-      getRuntimeDatabase().database,
-      input,
-    );
-    if (lead.accesses.length === 0) throw new Error("access unavailable");
-    accesses = lead.accesses;
-  }
+  const accesses = await listOrganizationWeddingAccesses(
+    getRuntimeDatabase().database,
+    await authorizeManagement(input),
+  );
   return accesses.map((access) => ({
     id: access.id,
     weddingId: access.weddingId,
@@ -265,17 +255,17 @@ export async function loadCurrentLeadWeddingContext(input: {
       id: access.id,
       weddingId: access.weddingId,
       weddingName: access.weddingName,
-      status: access.status,
-      permissionCeiling: access.permissionCeiling as PermissionCeilingEntry[],
       assignments: access.assignments.map((assignment) => ({
         id: assignment.id,
         organizationMembershipId: assignment.organizationMembershipId,
-        role: assignment.role,
-        status: assignment.status,
         isLead: assignment.isLead,
-        permissions: permissionEntries(assignment.permissions),
-        absenceStartsAt: assignment.absenceStartsAt?.toISOString() ?? null,
-        absenceEndsAt: assignment.absenceEndsAt?.toISOString() ?? null,
+        ...(assignment.absenceStartsAt !== undefined
+          ? {
+              absenceStartsAt:
+                assignment.absenceStartsAt?.toISOString() ?? null,
+              absenceEndsAt: assignment.absenceEndsAt?.toISOString() ?? null,
+            }
+          : {}),
       })),
     })),
     staff: context.staff,

@@ -979,9 +979,11 @@ export async function listCurrentLeadWeddingAccesses<
       id: weddingOrganizationAccesses.id,
       weddingId: weddingOrganizationAccesses.weddingId,
       weddingName: weddings.name,
-      status: weddingOrganizationAccesses.status,
-      permissionCeiling: weddingOrganizationAccesses.permissionCeiling,
       currentMembershipId: organizationMemberships.id,
+      currentAssignmentId: weddingOrganizationStaffAssignments.id,
+      currentAbsenceStartsAt:
+        weddingOrganizationStaffAssignments.absenceStartsAt,
+      currentAbsenceEndsAt: weddingOrganizationStaffAssignments.absenceEndsAt,
     })
     .from(weddingOrganizationStaffAssignments)
     .innerJoin(
@@ -1045,7 +1047,7 @@ export async function listCurrentLeadWeddingAccesses<
   const accesses = [];
   const staffById = new Map<
     string,
-    { id: string; name: string; email: string; status: "active" }
+    { id: string; name: string; status: "active" }
   >();
   for (const access of leadRows) {
     const assignments = await database
@@ -1053,14 +1055,8 @@ export async function listCurrentLeadWeddingAccesses<
         id: weddingOrganizationStaffAssignments.id,
         organizationMembershipId:
           weddingOrganizationStaffAssignments.organizationMembershipId,
-        role: organizationMemberships.role,
-        status: weddingOrganizationStaffAssignments.status,
         isLead: weddingOrganizationStaffAssignments.isLead,
-        permissions: weddingOrganizationStaffAssignments.permissionOverrides,
-        absenceStartsAt: weddingOrganizationStaffAssignments.absenceStartsAt,
-        absenceEndsAt: weddingOrganizationStaffAssignments.absenceEndsAt,
         name: user.name,
-        email: user.email,
       })
       .from(weddingOrganizationStaffAssignments)
       .innerJoin(
@@ -1112,24 +1108,22 @@ export async function listCurrentLeadWeddingAccesses<
       staffById.set(assignment.organizationMembershipId, {
         id: assignment.organizationMembershipId,
         name: assignment.name,
-        email: assignment.email,
         status: "active",
       });
     accesses.push({
       id: access.id,
       weddingId: access.weddingId,
       weddingName: access.weddingName,
-      status: access.status,
-      permissionCeiling: access.permissionCeiling,
       assignments: assignments.map((assignment) => ({
         id: assignment.id,
         organizationMembershipId: assignment.organizationMembershipId,
-        role: assignment.role,
-        status: assignment.status,
         isLead: assignment.isLead,
-        permissions: assignment.permissions,
-        absenceStartsAt: assignment.absenceStartsAt,
-        absenceEndsAt: assignment.absenceEndsAt,
+        ...(assignment.id === access.currentAssignmentId
+          ? {
+              absenceStartsAt: access.currentAbsenceStartsAt,
+              absenceEndsAt: access.currentAbsenceEndsAt,
+            }
+          : {}),
       })),
       currentMembershipId: access.currentMembershipId,
     });

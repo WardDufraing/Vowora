@@ -31,11 +31,13 @@ export default async function Page({
   const locale = organizationLocale((await searchParams).locale);
   const messages = organizationMessages(locale);
   let invitations: Awaited<ReturnType<typeof loadPlannerWeddingInvitations>>;
-  let accesses: Awaited<ReturnType<typeof loadPlannerWeddingAccesses>>;
+  let accesses:
+    | Awaited<ReturnType<typeof loadPlannerWeddingAccesses>>
+    | Awaited<ReturnType<typeof loadCurrentLeadWeddingContext>>["accesses"];
   let staff: readonly {
     id: string;
     name: string;
-    email: string;
+    email?: string;
     status: "active" | "revoked";
   }[];
   let currentMembershipId: string | undefined;
@@ -103,7 +105,7 @@ export default async function Page({
           currentMembershipId ??
           staff.find(
             (member) =>
-              member.email.toLowerCase() === session.user.email.toLowerCase(),
+              member.email?.toLowerCase() === session.user.email.toLowerCase(),
           )?.id
         }
         canManageAssignments={canManageAssignments}

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { assign, getSession, list, safeRequest } = vi.hoisted(() => ({
+const { assign, getSession, leadList, list, safeRequest } = vi.hoisted(() => ({
   assign: vi.fn(),
   getSession: vi.fn(),
+  leadList: vi.fn(),
   list: vi.fn(),
   safeRequest: vi.fn(),
 }));
@@ -15,6 +16,7 @@ vi.mock("../../../../../../../../lib/env", () => ({
 }));
 vi.mock("../../../../../../../../lib/organization-service", () => ({
   assignPlannerWeddingStaff: assign,
+  loadCurrentLeadWeddingContext: leadList,
   loadPlannerWeddingAccesses: list,
 }));
 import { GET, POST } from "./route";
@@ -28,6 +30,7 @@ beforeEach(() => {
   safeRequest.mockReturnValue(true);
   assign.mockResolvedValue({ id: "assignment" });
   list.mockResolvedValue([{ id: accessId, assignments: [] }]);
+  leadList.mockResolvedValue({ accesses: [], staff: [] });
 });
 describe("planner staff assignment API", () => {
   it("loads only the route-scoped access", async () => {
@@ -38,6 +41,40 @@ describe("planner staff assignment API", () => {
       correlationId: expect.any(String),
       organizationId,
     });
+  });
+  it("falls back to the minimized current-lead response", async () => {
+    list.mockRejectedValueOnce(new Error("manager access denied"));
+    leadList.mockResolvedValueOnce({
+      accesses: [
+        {
+          id: accessId,
+          weddingId: "019a2f36-0eb9-7000-8000-000000000004",
+          weddingName: "Wedding",
+          assignments: [
+            {
+              id: "019a2f36-0eb9-7000-8000-000000000005",
+              organizationMembershipId: memberId,
+              isLead: true,
+              absenceStartsAt: null,
+              absenceEndsAt: null,
+            },
+          ],
+        },
+      ],
+      staff: [{ id: memberId, name: "Lead", status: "active" }],
+      currentMembershipId: memberId,
+    });
+    const response = await GET(new Request("https://app.test"), { params });
+    const payload = await response.json();
+    expect(response.status).toBe(200);
+    expect(leadList).toHaveBeenCalledWith({
+      actorId: "actor",
+      organizationId,
+    });
+    expect(payload.data).not.toHaveProperty("permissionCeiling");
+    expect(payload.data.assignments[0]).not.toHaveProperty("permissions");
+    expect(JSON.stringify(payload.data)).not.toContain("email");
+    expect(JSON.stringify(payload.data)).not.toContain("role");
   });
   it("rejects CSRF before session access", async () => {
     safeRequest.mockReturnValue(false);
