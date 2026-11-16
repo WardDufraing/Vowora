@@ -363,6 +363,12 @@ describe("planner organization wedding assignment", () => {
         };
         const transferClientA = new pg.Client(transferConnection);
         const transferClientB = new pg.Client(transferConnection);
+        const [auditBeforeConcurrentTransfer] = await db
+          .select({ value: count() })
+          .from(tables.auditEvents);
+        const [outboxBeforeConcurrentTransfer] = await db
+          .select({ value: count() })
+          .from(tables.outboxEvents);
         await Promise.all([
           transferClientA.connect(),
           transferClientB.connect(),
@@ -423,6 +429,16 @@ describe("planner organization wedding assignment", () => {
               ),
             ),
         ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          db.select({ value: count() }).from(tables.auditEvents),
+        ).resolves.toEqual([
+          { value: auditBeforeConcurrentTransfer!.value + 1 },
+        ]);
+        await expect(
+          db.select({ value: count() }).from(tables.outboxEvents),
+        ).resolves.toEqual([
+          { value: outboxBeforeConcurrentTransfer!.value + 1 },
+        ]);
         await expect(
           transferCurrentLeadPlanner(
             db,
