@@ -34,3 +34,5 @@ Fresh read-only reviewer `/root/implement_06_c/review_06_c` independently review
 The reviewer found one low keyboard-focus gap: clearing a no-result search or choosing the current wedding could hide the focused control. The implementation now focuses the still-mounted search input after Clear search and the switcher summary after current-wedding selection. Component regressions cover all three chooser/switcher cases. The reviewer verified the corrected code at `ec1fd82`, reran the focused tests and confirmed the finding is fully resolved with no new material issue.
 
 The PR remains at the owner merge gate after final hosted checks. The owner alone may merge; no agent deploys or executes migrations.
+
+**Tracker reconciliation (2026-11-17):** "The PR remains at the owner merge gate" above is superseded. Owner merged [PR #65](https://github.com/WardDufraing/Vowora/pull/65) as [`78dd6e8`](https://github.com/WardDufraing/Vowora/commit/78dd6e891b9d40538c359d98a6fa021f079d4b62) on 2026-11-09 11:10 CET. Reviewed code `ec1fd82` is an ancestor of that merge. No schema or migration changed.

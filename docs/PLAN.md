@@ -40,12 +40,12 @@
 | 04-c | Permission changes, audit and regression suite | 04-b | Done | [Brief](steps/04-c.md) |
 | 05-a | Semantic tokens and themes | 04-c | Done | [Brief](steps/05-a.md) |
 | 05-b | Responsive app shell and navigation | 05-a | Done | [Brief](steps/05-b.md) |
-| 05-c | Shared forms, tables and localization | 05-b | In review | [Brief](steps/05-c.md) |
-| 06-a | Wedding creation and workspace settings | 05-c | In review | [Brief](steps/06-a.md) |
-| 06-b | Partner invitations and claim lifecycle | 06-a | In review | [Brief](steps/06-b.md) |
-| 06-c | Workspace switching and deep links | 06-b | In review | [Brief](steps/06-c.md) |
-| 07-a | Organization and staff memberships | 06-c | In review | [Brief](steps/07-a.md) |
-| 07-b | Wedding planner assignment and fallback | 07-a | In review | [Brief](steps/07-b.md) |
+| 05-c | Shared forms, tables and localization | 05-b | Done | [Brief](steps/05-c.md) |
+| 06-a | Wedding creation and workspace settings | 05-c | Done | [Brief](steps/06-a.md) |
+| 06-b | Partner invitations and claim lifecycle | 06-a | Done | [Brief](steps/06-b.md) |
+| 06-c | Workspace switching and deep links | 06-b | Done | [Brief](steps/06-c.md) |
+| 07-a | Organization and staff memberships | 06-c | Done | [Brief](steps/07-a.md) |
+| 07-b | Wedding planner assignment and fallback | 07-a | Done | [Brief](steps/07-b.md) |
 | 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |
 | 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
 | 08-b | Task interactions and dependencies | 08-a | Not started | [Brief](steps/08-b.md) |
@@ -99,7 +99,19 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
 
+- 2026-11-17 — Tracker reconciliation on `chore/agent-workflow-tracker-sync-07a` (docs only). This pull request is not Done until the owner merges it. Statuses below were checked against GitHub `merged_at` (Europe/Berlin) and the tree at `main` `e46bba4`. 07-b [PR #67](https://github.com/WardDufraing/Vowora/pull/67) `725bf4b` (2026-11-17 09:24 CET; reviewed `5614750` is an ancestor) moves to Done. [PR #68](https://github.com/WardDufraing/Vowora/pull/68) `e46bba4` (09:25 CET) is a Dependabot development-dependency bump on `main` and is not a task-status change. 05-b was already Done; its handoff sentence that leaves [PR #54](https://github.com/WardDufraing/Vowora/pull/54) at the merge gate is superseded by the recorded merge `0f51a50` (2026-11-04 22:59 CET; reviewed `371f270` is an ancestor). The 2026-11-04 progress-log line that still names that gate stays as written. [PR #56](https://github.com/WardDufraing/Vowora/pull/56) `2f8f85c` (2026-11-05 13:21 CET) is the already-merged 04-c restoration-expiry test follow-up; 04-c stays Done and its status is unchanged. Milestone 05 moves to Done: 05-a, 05-b and 05-c are Done, and 05-c records no schema, migration, persistent data or external configuration. Manual assistive-technology and real-device checks remain the later release gate already named in the 05-a handoff. Milestone 06 stays not Done: 06-a, 06-b and 06-c are Done, and staging apply and verification of migrations `0003` and `0004` are not recorded as confirmed. Milestone 07 stays not Done: 07-a and 07-b are Done, 07-c is Not started, and staging apply and verification of migrations `0005` and `0006` are not recorded as confirmed. No code, configuration, workflow, deployment or migration changed.
+
+- 2026-11-11 — Owner merged 07-a [PR #66](https://github.com/WardDufraing/Vowora/pull/66) as `8e527ea` (2026-11-11 23:23 CET; reviewed `13ee482` is an ancestor). The 2026-11-10 line that leaves the pull request and independent review as the current gates stays as written and is superseded by this entry. Staging apply and verification of migration `0005` stays an open owner item. 07-b later merged as [PR #67](https://github.com/WardDufraing/Vowora/pull/67); 07-c remains Not started.
+
 - 2026-11-10 — Task 07-a implements authoritative planner organizations and owner/manager/employee staff memberships from owner-merged 06-c main `78dd6e8`. DEC-336 deliberately left organization and staff onboarding details open; the owner explicitly approved verified-email self-service organization creation with an immutable first owner and multiple organization ownership, 14-day staff invitations, owner/manager revoke and reissue, and one reminder three days before expiry. Additive migration `0005_smooth_blur.sql`, central organization authorization, privacy-safe staff management, audit/outbox capture, typed APIs and localized UI are complete on `feat/07-a-organization-staff-memberships`. Local verification and review evidence are recorded in [the 07-a handoff](implementation/07-a-organization-staff-memberships.md). The pull request and independent review remain the current gates. No persistent migration, deployment, provider configuration or external email dispatch occurred; a separate migration agent owns any post-merge staging execution.
+
+- 2026-11-09 — Owner merged 06-c [PR #65](https://github.com/WardDufraing/Vowora/pull/65) as `78dd6e8` (2026-11-09 11:10 CET; reviewed `ec1fd82` is an ancestor). No schema or migration changed in that pull request.
+
+- 2026-11-08 — Owner merged 06-b [PR #64](https://github.com/WardDufraing/Vowora/pull/64) as `0bd19cf` (2026-11-08 12:20 CET; reviewed `8230e63` is an ancestor). Staging apply and verification of migration `0004` stays an open owner item.
+
+- 2026-11-07 — Owner merged 06-a [PR #57](https://github.com/WardDufraing/Vowora/pull/57) as `6f4cb50` (2026-11-07 10:38 CET; reviewed `9bb5d94` is an ancestor). Staging apply and verification of migration `0003` stays an open owner item.
+
+- 2026-11-05 — Owner merged 05-c [PR #55](https://github.com/WardDufraing/Vowora/pull/55) as `fd947fa` (2026-11-05 18:31 CET; reviewed `3d4e942` is an ancestor). The same-day implementation line below that leaves independent review and owner merge open stays as written and is superseded by this entry. No schema, migration, persistent data or external configuration changed. Milestone 05's last child is this merge; the 2026-11-17 entry records the milestone as Done.
 
 - 2026-11-05 — Task 05-c implements the shared product localization and interaction foundation after the owner merged 05-b [PR #54](https://github.com/WardDufraing/Vowora/pull/54) as `0f51a50`. Strict EN/NL/FR/DE catalogs, locale and IANA timezone parsing, date-only and instant contracts, accessible form feedback and confirmation, and responsive table/mobile records are demonstrated by a synthetic no-index `/shared-patterns` fixture that returns 404 in production. Formatting, workspace lint and types, 235 unit/component tests, 38 tooling/boundary tests, uncached preview and production web builds, an uncached preview marketing build, 26 web and 26 marketing Chromium tests pass. Production requests to all three review fixtures return 404. [PR #55](https://github.com/WardDufraing/Vowora/pull/55); [implementation evidence](implementation/05-c-shared-patterns.md). Independent review and owner merge remain; no schema, migration, persistent data, external configuration or deployment changed.
 
