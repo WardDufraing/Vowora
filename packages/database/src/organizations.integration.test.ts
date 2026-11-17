@@ -124,6 +124,7 @@ describe("organization and staff persistence", () => {
         );
         expect(claimed).toEqual({
           organizationId: created.organization.id,
+          role: "employee",
           replayed: false,
         });
         await expect(

@@ -3,11 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import type { organizationMessages } from "../../lib/organization-messages";
+import type {
+  OrganizationLocale,
+  organizationMessages,
+} from "../../lib/organization-messages";
 
 export function OrganizationForm({
+  locale,
   messages,
 }: {
+  readonly locale: OrganizationLocale;
   readonly messages: ReturnType<typeof organizationMessages>;
 }) {
   const router = useRouter();
@@ -37,7 +42,7 @@ export function OrganizationForm({
       });
       if (!response.ok) throw new Error();
       const body = (await response.json()) as { data: { id: string } };
-      router.push(`/organizations/${body.data.id}/staff`);
+      router.push(`/organizations/${body.data.id}/staff?locale=${locale}`);
     } catch {
       setError(messages.error);
       setBusy(false);

@@ -74,7 +74,7 @@ export async function POST(
     });
     return jsonResponse(
       {
-        data: { organizationId: result.organizationId },
+        data: { organizationId: result.organizationId, role: result.role },
         meta: { correlationId, replayed: result.replayed },
       },
       correlationId,

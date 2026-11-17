@@ -555,6 +555,7 @@ export async function acceptOrganizationInvitation<
     ) {
       return Object.freeze({
         organizationId: invitation.organizationId,
+        role: invitation.role as OrganizationRole,
         replayed: true,
       });
     }
@@ -600,6 +601,7 @@ export async function acceptOrganizationInvitation<
       )
         return Object.freeze({
           organizationId: invitation.organizationId,
+          role: invitation.role as OrganizationRole,
           replayed: true,
         });
       throw new OrganizationInvitationUnavailableError("already_claimed");
@@ -634,6 +636,7 @@ export async function acceptOrganizationInvitation<
       ) {
         return Object.freeze({
           organizationId: invitation.organizationId,
+          role: invitation.role as OrganizationRole,
           replayed: true,
         });
       }
@@ -670,6 +673,7 @@ export async function acceptOrganizationInvitation<
     );
     return Object.freeze({
       organizationId: invitation.organizationId,
+      role: invitation.role as OrganizationRole,
       replayed: false,
     });
   });
@@ -855,6 +859,23 @@ export async function deactivateOrganizationMember<
       .returning();
     if (!updated)
       throw new OrganizationInvitationUnavailableError("already_claimed");
+    // Organization membership is the authoritative source for every derived
+    // wedding assignment. Revoke all derived capabilities in the same
+    // transaction so a deactivated employee cannot keep wedding access until
+    // a later authorization refresh.
+    await call.session.execute(sql`
+      UPDATE wedding_organization_staff_assignments AS assignment
+      SET status = 'revoked',
+          is_lead = false,
+          revoked_at = ${now},
+          permission_scope_version = assignment.permission_scope_version + 1,
+          updated_at = ${now}
+      FROM wedding_organization_accesses AS access
+      WHERE assignment.access_id = access.id
+        AND access.organization_id = ${target.organizationId}
+        AND assignment.organization_membership_id = ${target.id}
+        AND assignment.status = 'active'
+    `);
     const occurredAt = now.toISOString();
     await appendAuthorizedAuditEvent(
       call.authorization,

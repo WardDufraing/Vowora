@@ -45,7 +45,7 @@
 | 06-b | Partner invitations and claim lifecycle | 06-a | In review | [Brief](steps/06-b.md) |
 | 06-c | Workspace switching and deep links | 06-b | In review | [Brief](steps/06-c.md) |
 | 07-a | Organization and staff memberships | 06-c | In review | [Brief](steps/07-a.md) |
-| 07-b | Wedding planner assignment and fallback | 07-a | Not started | [Brief](steps/07-b.md) |
+| 07-b | Wedding planner assignment and fallback | 07-a | In review | [Brief](steps/07-b.md) |
 | 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |
 | 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
 | 08-b | Task interactions and dependencies | 08-a | Not started | [Brief](steps/08-b.md) |

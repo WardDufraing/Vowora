@@ -11,6 +11,7 @@ import {
   loadOrganizationInvitations,
   loadOrganizationStaff,
 } from "../../../../lib/organization-service";
+import { OrganizationNavigation } from "../organization-navigation";
 import { StaffInvitationForm } from "./staff-invitation-form";
 import { StaffList } from "./staff-list";
 
@@ -51,6 +52,12 @@ export default async function OrganizationStaffPage({
   return (
     <main className="account-page" id="main-content" lang={locale}>
       <section className="account-card" aria-labelledby="staff-title">
+        <OrganizationNavigation
+          active="staff"
+          locale={locale}
+          messages={messages}
+          organizationId={organizationId}
+        />
         <h1 id="staff-title">{messages.staffTitle}</h1>
         <StaffList
           currentActorId={session.user.id}

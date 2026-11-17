@@ -3,14 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   authorizeOrganizationCreation,
   authorizeOrganizationInvitationClaim,
+  authorizeOrganizationLeadTransfer,
   consumeAuthorizedOrganizationCreation,
   consumeAuthorizedOrganizationInvitationClaim,
+  consumeAuthorizedOrganizationLeadTransfer,
 } from "./organizations.js";
 
 const actorId = "019a2f36-0eb9-7000-8000-000000000001";
 const organizationId = "019a2f36-0eb9-7000-8000-000000000002";
 const correlationId = "019a2f36-0eb9-7000-8000-000000000003";
 const creationRequestId = "019a2f36-0eb9-7000-8000-000000000004";
+const weddingId = "019a2f36-0eb9-7000-8000-000000000005";
+const accessId = "019a2f36-0eb9-7000-8000-000000000006";
+const targetOrganizationMembershipId = "019a2f36-0eb9-7000-8000-000000000007";
 
 describe("organization bootstrap authorization", () => {
   it("validates and consumes creation once", async () => {
@@ -63,6 +68,28 @@ describe("organization bootstrap authorization", () => {
         token: "x".repeat(43),
       }),
     ).toThrow();
+  });
+
+  it("validates and consumes a current-lead transfer command once", async () => {
+    const command = authorizeOrganizationLeadTransfer({
+      actorId,
+      correlationId,
+      organizationId,
+      accessId,
+      targetOrganizationMembershipId,
+    });
+    await expect(
+      consumeAuthorizedOrganizationLeadTransfer(command, weddingId),
+    ).resolves.toMatchObject({
+      authorization: {
+        actorId,
+        activeOrganizationId: organizationId,
+        activeWeddingId: weddingId,
+      },
+    });
+    await expect(
+      consumeAuthorizedOrganizationLeadTransfer(command, weddingId),
+    ).rejects.toThrow();
   });
 
   it("rejects malformed organization operations", () => {

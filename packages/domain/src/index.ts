@@ -83,13 +83,16 @@ export {
   assertAuthorizedOrganizationInvitationClaim,
   authorizeOrganizationCreation,
   authorizeOrganizationInvitationClaim,
+  authorizeOrganizationLeadTransfer,
   consumeAuthorizedOrganizationCreation,
   consumeAuthorizedOrganizationInvitationClaim,
+  consumeAuthorizedOrganizationLeadTransfer,
   OrganizationAuthorizationError,
 } from "./organizations.js";
 export type {
   AuthorizedOrganizationCreation,
   AuthorizedOrganizationInvitationClaim,
+  AuthorizedOrganizationLeadTransfer,
 } from "./organizations.js";
 export {
   assertAuthorizedCoupleWeddingCreation,

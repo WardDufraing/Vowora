@@ -10,11 +10,68 @@ import {
   passwordResetResponseSchema,
   problemDetailsSchema,
   updateWeddingSettingsRequestSchema,
+  weddingOrganizationLeadAccessResponseSchema,
 } from "./index.js";
 
 const correlationId = "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2";
 
 describe("API contracts", () => {
+  it("keeps the current-lead response distinct from manager data", () => {
+    const response = {
+      data: {
+        id: "019a2f36-0eb9-7000-8000-000000000001",
+        weddingId: "019a2f36-0eb9-7000-8000-000000000002",
+        weddingName: "Jordan & Alex",
+        assignments: [
+          {
+            id: "019a2f36-0eb9-7000-8000-000000000003",
+            organizationMembershipId: "019a2f36-0eb9-7000-8000-000000000004",
+            isLead: true,
+            absenceStartsAt: null,
+            absenceEndsAt: null,
+          },
+        ],
+      },
+      meta: { correlationId },
+    };
+    expect(weddingOrganizationLeadAccessResponseSchema.parse(response)).toEqual(
+      response,
+    );
+    expect(
+      weddingOrganizationLeadAccessResponseSchema.safeParse({
+        ...response,
+        data: {
+          ...response.data,
+          status: "active",
+          permissionCeiling: [{ area: "tasks", actions: ["view"] }],
+          assignments: [
+            {
+              ...response.data.assignments[0],
+              role: "employee",
+              status: "active",
+              permissions: [{ area: "tasks", actions: ["view"] }],
+              email: "colleague@example.test",
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      openApiDocument.paths[
+        "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff"
+      ].get.responses["200"].content["application/json"].schema,
+    ).toEqual({
+      oneOf: [
+        {
+          $ref: "#/components/schemas/WeddingOrganizationAccessManagementResponse",
+        },
+        {
+          $ref: "#/components/schemas/WeddingOrganizationLeadAccessResponse",
+        },
+      ],
+    });
+  });
+
   it("keeps wedding tenant and role authority out of client payloads", () => {
     const valid = {
       name: "Jordan & Alex",
@@ -91,6 +148,15 @@ describe("API contracts", () => {
       "/api/v1/invitations/{token}/accept",
       "/api/v1/invitations/pending/{invitationId}/accept",
       "/api/v1/organizations",
+      "/api/v1/weddings/{weddingId}/planner-organizations/invitations",
+      "/api/v1/weddings/{weddingId}/planner-organizations/invitations/{invitationId}",
+      "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}",
+      "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/restrictions",
+      "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/absence",
+      "/api/v1/organizations/{organizationId}/wedding-invitations",
+      "/api/v1/organizations/{organizationId}/wedding-invitations/{invitationId}",
+      "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff",
+      "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff/{assignmentId}",
       "/api/v1/organizations/{organizationId}/staff",
       "/api/v1/organizations/{organizationId}/staff/{membershipId}",
       "/api/v1/organizations/{organizationId}/invitations",

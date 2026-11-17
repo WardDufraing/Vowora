@@ -70,7 +70,11 @@ describe("organization invitation acceptance API", () => {
   });
 
   it("binds the token to the authenticated actor and preserves replay state", async () => {
-    claim.mockResolvedValue({ organizationId, replayed: true });
+    claim.mockResolvedValue({
+      organizationId,
+      role: "employee",
+      replayed: true,
+    });
     const response = await POST(request(), {
       params: Promise.resolve({ token }),
     });
@@ -81,7 +85,7 @@ describe("organization invitation acceptance API", () => {
       token,
     });
     expect(await response.json()).toMatchObject({
-      data: { organizationId },
+      data: { organizationId, role: "employee" },
       meta: { replayed: true },
     });
   });

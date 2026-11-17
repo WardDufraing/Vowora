@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(6);
+      expect(journal.rowCount).toBe(7);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
@@ -223,14 +223,44 @@ describe("persistent migration workflow", () => {
       );
       await expect(
         runtime.query(
-          "UPDATE wedding_memberships SET status = 'revoked' WHERE wedding_id = $1",
+          "UPDATE wedding_memberships SET role = 'planner' WHERE wedding_id = $1",
           [weddingId],
         ),
       ).rejects.toThrow(/permission denied/);
       await runtime.query(
-        "UPDATE wedding_memberships SET last_opened_at = now(), updated_at = now() WHERE wedding_id = $1",
+        `UPDATE wedding_memberships
+            SET last_opened_at = now(), updated_at = now()
+          WHERE wedding_id = $1`,
         [weddingId],
       );
+      for (const statement of [
+        "UPDATE wedding_memberships SET status = 'revoked' WHERE wedding_id = $1",
+        "UPDATE wedding_memberships SET permission_overrides = '[]'::jsonb WHERE wedding_id = $1",
+        "UPDATE wedding_memberships SET permission_scope_version = permission_scope_version + 1 WHERE wedding_id = $1",
+      ]) {
+        await expect(runtime.query(statement, [weddingId])).rejects.toThrow(
+          /permission denied/,
+        );
+      }
+      const plannerId = "019a27f0-67b7-7000-8000-000000000014";
+      await runtime.query(
+        `INSERT INTO auth_user
+          (id, name, email, email_verified, created_at, updated_at)
+         VALUES ($1, 'Planner', 'planner@example.invalid', true, now(), now())`,
+        [plannerId],
+      );
+      await runtime.query(
+        `INSERT INTO wedding_memberships
+          (id, wedding_id, actor_id, role, status, permission_overrides)
+         VALUES ($1, $2, $3, 'planner', 'active', '[]'::jsonb)`,
+        ["019a27f0-67b7-7000-8000-000000000015", weddingId, plannerId],
+      );
+      await expect(
+        runtime.query(
+          "UPDATE wedding_memberships SET status = 'revoked' WHERE actor_id = $1",
+          [plannerId],
+        ),
+      ).rejects.toThrow(/permission denied/);
       await runtime.query(
         "UPDATE weddings SET name = 'Updated wedding', settings_version = 2 WHERE id = $1",
         [weddingId],

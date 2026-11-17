@@ -27,7 +27,7 @@ export default async function NewOrganizationPage({
       <section className="account-card" aria-labelledby="organization-title">
         <h1 id="organization-title">{messages.createTitle}</h1>
         {session.user.emailVerified ? (
-          <OrganizationForm messages={messages} />
+          <OrganizationForm locale={locale} messages={messages} />
         ) : (
           <p role="alert">{messages.verifyEmail}</p>
         )}

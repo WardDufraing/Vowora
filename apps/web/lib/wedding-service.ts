@@ -1,5 +1,7 @@
 import type {
+  CreateWeddingOrganizationInvitationRequest,
   CreateWeddingRequest,
+  PermissionCeilingEntry,
   UpdateWeddingSettingsRequest,
 } from "@vowora/contracts";
 import {
@@ -18,6 +20,13 @@ import {
   WeddingInvitationConflictError,
   WeddingInvitationUnavailableError,
   WeddingSettingsConflictError,
+  issueWeddingOrganizationInvitation,
+  listWeddingOrganizationInvitations,
+  revokeWeddingOrganizationInvitation,
+  revokeWeddingOrganizationAccess,
+  setPlannerStaffRestriction,
+  getWeddingOrganizationAccessManagement,
+  setLeadPlannerAbsence,
 } from "@vowora/database";
 import {
   authorizeCoupleWeddingCreation,
@@ -31,6 +40,23 @@ import {
   type ApiAuthorizationResult,
 } from "./server-authorization";
 import { getRuntimeDatabase } from "./database";
+
+function publicPermissionCeiling(value: unknown): PermissionCeilingEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const candidate = entry as { area?: unknown; actions?: unknown };
+    if (typeof candidate.area !== "string" || !Array.isArray(candidate.actions))
+      return [];
+    const actions = candidate.actions.filter(
+      (action): action is "view" | "edit" | "download_export" =>
+        action === "view" || action === "edit" || action === "download_export",
+    );
+    return actions.length
+      ? [{ area: candidate.area, actions } as PermissionCeilingEntry]
+      : [];
+  });
+}
 
 interface SessionReader {
   readonly api: {
@@ -234,6 +260,187 @@ export function loadWeddingWorkspaceEntryForActor(input: {
   readonly actorId: string;
 }) {
   return readWeddingWorkspaceEntryState(getRuntimeDatabase().database, input);
+}
+
+export async function createPlannerOrganizationInvitation(input: {
+  auth: SessionReader;
+  request: Request;
+  weddingId: string;
+  issuanceRequestId: string;
+  body: CreateWeddingOrganizationInvitationRequest;
+}) {
+  const authorized = await authorizeWeddingSettingsApiOperation(
+    input.auth,
+    input.request,
+    input.weddingId,
+  );
+  if (!authorized.authorized) return authorized;
+  const issued = await issueWeddingOrganizationInvitation(
+    getRuntimeDatabase().database,
+    authorized.operation,
+    {
+      organizationId: input.body.organizationId,
+      ceiling: input.body.permissionCeiling,
+      requestId: input.issuanceRequestId,
+      reissueInvitationId: input.body.reissueInvitationId,
+    },
+  );
+  return {
+    authorized: true as const,
+    correlationId: authorized.operation.authorization.correlationId,
+    result: {
+      invitation: {
+        id: issued.invitation.id,
+        weddingId: issued.invitation.weddingId,
+        organizationId: issued.invitation.organizationId,
+        status: issued.invitation.status,
+        permissionCeiling: publicPermissionCeiling(
+          issued.invitation.permissionCeiling,
+        ),
+        expiresAt: issued.invitation.expiresAt.toISOString(),
+        createdAt: issued.invitation.createdAt.toISOString(),
+      },
+      organizationName: issued.organizationName,
+      replayed: issued.replayed,
+    },
+  };
+}
+export async function loadPlannerOrganizationInvitations(
+  operation: AuthorizedServerOperation,
+) {
+  const rows = await listWeddingOrganizationInvitations(
+    getRuntimeDatabase().database,
+    operation,
+  );
+  return rows.map(({ invitation, organizationName }) => ({
+    invitation: {
+      id: invitation.id,
+      weddingId: invitation.weddingId,
+      organizationId: invitation.organizationId,
+      status: invitation.status,
+      permissionCeiling: publicPermissionCeiling(invitation.permissionCeiling),
+      expiresAt: invitation.expiresAt.toISOString(),
+      createdAt: invitation.createdAt.toISOString(),
+    },
+    organizationName,
+  }));
+}
+export async function loadPlannerOrganizationInvitationsForActor(input: {
+  actorId: string;
+  correlationId: string;
+  weddingId: string;
+}) {
+  const database = getRuntimeDatabase().database;
+  const operation = await authorizeWeddingServerOperation(
+    { actorId: input.actorId },
+    {
+      resource: "existing",
+      recordId: input.weddingId,
+      weddingId: input.weddingId,
+      action: "edit",
+      correlationId: input.correlationId,
+    },
+    new DatabaseWeddingAuthorizationState(database),
+  );
+  return loadPlannerOrganizationInvitations(operation);
+}
+export async function loadPlannerOrganizationAccess(
+  operation: AuthorizedServerOperation,
+) {
+  const access = await getWeddingOrganizationAccessManagement(
+    getRuntimeDatabase().database,
+    operation,
+  );
+  if (!access) return null;
+  return {
+    id: access.id,
+    organizationId: access.organizationId,
+    organizationName: access.organizationName,
+    permissionCeiling: publicPermissionCeiling(access.permissionCeiling),
+    assignments: access.assignments.map((assignment) => ({
+      id: assignment.id,
+      organizationMembershipId: assignment.organizationMembershipId,
+      name: assignment.name,
+      role: assignment.role,
+      isLead: assignment.isLead,
+      active: assignment.assignmentStatus === "active",
+      blocked: assignment.restrictionStatus === "blocked",
+    })),
+  };
+}
+export async function loadPlannerOrganizationAccessForActor(input: {
+  actorId: string;
+  correlationId: string;
+  weddingId: string;
+}) {
+  const database = getRuntimeDatabase().database;
+  const operation = await authorizeWeddingServerOperation(
+    { actorId: input.actorId },
+    {
+      resource: "existing",
+      recordId: input.weddingId,
+      weddingId: input.weddingId,
+      action: "edit",
+      correlationId: input.correlationId,
+    },
+    new DatabaseWeddingAuthorizationState(database),
+  );
+  return loadPlannerOrganizationAccess(operation);
+}
+export function revokePlannerOrganizationInvitation(
+  operation: AuthorizedServerOperation,
+  invitationId: string,
+) {
+  return revokeWeddingOrganizationInvitation(
+    getRuntimeDatabase().database,
+    operation,
+    invitationId,
+  );
+}
+export function revokePlannerOrganizationRelationship(
+  operation: AuthorizedServerOperation,
+  accessId: string,
+) {
+  return revokeWeddingOrganizationAccess(
+    getRuntimeDatabase().database,
+    operation,
+    accessId,
+  );
+}
+export function changePlannerStaffRestriction(
+  operation: AuthorizedServerOperation,
+  input: {
+    accessId: string;
+    organizationMembershipId: string;
+    blocked: boolean;
+  },
+) {
+  return setPlannerStaffRestriction(
+    getRuntimeDatabase().database,
+    operation,
+    input,
+  );
+}
+export async function authorizeLeadAbsenceApiOperation(
+  auth: SessionReader,
+  request: Request,
+  weddingId: string,
+) {
+  return authorizeApiOperation(
+    auth,
+    request,
+    {
+      tenant: "wedding",
+      operation: { resource: "new", area: "tasks", weddingId, action: "edit" },
+    },
+    new DatabaseWeddingAuthorizationState(getRuntimeDatabase().database),
+  );
+}
+export function changeLeadPlannerAbsence(
+  operation: AuthorizedServerOperation,
+  input: { accessId: string; startsAt: Date | null; endsAt: Date | null },
+) {
+  return setLeadPlannerAbsence(getRuntimeDatabase().database, operation, input);
 }
 
 /**
