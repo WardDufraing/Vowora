@@ -517,7 +517,7 @@ test("TypeScript 7 compiles while eslint still loads the TypeScript 6 API", asyn
       "utf8",
     ),
   );
-  assert.equal(eslintConfigPackage.version, "16.4.3");
+  assert.equal(eslintConfigPackage.version, "16.4.6");
   const nativePackage = createRequire(
     new URL("../package.json", import.meta.url),
   )("@typescript/native/package.json");
