@@ -40,4 +40,4 @@ Rollback before persistent apply is closing or reverting the pull request. After
 
 ## Review and owner gate
 
-Fresh independent read-only review, hosted pull-request checks and the final reviewed commit are recorded here after publication. Only the repository owner may approve and merge. No agent deploys, runs a persistent migration or changes external configuration.
+Draft [PR #75](https://github.com/WardDufraing/Vowora/pull/75) targets `main`. Fresh independent read-only review, hosted pull-request checks and the final reviewed commit are recorded here after review. Only the repository owner may approve and merge. No agent deploys, runs a persistent migration or changes external configuration.
