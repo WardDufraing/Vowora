@@ -266,7 +266,7 @@ export const organizationWeddingExitSnapshotSchema = z.strictObject({
   activeAssignmentCount: z.number().int().nonnegative(),
   leadAssigned: z.boolean(),
   pendingInvitationCount: z.number().int().nonnegative(),
-  unresolvedResponsibilityCount: z.number().int().nonnegative(),
+  unresolvedResponsibilityCount: z.number().int().nonnegative().nullable(),
   sharedDataRetained: z.literal(true),
   privateNotesRetainedByOrganization: z.literal(true),
 });

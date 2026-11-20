@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
 import { OrganizationPrivateNotes } from "./private-notes";
@@ -17,32 +18,41 @@ describe("organization private notes", () => {
           archivedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          editable: true,
+          editable: false,
         },
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
     render(
-      <OrganizationPrivateNotes
-        initialNotes={[
-          {
-            id: "note-1",
-            weddingId: null,
-            title: "Internal",
-            body: "Only staff",
-            status: "active",
-            archivedAt: null,
-            createdAt: "2026-01-01T00:00:00.000Z",
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            editable: true,
-          },
-        ]}
-        locale="en"
-        organizationId="org-1"
-      />,
+      <NextIntlClientProvider locale="en" messages={{}}>
+        <OrganizationPrivateNotes
+          initialNotes={[
+            {
+              id: "note-1",
+              weddingId: null,
+              title: "Internal",
+              body: "Only staff",
+              status: "active",
+              archivedAt: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              editable: true,
+            },
+          ]}
+          locale="en"
+          organizationId="org-1"
+        />
+      </NextIntlClientProvider>,
     );
     expect(screen.getByText(/never shared with the couple/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    expect(
+      screen.getByRole("dialog", { name: "Archive this private note?" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    fireEvent.click(screen.getByRole("button", { name: "Archive note" }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/v1/organizations/org-1/private-notes/note-1",

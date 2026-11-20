@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -185,6 +186,30 @@ function handoverCommand(
   });
 }
 
+async function withTwoConnections<T>(
+  schemaName: string,
+  callback: (
+    first: PlannerPrivateDatabase,
+    second: PlannerPrivateDatabase,
+  ) => Promise<T>,
+) {
+  const connection = {
+    connectionString: config.connectionString,
+    options: `-c search_path=${schemaName},public`,
+  };
+  const firstClient = new pg.Client(connection);
+  const secondClient = new pg.Client(connection);
+  await Promise.all([firstClient.connect(), secondClient.connect()]);
+  try {
+    return await callback(
+      drizzle(firstClient, { casing: "snake_case", schema }),
+      drizzle(secondClient, { casing: "snake_case", schema }),
+    );
+  } finally {
+    await Promise.all([firstClient.end(), secondClient.end()]);
+  }
+}
+
 describe("planner handover and private notes", () => {
   it("keeps notes organization-private and enforces creator or manager mutation", async () => {
     await withIsolatedTestSchema(
@@ -241,7 +266,7 @@ describe("planner handover and private notes", () => {
             ),
             { noteId: employeeNote.id, archive: true },
           ),
-        ).resolves.toMatchObject({ status: "archived", editable: true });
+        ).resolves.toMatchObject({ status: "archived", editable: false });
         await expect(
           updateOrganizationPrivateNote(
             database,
@@ -311,6 +336,15 @@ describe("planner handover and private notes", () => {
             weddingId: state.weddingId,
           },
         );
+        await database.insert(tables.weddingOrganizationInvitations).values({
+          weddingId: state.weddingId,
+          organizationId: state.organizationId,
+          permissionCeiling: [],
+          issuedByActorId: state.actor.partner,
+          issuanceRequestId: randomUUID(),
+          issuanceRequestFingerprint: "e".repeat(64),
+          expiresAt: new Date("2026-02-01T00:00:00Z"),
+        });
         const preview = await previewOrganizationWeddingExit(
           database,
           handoverCommand(state, state.actor.manager, "guided"),
@@ -318,7 +352,8 @@ describe("planner handover and private notes", () => {
         expect(preview).toMatchObject({
           activeAssignmentCount: 1,
           leadAssigned: true,
-          pendingInvitationCount: 0,
+          pendingInvitationCount: 1,
+          unresolvedResponsibilityCount: null,
           sharedDataRetained: true,
           privateNotesRetainedByOrganization: true,
         });
@@ -439,6 +474,138 @@ describe("planner handover and private notes", () => {
         expect(JSON.stringify(handoverFacts)).not.toContain(
           "Organization history",
         );
+        const handoverAudit = await database
+          .select()
+          .from(tables.auditEvents)
+          .where(
+            eq(
+              tables.auditEvents.eventType,
+              "wedding.organization_handover_completed",
+            ),
+          );
+        expect(handoverAudit).toHaveLength(1);
+        expect(JSON.stringify(handoverAudit)).not.toContain(
+          "Organization history",
+        );
+      },
+    );
+  });
+
+  it("serializes same-request concurrent exits into one stable replay and one fact pair", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planner-handover-same-${randomUUID()}`,
+      async ({ client, schemaName }) => {
+        const database = drizzle(client, { casing: "snake_case", schema });
+        const state = await seed(database);
+        const requestId = randomUUID();
+        const results = await withTwoConnections(
+          schemaName,
+          async (first, second) =>
+            Promise.all([
+              completeOrganizationWeddingExit(
+                first,
+                handoverCommand(state, state.actor.owner, "guided", requestId),
+              ),
+              completeOrganizationWeddingExit(
+                second,
+                handoverCommand(state, state.actor.owner, "guided", requestId),
+              ),
+            ]),
+        );
+        expect(results.map((result) => result.replayed).sort()).toEqual([
+          false,
+          true,
+        ]);
+        expect(results[0]!.id).toBe(results[1]!.id);
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.weddingOrganizationHandovers),
+        ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.auditEvents)
+            .where(
+              eq(
+                tables.auditEvents.eventType,
+                "wedding.organization_handover_completed",
+              ),
+            ),
+        ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.outboxEvents)
+            .where(
+              eq(
+                tables.outboxEvents.eventType,
+                "wedding.organization_handover_completed",
+              ),
+            ),
+        ).resolves.toEqual([{ value: 1 }]);
+      },
+    );
+  });
+
+  it("allows one different-request concurrent exit and rejects the other without extra facts", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planner-handover-different-${randomUUID()}`,
+      async ({ client, schemaName }) => {
+        const database = drizzle(client, { casing: "snake_case", schema });
+        const state = await seed(database);
+        const results = await withTwoConnections(
+          schemaName,
+          async (first, second) =>
+            Promise.allSettled([
+              completeOrganizationWeddingExit(
+                first,
+                handoverCommand(state, state.actor.owner, "guided"),
+              ),
+              completeOrganizationWeddingExit(
+                second,
+                handoverCommand(state, state.actor.owner, "guided"),
+              ),
+            ]),
+        );
+        expect(
+          results.filter((result) => result.status === "fulfilled"),
+        ).toHaveLength(1);
+        const rejected = results.filter(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected",
+        );
+        expect(rejected).toHaveLength(1);
+        expect(rejected[0]!.reason).toMatchObject({ reason: "stale" });
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.weddingOrganizationHandovers),
+        ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.auditEvents)
+            .where(
+              eq(
+                tables.auditEvents.eventType,
+                "wedding.organization_handover_completed",
+              ),
+            ),
+        ).resolves.toEqual([{ value: 1 }]);
+        await expect(
+          database
+            .select({ value: count() })
+            .from(tables.outboxEvents)
+            .where(
+              eq(
+                tables.outboxEvents.eventType,
+                "wedding.organization_handover_completed",
+              ),
+            ),
+        ).resolves.toEqual([{ value: 1 }]);
       },
     );
   });

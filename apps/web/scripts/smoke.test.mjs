@@ -19,7 +19,22 @@ test(
         "--port",
         "3101",
       ],
-      { stdio: ["ignore", "pipe", "pipe"] },
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          AUTH_SECRET: "smoke-auth-secret-value-000000000000",
+          AUTH_EMAIL_FROM: "no-reply@vowora.test",
+          AUTH_ABUSE_HASH_SECRET: "smoke-hash-secret-value-000000000000",
+          RESEND_API_KEY: "smoke-resend-key-value",
+          UPSTASH_REDIS_REST_URL: "https://redis.vowora.test",
+          UPSTASH_REDIS_REST_TOKEN: "smoke-redis-token-value",
+          TURNSTILE_SECRET_KEY: "smoke-turnstile-secret",
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: "smoke-turnstile-site",
+          NEXT_PUBLIC_APP_URL: "https://app.vowora.test",
+          VOWORA_ENV: "production",
+        },
+      },
     );
     let log = "";
     server.stdout.on("data", (d) => (log += d));
@@ -49,6 +64,10 @@ test(
         await (await fetch("http://127.0.0.1:3101/robots.txt")).text(),
         /Disallow: \//,
       );
+      const privateReview = await fetch(
+        "http://127.0.0.1:3101/planner-private-review",
+      );
+      assert.equal(privateReview.status, 404);
       for (const [path, content] of [
         ["/sign-in", "<h1>Sign in</h1>"],
         ["/sign-up", "<h1>Create your account</h1>"],

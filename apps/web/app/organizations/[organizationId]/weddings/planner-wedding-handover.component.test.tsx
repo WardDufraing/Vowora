@@ -15,7 +15,7 @@ describe("planner wedding handover", () => {
             activeAssignmentCount: 2,
             leadAssigned: true,
             pendingInvitationCount: 1,
-            unresolvedResponsibilityCount: 0,
+            unresolvedResponsibilityCount: null,
           },
         }),
       })

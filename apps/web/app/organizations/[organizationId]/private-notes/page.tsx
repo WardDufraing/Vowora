@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
 import { notFound } from "next/navigation";
 
+import { appMessages } from "../../../../i18n/messages";
 import { getAuth } from "../../../../lib/auth";
 import {
   organizationLocale,
@@ -33,18 +35,20 @@ export default async function Page({
   }).catch(() => null);
   if (!notes) notFound();
   return (
-    <main className="account-page" id="main-content" lang={locale}>
-      <OrganizationNavigation
-        active="private-notes"
-        locale={locale}
-        messages={messages}
-        organizationId={organizationId}
-      />
-      <OrganizationPrivateNotes
-        initialNotes={notes}
-        locale={locale}
-        organizationId={organizationId}
-      />
-    </main>
+    <NextIntlClientProvider locale={locale} messages={appMessages[locale]}>
+      <main className="account-page" id="main-content" lang={locale}>
+        <OrganizationNavigation
+          active="private-notes"
+          locale={locale}
+          messages={messages}
+          organizationId={organizationId}
+        />
+        <OrganizationPrivateNotes
+          initialNotes={notes}
+          locale={locale}
+          organizationId={organizationId}
+        />
+      </main>
+    </NextIntlClientProvider>
   );
 }

@@ -12,6 +12,7 @@ const messages = {
     lead: "Lead assigned",
     invitations: "Pending invitations",
     responsibilities: "Unresolved responsibilities",
+    notTracked: "Not yet tracked",
     retained: "The couple keeps all shared wedding data and history.",
     private:
       "Private organization notes remain with the organization and are never shared with the couple.",
@@ -33,6 +34,7 @@ const messages = {
     lead: "Hoofdplanner toegewezen",
     invitations: "Openstaande uitnodigingen",
     responsibilities: "Onopgeloste verantwoordelijkheden",
+    notTracked: "Nog niet bijgehouden",
     retained:
       "Het koppel behoudt alle gedeelde bruiloftgegevens en geschiedenis.",
     private:
@@ -55,6 +57,7 @@ const messages = {
     lead: "Responsable désigné",
     invitations: "Invitations en attente",
     responsibilities: "Responsabilités non résolues",
+    notTracked: "Pas encore suivies",
     retained: "Le couple conserve toutes les données et l’historique partagés.",
     private:
       "Les notes privées restent dans l’organisation et ne sont jamais partagées avec le couple.",
@@ -76,6 +79,7 @@ const messages = {
     lead: "Leitung zugewiesen",
     invitations: "Ausstehende Einladungen",
     responsibilities: "Offene Verantwortlichkeiten",
+    notTracked: "Noch nicht erfasst",
     retained:
       "Das Paar behält alle gemeinsamen Hochzeitsdaten und den Verlauf.",
     private:
@@ -94,7 +98,7 @@ type Snapshot = {
   activeAssignmentCount: number;
   leadAssigned: boolean;
   pendingInvitationCount: number;
-  unresolvedResponsibilityCount: number;
+  unresolvedResponsibilityCount: number | null;
 };
 
 export function PlannerWeddingHandover({
@@ -192,7 +196,9 @@ export function PlannerWeddingHandover({
               </div>
               <div>
                 <dt>{t.responsibilities}</dt>
-                <dd>{snapshot.unresolvedResponsibilityCount}</dd>
+                <dd>
+                  {snapshot.unresolvedResponsibilityCount ?? t.notTracked}
+                </dd>
               </div>
             </dl>
           ) : null}

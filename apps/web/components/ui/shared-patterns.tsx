@@ -124,6 +124,7 @@ export function ConfirmationDialog({
   cancelLabel,
   risk = "standard",
   onConfirm,
+  disabled = false,
 }: {
   readonly title: string;
   readonly description: string;
@@ -132,12 +133,15 @@ export function ConfirmationDialog({
   readonly cancelLabel: string;
   readonly risk?: "standard" | "destructive";
   readonly onConfirm?: () => void;
+  readonly disabled?: boolean;
 }) {
   const locale = useLocale();
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <Button variant="secondary">{triggerLabel}</Button>
+        <Button disabled={disabled} variant="secondary">
+          {triggerLabel}
+        </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog__overlay" />
@@ -147,6 +151,7 @@ export function ConfirmationDialog({
           <div className="button-row">
             <Dialog.Close asChild>
               <Button
+                disabled={disabled}
                 onClick={onConfirm}
                 variant={risk === "destructive" ? "destructive" : "primary"}
               >

@@ -74,9 +74,10 @@ function noteView(
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     editable:
-      member.role === "owner" ||
-      member.role === "manager" ||
-      row.createdByMembershipId === member.id,
+      row.status === "active" &&
+      (member.role === "owner" ||
+        member.role === "manager" ||
+        row.createdByMembershipId === member.id),
   });
 }
 
@@ -392,7 +393,7 @@ export async function completeOrganizationWeddingExit<
       activeAssignmentCount: assignments.length,
       leadAssigned: assignments.some((item) => item.isLead),
       pendingInvitationCount: pending?.count ?? 0,
-      unresolvedResponsibilityCount: 0,
+      unresolvedResponsibilityCount: null,
       sharedDataRetained: true,
       privateNotesRetainedByOrganization: true,
     };
@@ -521,7 +522,7 @@ export async function previewOrganizationWeddingExit<
       activeAssignmentCount: assignments.length,
       leadAssigned: assignments.some((item) => item.isLead),
       pendingInvitationCount: pending?.count ?? 0,
-      unresolvedResponsibilityCount: 0,
+      unresolvedResponsibilityCount: null,
       sharedDataRetained: true,
       privateNotesRetainedByOrganization: true,
     });

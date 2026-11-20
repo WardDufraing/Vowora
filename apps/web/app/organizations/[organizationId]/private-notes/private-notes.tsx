@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+import { ConfirmationDialog } from "../../../../components/ui/shared-patterns";
 
 const messages = {
   en: {
@@ -15,6 +17,11 @@ const messages = {
     saving: "Saving…",
     empty: "No private notes yet.",
     archive: "Archive",
+    archiveTitle: "Archive this private note?",
+    archiveDescription:
+      "Archived notes remain in organization history and cannot be changed here.",
+    confirmArchive: "Archive note",
+    cancel: "Cancel",
     archived: "Archived",
     update: "Save changes",
     error: "The private note could not be saved.",
@@ -31,6 +38,11 @@ const messages = {
     saving: "Opslaan…",
     empty: "Nog geen privénotities.",
     archive: "Archiveren",
+    archiveTitle: "Deze privénotitie archiveren?",
+    archiveDescription:
+      "Gearchiveerde notities blijven in de organisatiegeschiedenis en kunnen hier niet meer worden gewijzigd.",
+    confirmArchive: "Notitie archiveren",
+    cancel: "Annuleren",
     archived: "Gearchiveerd",
     update: "Wijzigingen opslaan",
     error: "De privénotitie kon niet worden opgeslagen.",
@@ -47,6 +59,11 @@ const messages = {
     saving: "Enregistrement…",
     empty: "Aucune note privée.",
     archive: "Archiver",
+    archiveTitle: "Archiver cette note privée ?",
+    archiveDescription:
+      "Les notes archivées restent dans l’historique de l’organisation et ne peuvent plus être modifiées ici.",
+    confirmArchive: "Archiver la note",
+    cancel: "Annuler",
     archived: "Archivée",
     update: "Enregistrer les modifications",
     error: "La note privée n’a pas pu être enregistrée.",
@@ -63,6 +80,11 @@ const messages = {
     saving: "Wird gespeichert…",
     empty: "Noch keine privaten Notizen.",
     archive: "Archivieren",
+    archiveTitle: "Diese private Notiz archivieren?",
+    archiveDescription:
+      "Archivierte Notizen bleiben im Organisationsverlauf und können hier nicht mehr geändert werden.",
+    confirmArchive: "Notiz archivieren",
+    cancel: "Abbrechen",
     archived: "Archiviert",
     update: "Änderungen speichern",
     error: "Die private Notiz konnte nicht gespeichert werden.",
@@ -94,6 +116,8 @@ export function OrganizationPrivateNotes({
   const [notes, setNotes] = useState(initialNotes);
   const [status, setStatus] = useState("");
   const [pending, setPending] = useState(false);
+  const [archivingNoteId, setArchivingNoteId] = useState<string | null>(null);
+  const archivePending = useRef<string | null>(null);
   async function create(form: FormData) {
     setPending(true);
     setStatus("");
@@ -119,20 +143,32 @@ export function OrganizationPrivateNotes({
     noteId: string,
     input: { title?: string; body?: string; archive?: true },
   ) {
+    if (input.archive) {
+      if (archivePending.current) return;
+      archivePending.current = noteId;
+      setArchivingNoteId(noteId);
+    }
     setStatus("");
-    const response = await fetch(
-      `/api/v1/organizations/${organizationId}/private-notes/${noteId}`,
-      {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(input),
-      },
-    );
-    if (!response.ok) return setStatus(t.error);
-    const payload = await response.json();
-    setNotes((current) =>
-      current.map((note) => (note.id === noteId ? payload.data : note)),
-    );
+    try {
+      const response = await fetch(
+        `/api/v1/organizations/${organizationId}/private-notes/${noteId}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+      );
+      if (!response.ok) return setStatus(t.error);
+      const payload = await response.json();
+      setNotes((current) =>
+        current.map((note) => (note.id === noteId ? payload.data : note)),
+      );
+    } finally {
+      if (input.archive) {
+        archivePending.current = null;
+        setArchivingNoteId(null);
+      }
+    }
   }
   return (
     <>
@@ -194,13 +230,16 @@ export function OrganizationPrivateNotes({
                   </label>
                   <div className="button-row">
                     <button>{t.update}</button>
-                    <button
-                      className="button--destructive"
-                      type="button"
-                      onClick={() => change(note.id, { archive: true })}
-                    >
-                      {t.archive}
-                    </button>
+                    <ConfirmationDialog
+                      cancelLabel={t.cancel}
+                      confirmLabel={t.confirmArchive}
+                      description={t.archiveDescription}
+                      disabled={archivingNoteId !== null}
+                      onConfirm={() => void change(note.id, { archive: true })}
+                      risk="destructive"
+                      title={t.archiveTitle}
+                      triggerLabel={t.archive}
+                    />
                   </div>
                 </form>
               ) : (

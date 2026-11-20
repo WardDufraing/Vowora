@@ -14,7 +14,7 @@ test("private notes and immediate-exit consequences are localized and accessible
           activeAssignmentCount: 2,
           leadAssigned: true,
           pendingInvitationCount: 1,
-          unresolvedResponsibilityCount: 0,
+          unresolvedResponsibilityCount: null,
           sharedDataRetained: true,
           privateNotesRetainedByOrganization: true,
         },

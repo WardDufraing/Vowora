@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
 import { notFound } from "next/navigation";
 
+import { appMessages } from "../../i18n/messages";
 import { readServerEnvironment } from "../../lib/env";
 import { PlannerPrivateReview } from "./planner-private-review";
 
@@ -23,8 +25,10 @@ export default async function PlannerPrivateReviewPage({
     ? (localeValue as "en" | "nl" | "fr" | "de")
     : "en";
   return (
-    <main className="account-page" id="main-content" lang={locale}>
-      <PlannerPrivateReview locale={locale} organizationId={organizationId} />
-    </main>
+    <NextIntlClientProvider locale={locale} messages={appMessages[locale]}>
+      <main className="account-page" id="main-content" lang={locale}>
+        <PlannerPrivateReview locale={locale} organizationId={organizationId} />
+      </main>
+    </NextIntlClientProvider>
   );
 }
