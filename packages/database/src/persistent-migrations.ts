@@ -33,6 +33,10 @@ const plannerAssignmentTables = [
   "wedding_organization_staff_assignments",
   "wedding_organization_staff_restrictions",
 ] as const;
+const plannerPrivateTables = [
+  "wedding_organization_handovers",
+  "organization_private_notes",
+] as const;
 const allApplicationTables = [
   "schema_metadata",
   ...appendOnlyTables,
@@ -44,6 +48,7 @@ const allApplicationTables = [
   ...organizationMembershipTables,
   ...organizationInvitationTables,
   ...plannerAssignmentTables,
+  ...plannerPrivateTables,
 ] as const;
 const tablePrivileges = [
   "SELECT",
@@ -99,6 +104,9 @@ function expectedTablePrivileges(schemaName: string, tableName: string) {
     return new Set(["SELECT", "INSERT"]);
   }
   if ((plannerAssignmentTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((plannerPrivateTables as readonly string[]).includes(tableName)) {
     return new Set(["SELECT", "INSERT"]);
   }
   return new Set<string>();
@@ -219,6 +227,17 @@ function expectedColumnPrivileges(
       "SELECT",
       "INSERT",
       ...((mutable[tableName] ?? []).includes(columnName) ? ["UPDATE"] : []),
+    ]);
+  }
+  if ((plannerPrivateTables as readonly string[]).includes(tableName)) {
+    const mutable = ["title", "body", "status", "archived_at", "updated_at"];
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...(tableName === "organization_private_notes" &&
+      mutable.includes(columnName)
+        ? ["UPDATE"]
+        : []),
     ]);
   }
   return new Set<string>();
@@ -387,6 +406,7 @@ async function reconcileRuntimeGrants(
   const plannerAssignments = plannerAssignmentTables
     .map(quoteIdentifier)
     .join(", ");
+  const plannerPrivate = plannerPrivateTables.map(quoteIdentifier).join(", ");
 
   await client.query("BEGIN");
   try {
@@ -462,6 +482,9 @@ async function reconcileRuntimeGrants(
       `GRANT SELECT, INSERT ON TABLE ${plannerAssignments} TO ${role}`,
     );
     await client.query(
+      `GRANT SELECT, INSERT ON TABLE ${plannerPrivate} TO ${role}`,
+    );
+    await client.query(
       `GRANT UPDATE ("status", "accepted_by_actor_id", "rejected_by_actor_id", "revoked_by_actor_id", "accepted_at", "rejected_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE "wedding_organization_invitations" TO ${role}`,
     );
     await client.query(
@@ -472,6 +495,9 @@ async function reconcileRuntimeGrants(
     );
     await client.query(
       `GRANT UPDATE ("status", "changed_by_actor_id", "blocked_at", "lifted_at", "updated_at") ON TABLE "wedding_organization_staff_restrictions" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("title", "body", "status", "archived_at", "updated_at") ON TABLE "organization_private_notes" TO ${role}`,
     );
     await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
@@ -763,7 +789,7 @@ async function verifyRuntimeGrants(
   if (defaultPrivileges.rows[0]?.exposed) {
     throw new PersistentMigrationError("runtime default privileges mismatch");
   }
-  if (allApplicationTables.length !== 17) {
+  if (allApplicationTables.length !== 19) {
     throw new PersistentMigrationError("runtime grant manifest mismatch");
   }
 }

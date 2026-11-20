@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PlannerWeddingHandover } from "./planner-wedding-handover";
 
 const messages = {
   en: {
@@ -414,6 +415,18 @@ export function PlannerWeddingAccessManager({
                 </li>
               ))}
             </ul>
+            {canManageAssignments ? (
+              <PlannerWeddingHandover
+                accessId={access.id}
+                locale={locale}
+                onComplete={() =>
+                  setAccesses((current) =>
+                    current.filter((item) => item.id !== access.id),
+                  )
+                }
+                organizationId={organizationId}
+              />
+            ) : null}
           </article>
         ))
       )}

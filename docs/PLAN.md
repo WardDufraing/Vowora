@@ -46,7 +46,7 @@
 | 06-c | Workspace switching and deep links | 06-b | In review | [Brief](steps/06-c.md) |
 | 07-a | Organization and staff memberships | 06-c | In review | [Brief](steps/07-a.md) |
 | 07-b | Wedding planner assignment and fallback | 07-a | In review | [Brief](steps/07-b.md) |
-| 07-c | Planner handover and private notes | 07-b | Not started | [Brief](steps/07-c.md) |
+| 07-c | Planner handover and private notes | 07-b | In review | [Brief](steps/07-c.md) |
 | 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
 | 08-b | Task interactions and dependencies | 08-a | Not started | [Brief](steps/08-b.md) |
 | 08-c | Timeline views and reusable templates | 08-b | Not started | [Brief](steps/08-c.md) |
@@ -98,6 +98,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-11-20 — Task 07-c implements organization-private notes and voluntary guided/immediate planner exit from owner-merged main `e46bba4`. The owner-approved policy limits exit to active organization owners/managers with current wedding access; keeps note view/create organization-private, note edit/archive creator-or-manager, and forbids hard delete or couple sharing. Additive migration `0007_simple_true_believers.sql`, centralized exact-operation authorization, replay-safe handover, audit/outbox facts, strict DTOs, localized UI and production-excluded review coverage are complete on `feat/07-c-planner-handover-private-notes`. Local verification and migration-agent handoff are recorded in [the 07-c handoff](implementation/07-c-planner-handover-private-notes.md). Independent review and hosted pull-request checks remain the current gates. No persistent migration, deployment, provider configuration or external dispatch occurred; a separate migration agent owns any post-merge staging execution.
 
 - 2026-11-10 — Task 07-a implements authoritative planner organizations and owner/manager/employee staff memberships from owner-merged 06-c main `78dd6e8`. DEC-336 deliberately left organization and staff onboarding details open; the owner explicitly approved verified-email self-service organization creation with an immutable first owner and multiple organization ownership, 14-day staff invitations, owner/manager revoke and reissue, and one reminder three days before expiry. Additive migration `0005_smooth_blur.sql`, central organization authorization, privacy-safe staff management, audit/outbox capture, typed APIs and localized UI are complete on `feat/07-a-organization-staff-memberships`. Local verification and review evidence are recorded in [the 07-a handoff](implementation/07-a-organization-staff-memberships.md). The pull request and independent review remain the current gates. No persistent migration, deployment, provider configuration or external email dispatch occurred; a separate migration agent owns any post-merge staging execution.
 

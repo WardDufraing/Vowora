@@ -1,8 +1,11 @@
 import type {
   AssignWeddingOrganizationStaffRequest,
   CreateOrganizationInvitationRequest,
+  CreateOrganizationPrivateNoteRequest,
   CreateOrganizationRequest,
+  OrganizationWeddingExitRequest,
   PermissionCeilingEntry,
+  UpdateOrganizationPrivateNoteRequest,
 } from "@vowora/contracts";
 import {
   acceptOrganizationInvitation,
@@ -23,11 +26,19 @@ import {
   respondWeddingOrganizationInvitation,
   removeOrganizationStaffFromWedding,
   transferCurrentLeadPlanner,
+  completeOrganizationWeddingExit,
+  createOrganizationPrivateNote,
+  listOrganizationPrivateNotes,
+  PlannerPrivateUnavailableError,
+  previewOrganizationWeddingExit,
+  updateOrganizationPrivateNote,
 } from "@vowora/database";
 import {
   authorizeOrganizationCreation,
   authorizeOrganizationInvitationClaim,
   authorizeOrganizationLeadTransfer,
+  authorizeOrganizationHandover,
+  authorizeOrganizationPrivateNote,
   authorizeOrganizationServerOperation,
   OrganizationAuthorizationError,
 } from "@vowora/domain";
@@ -361,4 +372,102 @@ export async function removePlannerWeddingStaff(input: {
     await authorizeManagement(input),
     { accessId: input.accessId, assignmentId: input.assignmentId },
   );
+}
+
+export function loadOrganizationPrivateNotes(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+}) {
+  return listOrganizationPrivateNotes(
+    getRuntimeDatabase().database,
+    authorizeOrganizationPrivateNote({ ...input, action: "list" }),
+  );
+}
+
+export function addOrganizationPrivateNote(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  request: CreateOrganizationPrivateNoteRequest;
+}) {
+  return createOrganizationPrivateNote(
+    getRuntimeDatabase().database,
+    authorizeOrganizationPrivateNote({
+      actorId: input.actorId,
+      correlationId: input.correlationId,
+      organizationId: input.organizationId,
+      action: "create",
+    }),
+    input.request,
+  );
+}
+
+export function changeOrganizationPrivateNote(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  noteId: string;
+  request: UpdateOrganizationPrivateNoteRequest;
+}) {
+  return updateOrganizationPrivateNote(
+    getRuntimeDatabase().database,
+    authorizeOrganizationPrivateNote({
+      actorId: input.actorId,
+      correlationId: input.correlationId,
+      organizationId: input.organizationId,
+      action: input.request.archive ? "archive" : "update",
+      noteId: input.noteId,
+    }),
+    { noteId: input.noteId, ...input.request },
+  );
+}
+
+function handoverCapability(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  accessId: string;
+  request: OrganizationWeddingExitRequest;
+}) {
+  return authorizeOrganizationHandover({
+    actorId: input.actorId,
+    correlationId: input.correlationId,
+    organizationId: input.organizationId,
+    accessId: input.accessId,
+    mode: input.request.mode,
+    requestId: input.request.requestId,
+  });
+}
+
+export function loadOrganizationWeddingExitPreview(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  accessId: string;
+  request: OrganizationWeddingExitRequest;
+}) {
+  return previewOrganizationWeddingExit(
+    getRuntimeDatabase().database,
+    handoverCapability(input),
+  );
+}
+
+export function finishOrganizationWeddingExit(input: {
+  actorId: string;
+  correlationId: string;
+  organizationId: string;
+  accessId: string;
+  request: OrganizationWeddingExitRequest;
+}) {
+  return completeOrganizationWeddingExit(
+    getRuntimeDatabase().database,
+    handoverCapability(input),
+  );
+}
+
+export function isPlannerPrivateUnavailable(
+  error: unknown,
+): error is PlannerPrivateUnavailableError {
+  return error instanceof PlannerPrivateUnavailableError;
 }

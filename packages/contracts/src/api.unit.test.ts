@@ -6,6 +6,7 @@ import {
   createWeddingRequestSchema,
   healthResponseSchema,
   openApiDocument,
+  organizationPrivateNoteResponseSchema,
   passwordRecoveryAcknowledgementSchema,
   passwordResetResponseSchema,
   problemDetailsSchema,
@@ -16,6 +17,36 @@ import {
 const correlationId = "6f4f8aa8-9cb8-46d7-92f7-d70156ab40d2";
 
 describe("API contracts", () => {
+  it("keeps private-note persistence and tenant authority out of responses", () => {
+    const response = {
+      data: {
+        id: "019a2f36-0eb9-7000-8000-000000000001",
+        weddingId: null,
+        title: "Internal follow-up",
+        body: "Private organization detail",
+        status: "active",
+        archivedAt: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        editable: true,
+      },
+      meta: { correlationId },
+    };
+    expect(organizationPrivateNoteResponseSchema.parse(response)).toEqual(
+      response,
+    );
+    expect(
+      organizationPrivateNoteResponseSchema.safeParse({
+        ...response,
+        data: {
+          ...response.data,
+          organizationId: "019a2f36-0eb9-7000-8000-000000000002",
+          createdByMembershipId: "019a2f36-0eb9-7000-8000-000000000003",
+        },
+      }).success,
+    ).toBe(false);
+  });
+
   it("keeps the current-lead response distinct from manager data", () => {
     const response = {
       data: {
@@ -153,6 +184,9 @@ describe("API contracts", () => {
       "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}",
       "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/restrictions",
       "/api/v1/weddings/{weddingId}/planner-organizations/access/{accessId}/absence",
+      "/api/v1/organizations/{organizationId}/private-notes",
+      "/api/v1/organizations/{organizationId}/private-notes/{noteId}",
+      "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/handover",
       "/api/v1/organizations/{organizationId}/wedding-invitations",
       "/api/v1/organizations/{organizationId}/wedding-invitations/{invitationId}",
       "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/staff",

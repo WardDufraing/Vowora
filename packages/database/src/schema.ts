@@ -875,6 +875,117 @@ export const weddingOrganizationStaffRestrictions = pgTable(
   ],
 );
 
+/** Completed voluntary organization exits. Guided handover is generated from
+ * authoritative state and completed atomically; MVP deliberately stores no
+ * editable draft. */
+export const weddingOrganizationHandovers = pgTable(
+  "wedding_organization_handovers",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    accessId: uuid("access_id")
+      .notNull()
+      .references(() => weddingOrganizationAccesses.id, {
+        onDelete: "restrict",
+      }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    initiatedByMembershipId: uuid("initiated_by_membership_id")
+      .notNull()
+      .references(() => organizationMemberships.id, { onDelete: "restrict" }),
+    mode: text("mode").notNull(),
+    requestId: uuid("request_id").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    completedAt: timestamp("completed_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "wedding_organization_handovers_mode",
+      sql`${table.mode} IN ('guided', 'immediate')`,
+    ),
+    check(
+      "wedding_organization_handovers_fingerprint",
+      sql`${table.requestFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    uniqueIndex("wedding_organization_handovers_access_unique_idx").on(
+      table.accessId,
+    ),
+    uniqueIndex("wedding_organization_handovers_request_unique_idx").on(
+      table.organizationId,
+      table.initiatedByMembershipId,
+      table.requestId,
+    ),
+    index("wedding_organization_handovers_wedding_idx").on(table.weddingId),
+  ],
+);
+
+/** Organization-private business notes never enter the shared wedding
+ * workspace. A wedding link is a private historical reference only. */
+export const organizationPrivateNotes = pgTable(
+  "organization_private_notes",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "restrict" }),
+    weddingId: uuid("wedding_id").references(() => weddings.id, {
+      onDelete: "restrict",
+    }),
+    createdByMembershipId: uuid("created_by_membership_id")
+      .notNull()
+      .references(() => organizationMemberships.id, { onDelete: "restrict" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("active"),
+    archivedAt: timestamp("archived_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "organization_private_notes_status",
+      sql`${table.status} IN ('active', 'archived')`,
+    ),
+    check(
+      "organization_private_notes_archive_consistent",
+      sql`(${table.status} = 'archived') = (${table.archivedAt} IS NOT NULL)`,
+    ),
+    check(
+      "organization_private_notes_title_length",
+      sql`char_length(${table.title}) BETWEEN 1 AND 160`,
+    ),
+    check(
+      "organization_private_notes_body_length",
+      sql`char_length(${table.body}) BETWEEN 1 AND 20000`,
+    ),
+    index("organization_private_notes_org_status_idx").on(
+      table.organizationId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("organization_private_notes_wedding_idx").on(table.weddingId),
+  ],
+);
+
 export type Wedding = typeof weddings.$inferSelect;
 export type NewWedding = typeof weddings.$inferInsert;
 export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
@@ -894,3 +1005,7 @@ export type WeddingOrganizationStaffAssignmentRow =
   typeof weddingOrganizationStaffAssignments.$inferSelect;
 export type WeddingOrganizationStaffRestrictionRow =
   typeof weddingOrganizationStaffRestrictions.$inferSelect;
+export type WeddingOrganizationHandoverRow =
+  typeof weddingOrganizationHandovers.$inferSelect;
+export type OrganizationPrivateNoteRow =
+  typeof organizationPrivateNotes.$inferSelect;

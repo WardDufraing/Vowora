@@ -73,6 +73,15 @@ export {
   PlannerAssignmentConflictError,
   PlannerAssignmentUnavailableError,
 } from "./planner-assignments.js";
+export {
+  completeOrganizationWeddingExit,
+  createOrganizationPrivateNote,
+  listOrganizationPrivateNotes,
+  PlannerPrivateUnavailableError,
+  previewOrganizationWeddingExit,
+  updateOrganizationPrivateNote,
+} from "./planner-private.js";
+export type { PlannerPrivateDatabase } from "./planner-private.js";
 export type {
   PermissionCeilingEntry,
   PlannerAssignmentDatabase,

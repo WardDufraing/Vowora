@@ -219,6 +219,69 @@ export const organizationInvitationsResponseSchema = z.strictObject({
   meta: responseMetadataSchema,
 });
 
+export const createOrganizationPrivateNoteRequestSchema = z.strictObject({
+  title: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(20_000),
+  weddingId: z.uuidv7().optional(),
+});
+export const updateOrganizationPrivateNoteRequestSchema = z
+  .strictObject({
+    title: z.string().trim().min(1).max(160).optional(),
+    body: z.string().trim().min(1).max(20_000).optional(),
+    archive: z.literal(true).optional(),
+  })
+  .refine(
+    (value) =>
+      value.title !== undefined ||
+      value.body !== undefined ||
+      value.archive === true,
+    { message: "At least one note change is required" },
+  );
+export const organizationPrivateNoteSchema = z.strictObject({
+  id: z.uuidv7(),
+  weddingId: z.uuidv7().nullable(),
+  title: z.string().min(1).max(160),
+  body: z.string().min(1).max(20_000),
+  status: z.enum(["active", "archived"]),
+  archivedAt: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  editable: z.boolean(),
+});
+export const organizationPrivateNotesResponseSchema = z.strictObject({
+  data: z.array(organizationPrivateNoteSchema),
+  meta: responseMetadataSchema,
+});
+export const organizationPrivateNoteResponseSchema = z.strictObject({
+  data: organizationPrivateNoteSchema,
+  meta: responseMetadataSchema,
+});
+export const organizationWeddingExitRequestSchema = z.strictObject({
+  mode: z.enum(["guided", "immediate"]),
+  requestId: z.uuid(),
+});
+export const organizationWeddingExitSnapshotSchema = z.strictObject({
+  accessId: z.uuidv7(),
+  weddingId: z.uuidv7(),
+  activeAssignmentCount: z.number().int().nonnegative(),
+  leadAssigned: z.boolean(),
+  pendingInvitationCount: z.number().int().nonnegative(),
+  unresolvedResponsibilityCount: z.number().int().nonnegative(),
+  sharedDataRetained: z.literal(true),
+  privateNotesRetainedByOrganization: z.literal(true),
+});
+export const organizationWeddingExitPreviewResponseSchema = z.strictObject({
+  data: organizationWeddingExitSnapshotSchema,
+  meta: responseMetadataSchema,
+});
+export const organizationWeddingExitResponseSchema = z.strictObject({
+  data: z.strictObject({
+    id: z.uuidv7(),
+    snapshot: organizationWeddingExitSnapshotSchema,
+  }),
+  meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
+});
+
 export const permissionCeilingEntrySchema = z.strictObject({
   area: z.enum([
     "settings",
@@ -415,6 +478,15 @@ export type CreateOrganizationRequest = z.infer<
 >;
 export type CreateOrganizationInvitationRequest = z.infer<
   typeof createOrganizationInvitationRequestSchema
+>;
+export type CreateOrganizationPrivateNoteRequest = z.infer<
+  typeof createOrganizationPrivateNoteRequestSchema
+>;
+export type UpdateOrganizationPrivateNoteRequest = z.infer<
+  typeof updateOrganizationPrivateNoteRequestSchema
+>;
+export type OrganizationWeddingExitRequest = z.infer<
+  typeof organizationWeddingExitRequestSchema
 >;
 export type PermissionCeilingEntry = z.infer<
   typeof permissionCeilingEntrySchema
@@ -1413,6 +1485,178 @@ export const openApiDocument = {
           },
         },
       },
+    "/api/v1/organizations/{organizationId}/private-notes": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listOrganizationPrivateNotes",
+        responses: {
+          "200": {
+            description: "Organization-private notes.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationPrivateNotesResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("Organization access is unavailable."),
+        },
+      },
+      post: {
+        operationId: "createOrganizationPrivateNote",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreateOrganizationPrivateNoteRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Organization-private note created.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationPrivateNoteResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("The note is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("Organization access is unavailable."),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/private-notes/{noteId}": {
+      parameters: [
+        {
+          name: "organizationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "noteId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      patch: {
+        operationId: "updateOrganizationPrivateNote",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/UpdateOrganizationPrivateNoteRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Organization-private note updated or archived.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationPrivateNoteResponse",
+                },
+              },
+            },
+          },
+          "400": problemResponse("The note change is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("The note is unavailable."),
+          "409": problemResponse("The note is already archived."),
+        },
+      },
+    },
+    "/api/v1/organizations/{organizationId}/wedding-access/{accessId}/handover":
+      {
+        parameters: [
+          {
+            name: "organizationId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "accessId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        get: {
+          operationId: "previewOrganizationWeddingExit",
+          parameters: [
+            {
+              name: "mode",
+              in: "query",
+              required: true,
+              schema: { type: "string", enum: ["guided", "immediate"] },
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Current generated handover consequences.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/OrganizationWeddingExitPreviewResponse",
+                  },
+                },
+              },
+            },
+            "400": problemResponse("The exit mode is invalid."),
+            "401": authenticationFailure,
+            "403": problemResponse("Planner access is unavailable."),
+          },
+        },
+        post: {
+          operationId: "completeOrganizationWeddingExit",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/OrganizationWeddingExitRequest",
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Organization wedding access ended.",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/OrganizationWeddingExitResponse",
+                  },
+                },
+              },
+            },
+            "400": problemResponse("The exit request is invalid."),
+            "401": authenticationFailure,
+            "403": problemResponse("Planner access is unavailable."),
+            "409": problemResponse("The exit conflicts with current access."),
+          },
+        },
+      },
     "/api/v1/organizations/{organizationId}/wedding-invitations": {
       parameters: [
         {
@@ -1933,6 +2177,34 @@ export const openApiDocument = {
       ),
       OrganizationInvitationsResponse: z.toJSONSchema(
         organizationInvitationsResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      CreateOrganizationPrivateNoteRequest: z.toJSONSchema(
+        createOrganizationPrivateNoteRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      UpdateOrganizationPrivateNoteRequest: z.toJSONSchema(
+        updateOrganizationPrivateNoteRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationPrivateNoteResponse: z.toJSONSchema(
+        organizationPrivateNoteResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationPrivateNotesResponse: z.toJSONSchema(
+        organizationPrivateNotesResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationWeddingExitRequest: z.toJSONSchema(
+        organizationWeddingExitRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationWeddingExitPreviewResponse: z.toJSONSchema(
+        organizationWeddingExitPreviewResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      OrganizationWeddingExitResponse: z.toJSONSchema(
+        organizationWeddingExitResponseSchema,
         { target: "draft-2020-12" },
       ),
       CreateWeddingOrganizationInvitationRequest: z.toJSONSchema(

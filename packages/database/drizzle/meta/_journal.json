@@ -50,6 +50,13 @@
       "when": 1794466512541,
       "tag": "0006_cynical_hannibal_king",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794905652306,
+      "tag": "0007_simple_true_believers",
+      "breakpoints": true
     }
   ]
 }
