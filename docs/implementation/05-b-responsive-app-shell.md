@@ -96,3 +96,5 @@ tests, manual keyboard/theme/focus checks and the complete diff check. Hosted
 policy, secret scan, marketing, database migrations, both Vercel previews and
 Vercel Preview Comments all pass at the reviewed commit. Owner merge is the
 remaining gate.
+
+**Tracker reconciliation (2026-11-17):** "Owner merge is the remaining gate" above is superseded. Owner merged [PR #54](https://github.com/WardDufraing/Vowora/pull/54) as [`0f51a50`](https://github.com/WardDufraing/Vowora/commit/0f51a50eb8100f4675a3cfe4e0411aa5509fd3d4) on 2026-11-04 22:59 CET. Reviewed code `371f270` is an ancestor of that merge. The task index already listed 05-b as Done.
