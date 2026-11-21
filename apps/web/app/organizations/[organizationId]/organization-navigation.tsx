@@ -10,7 +10,7 @@ export function OrganizationNavigation({
   organizationId,
   showStaff = true,
 }: {
-  readonly active: "staff" | "weddings";
+  readonly active: "staff" | "weddings" | "private-notes";
   readonly locale: OrganizationLocale;
   readonly messages: ReturnType<typeof organizationMessages>;
   readonly organizationId: string;
@@ -32,6 +32,12 @@ export function OrganizationNavigation({
         href={`/organizations/${organizationId}/weddings${query}`}
       >
         {messages.weddingsNavigation}
+      </a>
+      <a
+        aria-current={active === "private-notes" ? "page" : undefined}
+        href={`/organizations/${organizationId}/private-notes${query}`}
+      >
+        {messages.privateNotesNavigation}
       </a>
     </nav>
   );

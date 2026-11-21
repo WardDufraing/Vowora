@@ -95,6 +95,16 @@ export type {
   AuthorizedOrganizationLeadTransfer,
 } from "./organizations.js";
 export {
+  authorizeOrganizationHandover,
+  authorizeOrganizationPrivateNote,
+  consumeAuthorizedOrganizationHandover,
+  consumeAuthorizedOrganizationPrivateNote,
+} from "./organization-private.js";
+export type {
+  AuthorizedOrganizationHandover,
+  AuthorizedOrganizationPrivateNote,
+} from "./organization-private.js";
+export {
   assertAuthorizedCoupleWeddingCreation,
   authorizeCoupleWeddingCreation,
   consumeAuthorizedCoupleWeddingCreation,
