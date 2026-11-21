@@ -33,7 +33,7 @@
     "test:persistent-migrations": "vitest run --config vitest.persistent.config.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "1.2.0",
+    "@neondatabase/serverless": "1.2.1",
     "@vowora/domain": "workspace:*",
     "drizzle-orm": "0.45.4",
     "pg": "8.23.1",
