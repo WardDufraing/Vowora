@@ -19,7 +19,7 @@
     "@vowora/contracts": "workspace:*",
     "@vowora/database": "workspace:*",
     "@vowora/domain": "workspace:*",
-    "better-auth": "1.7.23",
+    "better-auth": "1.7.25",
     "lucide-react": "1.68.0",
     "next": "16.4.6",
     "next-intl": "4.15.1",
