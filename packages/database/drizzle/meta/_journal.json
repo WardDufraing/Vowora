@@ -57,6 +57,13 @@
       "when": 1794905652306,
       "tag": "0007_simple_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795302397368,
+      "tag": "0008_archived_private_note_immutability",
+      "breakpoints": true
     }
   ]
 }

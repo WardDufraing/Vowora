@@ -270,6 +270,13 @@ describe("planner handover and private notes", () => {
         await expect(
           updateOrganizationPrivateNote(
             database,
+            noteCommand(state, state.actor.employee, "update", employeeNote.id),
+            { noteId: employeeNote.id, body: "Changed after archive" },
+          ),
+        ).rejects.toMatchObject({ reason: "stale" });
+        await expect(
+          updateOrganizationPrivateNote(
+            database,
             noteCommand(state, state.actor.manager, "update", ownerNote.id),
             { noteId: ownerNote.id, title: "Manager correction" },
           ),

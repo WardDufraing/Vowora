@@ -27,9 +27,11 @@ Additive migration `0007_simple_true_believers.sql` creates `organization_privat
 
 The runtime role receives `SELECT, INSERT` on both new tables. Only `organization_private_notes` receives narrow `UPDATE` on `title`, `body`, `status`, `archived_at` and `updated_at`; runtime receives no `DELETE` and cannot rewrite tenant, creator or wedding identity. Handover rows are append-only to runtime SQL. Clean disposable grant tests verify these boundaries.
 
+Post-merge review found that those column grants and the archive-consistency check did not make archive terminal at the database boundary: raw runtime SQL could still mutate or reactivate an already archived note. Corrective forward migration `0008_archived_private_note_immutability.sql` adds a row-level `BEFORE UPDATE` trigger that rejects every update whose old status is archived. Its trigger function is the migration owner's default-security invoker, has a fixed `pg_catalog` search path and grants no execute access to `PUBLIC` or runtime. The existing narrow column grants still permit active-note edits and the single active-to-archived transition. Persistent verification now fails closed if the function owner/body/security/search path or enabled unconditional row-update trigger shape drifts. Raw runtime tests cover active editing and archiving, then deny archived content, reactivation, archive/status and timestamp changes; existing tenant/creator/wedding immutability and no-delete checks remain in force.
+
 No Neon or persistent database was accessed. Never run `pnpm test:database` against persistent databases. After owner merge, the separate migration agent may use the protected persistent-migration workflow with a direct staging migration connection, then verify the Drizzle journal and runtime grants. Production remains a separate, additionally confirmed owner-authorized action.
 
-Rollback before persistent apply is closing or reverting the pull request. After additive apply, stop using the new routes and retain both tables and their history; do not destructively drop private notes or handover/audit history during incident response. A later reviewed forward migration is required for schema removal.
+Rollback before persistent apply is closing or reverting the pull request. After additive apply, stop using the new routes and retain both tables and their history; do not destructively drop private notes or handover/audit history during incident response. Migration `0008` is also forward-only: if it needs correction after apply, use another reviewed forward migration rather than rewriting its journal entry. A later reviewed forward migration is required for schema removal.
 
 ## Verification
 
@@ -38,8 +40,22 @@ Rollback before persistent apply is closing or reverting the pull request. After
 - A fresh disposable PostgreSQL instance passed nine integration files and 37 tests. Positive pending-invitation coverage and two independent-connection races prove same-key stable replay, different-key single-winner conflict, and exactly one handover, audit and outbox record. A separate clean instance passed seven persistent migration/grant tests. Drizzle metadata checking, generated-schema drift and eight-file additive migration safety passed. All PostgreSQL use was local and disposable.
 - The dedicated planner-private production-build Chromium case passed 1/1 using `/usr/bin/chromium`; the full web production-build suite passed 31/31. The suite verifies four-language copy, immediate-exit consequences, note privacy language, responsive behavior and axe accessibility. Its first run found an isolated-fixture heading-order violation; the fixture now supplies the correct heading level while the real nested handover UI retains its correct level.
 
+Corrective migration verification uses only a disposable loopback PostgreSQL database whose name ends in `_test`:
+
+```sh
+pnpm --filter @vowora/database db:check
+pnpm --filter @vowora/database db:drift
+pnpm --filter @vowora/database db:safety
+pnpm test:persistent-migrations
+pnpm test:database
+```
+
+The focused planner-private integration passed 4/4 and the clean persistent workflow passed 8/8 after the correction, including deliberate guard drift detection. After disjoint PR #82 merged and current `main` `074493c` was integrated, the full disposable database run passed nine files and 37 tests. Formatting, workspace lint and types, policy 22/22, boundaries 16/16, unit/component 78 files and 376 tests, Drizzle metadata/drift, nine-file additive safety, the database build and the full production build passed. No persistent credential was used and no external migration was executed.
+
 ## Review and owner gate
 
 Initial fresh reviewer `/root/complete_07_c/review_07_c` found no high privacy or authorization bypass, but blocked readiness on current-main conflicts and five material verification/truthfulness/UI gaps. Current `main` `4a6760d` was integrated with merge history preserved. The corrections expose unresolved responsibilities as honestly not yet tracked, add positive pending-invitation and two-connection concurrency/fact evidence, verify the review fixture returns production 404, require accessible archive confirmation with cancellation and double-submit protection, and make archived notes non-editable in the DTO.
 
 Draft [PR #75](https://github.com/WardDufraing/Vowora/pull/75) targets `main`. A different fresh corrected-head read-only review, hosted pull-request checks and the final reviewed commit are recorded here after review. Only the repository owner may approve and merge. No agent deploys, runs a persistent migration or changes external configuration.
+
+The owner subsequently merged PR #75 as `3a8cb391`. Corrective branch `fix/07-c-archived-note-runtime-immutability` adds migration `0008` and the database-boundary regressions above. Its pull request, independent corrected-head review and hosted checks remain gates; this handoff does not claim that correction merged or that any persistent migration ran. A separate migration agent owns any staging or production apply after owner merge.

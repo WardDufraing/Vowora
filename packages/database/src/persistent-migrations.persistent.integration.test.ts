@@ -181,7 +181,50 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(8);
+      expect(journal.rowCount).toBe(9);
+      const archiveGuard = await admin.query<{
+        function_owner: string;
+        is_security_definer: boolean;
+        function_settings: string[] | null;
+        public_can_execute: boolean;
+        runtime_can_execute: boolean;
+        trigger_enabled: string;
+      }>(
+        `SELECT function_owner.rolname AS function_owner,
+                routine.prosecdef AS is_security_definer,
+                routine.proconfig AS function_settings,
+                EXISTS (
+                  SELECT 1
+                    FROM aclexplode(COALESCE(
+                      routine.proacl,
+                      acldefault('f', routine.proowner)
+                    )) acl
+                   WHERE acl.grantee = 0
+                     AND acl.privilege_type = 'EXECUTE'
+                ) AS public_can_execute,
+                has_function_privilege($1, routine.oid, 'EXECUTE') AS runtime_can_execute,
+                trigger.tgenabled AS trigger_enabled
+           FROM pg_proc routine
+           JOIN pg_namespace namespace ON namespace.oid = routine.pronamespace
+           JOIN pg_roles function_owner ON function_owner.oid = routine.proowner
+           JOIN pg_trigger trigger ON trigger.tgfoid = routine.oid
+          WHERE namespace.nspname = 'public'
+            AND routine.proname = 'reject_archived_organization_private_note_update'
+            AND trigger.tgrelid = 'organization_private_notes'::regclass
+            AND trigger.tgname = 'organization_private_notes_archived_immutable'
+            AND NOT trigger.tgisinternal`,
+        [runtimeRole],
+      );
+      expect(archiveGuard.rows).toEqual([
+        {
+          function_owner: new URL(migrationUrl!).username,
+          is_security_definer: false,
+          function_settings: ["search_path=pg_catalog"],
+          public_can_execute: false,
+          runtime_can_execute: false,
+          trigger_enabled: "O",
+        },
+      ]);
       await admin.query(
         "CREATE TABLE future_runtime_table (id uuid PRIMARY KEY)",
       );
@@ -442,6 +485,61 @@ describe("persistent migration workflow", () => {
           organizationId,
         ]),
       ).rejects.toThrow(/permission denied/);
+      const privateNoteId = "019a27f0-67b7-7000-8000-000000000016";
+      await runtime.query(
+        `INSERT INTO organization_private_notes
+          (id, organization_id, wedding_id, created_by_membership_id,
+           title, body)
+         VALUES ($1, $2, $3, $4, 'Active note', 'Private body')`,
+        [privateNoteId, organizationId, weddingId, organizationMembershipId],
+      );
+      await runtime.query(
+        `UPDATE organization_private_notes
+            SET title = 'Edited active note', body = 'Edited private body',
+                updated_at = now()
+          WHERE id = $1`,
+        [privateNoteId],
+      );
+      await runtime.query(
+        `UPDATE organization_private_notes
+            SET status = 'archived', archived_at = now(), updated_at = now()
+          WHERE id = $1`,
+        [privateNoteId],
+      );
+      for (const statement of [
+        "UPDATE organization_private_notes SET title = 'Changed after archive' WHERE id = $1",
+        "UPDATE organization_private_notes SET body = 'Changed after archive' WHERE id = $1",
+        "UPDATE organization_private_notes SET status = 'active', archived_at = NULL WHERE id = $1",
+        "UPDATE organization_private_notes SET archived_at = now() + interval '1 day' WHERE id = $1",
+        "UPDATE organization_private_notes SET updated_at = now() + interval '1 day' WHERE id = $1",
+      ]) {
+        await expect(runtime.query(statement, [privateNoteId])).rejects.toThrow(
+          /archived organization private notes are immutable/,
+        );
+      }
+      for (const [statement, immutableValue] of [
+        [
+          "UPDATE organization_private_notes SET organization_id = $2 WHERE id = $1",
+          organizationId,
+        ],
+        [
+          "UPDATE organization_private_notes SET wedding_id = $2 WHERE id = $1",
+          weddingId,
+        ],
+        [
+          "UPDATE organization_private_notes SET created_by_membership_id = $2 WHERE id = $1",
+          organizationMembershipId,
+        ],
+      ] as const) {
+        await expect(
+          runtime.query(statement, [privateNoteId, immutableValue]),
+        ).rejects.toThrow(/permission denied/);
+      }
+      await expect(
+        runtime.query("DELETE FROM organization_private_notes WHERE id = $1", [
+          privateNoteId,
+        ]),
+      ).rejects.toThrow(/permission denied/);
       await runtime.query(
         `INSERT INTO audit_events
           (event_id, event_type, schema_version, occurred_at, actor_id,
@@ -491,6 +589,31 @@ describe("persistent migration workflow", () => {
     } finally {
       await futureDenied.end();
     }
+  });
+
+  it("fails verification when the archived-note guard drifts", async () => {
+    const admin = await administrator();
+    try {
+      await admin.query(
+        'ALTER FUNCTION "reject_archived_organization_private_note_update"() RESET search_path',
+      );
+    } finally {
+      await admin.end();
+    }
+    await expect(runPersistentMigration(config("verify"))).rejects.toThrow(
+      "archived private note guard mismatch",
+    );
+    const restore = await administrator();
+    try {
+      await restore.query(
+        'ALTER FUNCTION "reject_archived_organization_private_note_update"() SET search_path TO pg_catalog',
+      );
+    } finally {
+      await restore.end();
+    }
+    await expect(
+      runPersistentMigration(config("verify")),
+    ).resolves.toBeUndefined();
   });
 
   it("detects and reconciles privilege drift on every supported object class", async () => {
