@@ -90,7 +90,12 @@ describe("partner invitation persistence", () => {
           },
           new DatabaseWeddingAuthorizationState(database),
         );
-        const issuedAt = new Date("2026-11-07T12:00:00.000Z");
+        const dayMs = 24 * 60 * 60 * 1000;
+        // The actor read compares expiry to the database clock, so the issue
+        // time has to stay inside a still-open 14-day window.
+        const issuedAt = new Date(Date.now() - dayMs);
+        const expiresAt = new Date(issuedAt.getTime() + 14 * dayMs);
+        const reminderAt = new Date(expiresAt.getTime() - 3 * dayMs);
         const issued = await issuePartnerInvitation(database, operation, {
           email: " Partner@Example.Test ",
           locale: "nl",
@@ -98,8 +103,8 @@ describe("partner invitation persistence", () => {
         });
         expect(issued.invitation).toMatchObject({
           invitedEmail: "partner@example.test",
-          expiresAt: "2026-11-21T12:00:00.000Z",
-          reminderAt: "2026-11-18T12:00:00.000Z",
+          expiresAt: expiresAt.toISOString(),
+          reminderAt: reminderAt.toISOString(),
           status: "pending",
         });
         const [stored] = await database.select().from(weddingInvitations);
@@ -153,13 +158,13 @@ describe("partner invitation persistence", () => {
               actorId: recipient,
               correlationId: randomUUID(),
               invitationId: issued.invitation.id,
-              now: new Date("2026-11-08T12:00:00.000Z"),
+              now: new Date(issuedAt.getTime() + dayMs),
             }),
             acceptPartnerInvitation(concurrentDatabase, {
               actorId: recipient,
               correlationId: randomUUID(),
               token: issued.token,
-              now: new Date("2026-11-08T12:00:00.000Z"),
+              now: new Date(issuedAt.getTime() + dayMs),
             }),
           ]);
         } finally {
