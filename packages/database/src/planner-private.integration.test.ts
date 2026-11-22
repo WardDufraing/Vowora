@@ -360,7 +360,7 @@ describe("planner handover and private notes", () => {
           activeAssignmentCount: 1,
           leadAssigned: true,
           pendingInvitationCount: 1,
-          unresolvedResponsibilityCount: null,
+          unresolvedResponsibilityCount: 0,
           sharedDataRetained: true,
           privateNotesRetainedByOrganization: true,
         });

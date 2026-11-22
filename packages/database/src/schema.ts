@@ -333,6 +333,10 @@ export const weddingMemberships = pgTable(
       table.weddingId,
       table.actorId,
     ),
+    uniqueIndex("wedding_memberships_wedding_id_unique_idx").on(
+      table.weddingId,
+      table.id,
+    ),
     index("wedding_memberships_actor_idx").on(table.actorId),
     index("wedding_memberships_wedding_idx").on(table.weddingId),
   ],
@@ -986,6 +990,242 @@ export const organizationPrivateNotes = pgTable(
   ],
 );
 
+/** Wedding task phases are intentionally separate from milestone topic phases
+ * (DEC-596). Their labels are workspace-owned so the later template task can
+ * add starter content without coupling core task records to a template. */
+export const taskPhases = pgTable(
+  "task_phases",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "task_phases_name_length",
+      sql`char_length(btrim(${table.name})) BETWEEN 1 AND 80`,
+    ),
+    check("task_phases_position_nonnegative", sql`${table.position} >= 0`),
+    check("task_phases_version_positive", sql`${table.version} > 0`),
+    uniqueIndex("task_phases_wedding_name_unique_idx").on(
+      table.weddingId,
+      sql`lower(btrim(${table.name}))`,
+    ),
+    uniqueIndex("task_phases_wedding_id_unique_idx").on(
+      table.weddingId,
+      table.id,
+    ),
+    index("task_phases_wedding_position_idx").on(
+      table.weddingId,
+      table.position,
+    ),
+  ],
+);
+
+/** Milestone phases have their own vocabulary and lifecycle. Suggested phase
+ * seeding belongs to 08-c's starter-template application; 08-a establishes the
+ * permission-aware custom phase and grouping contract. */
+export const milestonePhases = pgTable(
+  "milestone_phases",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("custom"),
+    status: text("status").notNull().default("active"),
+    position: integer("position").notNull().default(0),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "milestone_phases_name_length",
+      sql`char_length(btrim(${table.name})) BETWEEN 1 AND 80`,
+    ),
+    check(
+      "milestone_phases_kind",
+      sql`${table.kind} IN ('suggested', 'custom')`,
+    ),
+    check(
+      "milestone_phases_status",
+      sql`${table.status} IN ('active', 'hidden')`,
+    ),
+    check("milestone_phases_position_nonnegative", sql`${table.position} >= 0`),
+    check("milestone_phases_version_positive", sql`${table.version} > 0`),
+    uniqueIndex("milestone_phases_wedding_name_unique_idx").on(
+      table.weddingId,
+      sql`lower(btrim(${table.name}))`,
+    ),
+    uniqueIndex("milestone_phases_wedding_id_unique_idx").on(
+      table.weddingId,
+      table.id,
+    ),
+    index("milestone_phases_wedding_position_idx").on(
+      table.weddingId,
+      table.position,
+    ),
+  ],
+);
+
+export const planningTasks = pgTable(
+  "planning_tasks",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    phaseId: uuid("phase_id").references(() => taskPhases.id, {
+      onDelete: "restrict",
+    }),
+    ownerMembershipId: uuid("owner_membership_id").references(
+      () => weddingMemberships.id,
+      { onDelete: "restrict" },
+    ),
+    title: text("title").notNull(),
+    description: text("description"),
+    dueDate: date("due_date", { mode: "string" }),
+    status: text("status").notNull().default("not_started"),
+    blockedReason: text("blocked_reason"),
+    lifecycle: text("lifecycle").notNull().default("active"),
+    archivedAt: timestamp("archived_at", { withTimezone: true, mode: "date" }),
+    completedAt: timestamp("completed_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "planning_tasks_title_length",
+      sql`char_length(btrim(${table.title})) BETWEEN 1 AND 200`,
+    ),
+    check(
+      "planning_tasks_description_length",
+      sql`${table.description} IS NULL OR char_length(${table.description}) <= 10000`,
+    ),
+    check(
+      "planning_tasks_status",
+      sql`${table.status} IN ('not_started', 'in_progress', 'blocked', 'complete')`,
+    ),
+    check(
+      "planning_tasks_blocked_reason_consistent",
+      sql`${table.blockedReason} IS NULL OR (${table.status} = 'blocked' AND char_length(btrim(${table.blockedReason})) BETWEEN 1 AND 500)`,
+    ),
+    check(
+      "planning_tasks_lifecycle",
+      sql`${table.lifecycle} IN ('active', 'archived')`,
+    ),
+    check(
+      "planning_tasks_archive_consistent",
+      sql`(${table.lifecycle} = 'archived') = (${table.archivedAt} IS NOT NULL)`,
+    ),
+    check(
+      "planning_tasks_completion_consistent",
+      sql`(${table.status} = 'complete') = (${table.completedAt} IS NOT NULL)`,
+    ),
+    check("planning_tasks_version_positive", sql`${table.version} > 0`),
+    index("planning_tasks_wedding_status_due_idx").on(
+      table.weddingId,
+      table.lifecycle,
+      table.status,
+      table.dueDate,
+    ),
+    index("planning_tasks_owner_idx").on(table.ownerMembershipId),
+    foreignKey({
+      columns: [table.weddingId, table.phaseId],
+      foreignColumns: [taskPhases.weddingId, taskPhases.id],
+      name: "planning_tasks_phase_same_wedding_fk",
+    }),
+    foreignKey({
+      columns: [table.weddingId, table.ownerMembershipId],
+      foreignColumns: [weddingMemberships.weddingId, weddingMemberships.id],
+      name: "planning_tasks_owner_same_wedding_fk",
+    }),
+  ],
+);
+
+export const planningMilestones = pgTable(
+  "planning_milestones",
+  {
+    id: uuid("id").primaryKey().$defaultFn(createUuidV7),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "restrict" }),
+    phaseId: uuid("phase_id").references(() => milestonePhases.id, {
+      onDelete: "restrict",
+    }),
+    title: text("title").notNull(),
+    description: text("description"),
+    plannedDate: date("planned_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("not_started"),
+    lifecycle: text("lifecycle").notNull().default("active"),
+    trashedAt: timestamp("trashed_at", { withTimezone: true, mode: "date" }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "planning_milestones_title_length",
+      sql`char_length(btrim(${table.title})) BETWEEN 1 AND 200`,
+    ),
+    check(
+      "planning_milestones_description_length",
+      sql`${table.description} IS NULL OR char_length(${table.description}) <= 10000`,
+    ),
+    check(
+      "planning_milestones_status",
+      sql`${table.status} IN ('not_started', 'in_progress', 'complete')`,
+    ),
+    check(
+      "planning_milestones_lifecycle",
+      sql`${table.lifecycle} IN ('active', 'trashed')`,
+    ),
+    check(
+      "planning_milestones_trash_consistent",
+      sql`(${table.lifecycle} = 'trashed') = (${table.trashedAt} IS NOT NULL)`,
+    ),
+    check("planning_milestones_version_positive", sql`${table.version} > 0`),
+    index("planning_milestones_wedding_date_idx").on(
+      table.weddingId,
+      table.plannedDate,
+      table.status,
+    ),
+    foreignKey({
+      columns: [table.weddingId, table.phaseId],
+      foreignColumns: [milestonePhases.weddingId, milestonePhases.id],
+      name: "planning_milestones_phase_same_wedding_fk",
+    }),
+  ],
+);
+
 export type Wedding = typeof weddings.$inferSelect;
 export type NewWedding = typeof weddings.$inferInsert;
 export type WeddingMembershipRow = typeof weddingMemberships.$inferSelect;
@@ -1009,3 +1249,7 @@ export type WeddingOrganizationHandoverRow =
   typeof weddingOrganizationHandovers.$inferSelect;
 export type OrganizationPrivateNoteRow =
   typeof organizationPrivateNotes.$inferSelect;
+export type TaskPhaseRow = typeof taskPhases.$inferSelect;
+export type MilestonePhaseRow = typeof milestonePhases.$inferSelect;
+export type PlanningTaskRow = typeof planningTasks.$inferSelect;
+export type PlanningMilestoneRow = typeof planningMilestones.$inferSelect;

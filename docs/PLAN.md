@@ -47,7 +47,7 @@
 | 07-a | Organization and staff memberships | 06-c | Done | [Brief](steps/07-a.md) |
 | 07-b | Wedding planner assignment and fallback | 07-a | Done | [Brief](steps/07-b.md) |
 | 07-c | Planner handover and private notes | 07-b | In review | [Brief](steps/07-c.md) |
-| 08-a | Task and milestone domain | 07-c | Not started | [Brief](steps/08-a.md) |
+| 08-a | Task and milestone domain | 07-c | In review | [Brief](steps/08-a.md) |
 | 08-b | Task interactions and dependencies | 08-a | Not started | [Brief](steps/08-b.md) |
 | 08-c | Timeline views and reusable templates | 08-b | Not started | [Brief](steps/08-c.md) |
 | 09-a | Contact records and visibility | 08-c | Not started | [Brief](steps/09-a.md) |
@@ -98,6 +98,8 @@ At every task boundary verify authorization, cross-tenant isolation, applicable 
 
 ## Progress log
 Record dated PR/commit links, tests actually run, reviewer outcome, blockers and handoff for each completed task. Do not mark work complete based solely on code presence.
+
+- 2026-11-22 — Task 08-a implements the permission-aware task/milestone core on `feat/08-a-task-milestone-domain`: separate wedding-scoped phase records, task/milestone creation and optimistic updates, assignment, manual status/completion/reopen, archive/trash restore, typed REST/OpenAPI contracts, audit/outbox facts, exact tenant-bound foreign keys, runtime least-privilege manifest updates, and real unresolved planner-exit responsibility counts. Additive migration `0009_quiet_cyclops.sql` was authored and verified only on disposable PostgreSQL 17. Focused route tests, 381 unit/component tests, 41 database integration tests, the 8-case persistent-workflow suite, migration check/drift/safety, lint/types/build remain recorded in [the 08-a handoff](implementation/08-a-task-milestone-domain.md). Dashboard presentation, checklists, collaborators, dependencies, reminders, timeline views and starter templates remain with their planned downstream tasks; no persistent migration, provider change or deployment was performed. Draft PR and independent review evidence follow on this branch.
 
 - 2026-11-21 — Owner merged 07-c [PR #75](https://github.com/WardDufraing/Vowora/pull/75) as `3a8cb391`. Post-merge read-only review found one database-boundary gap: application policy rejected archived-note changes, but the runtime role's narrow column grants still allowed raw SQL to mutate or reactivate an archived note. Corrective branch `fix/07-c-archived-note-runtime-immutability` and draft [PR #83](https://github.com/WardDufraing/Vowora/pull/83) add forward-only migration `0008_archived_private_note_immutability.sql`, a fixed-search-path invoker trigger making archive terminal, persistent manifest verification, exact runtime SQL denials and an application regression while preserving active edit and active-to-archive behavior. Disjoint [PR #82](https://github.com/WardDufraing/Vowora/pull/82) merged as `074493c` and that current main was integrated before corrective review. Fresh read-only review of exact implementation head `97bf531` found no blocking, high or material-medium issues and independently passed the persistent workflow 8/8 plus planner-private integration 4/4 on disposable PostgreSQL 17. Hosted checks and owner merge remain gates, so 07-c stays In review and 08-a stays blocked. No persistent database, Neon environment, deployment or external configuration was accessed; the separate migration agent owns any post-merge apply and verify.
 

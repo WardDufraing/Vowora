@@ -21,6 +21,10 @@ import {
   auditEvents,
   organizationMemberships,
   outboxEvents,
+  milestonePhases,
+  planningMilestones,
+  planningTasks,
+  taskPhases,
   weddingMemberships,
   weddingOrganizationAccesses,
   weddingOrganizationStaffAssignments,
@@ -38,6 +42,10 @@ type WeddingSchema = {
   outboxEvents: typeof outboxEvents;
   weddingMemberships: typeof weddingMemberships;
   weddings: typeof weddings;
+  milestonePhases: typeof milestonePhases;
+  planningMilestones: typeof planningMilestones;
+  planningTasks: typeof planningTasks;
+  taskPhases: typeof taskPhases;
 };
 
 export type WeddingDatabase<HKT extends PgQueryResultHKT = PgQueryResultHKT> =
@@ -733,7 +741,50 @@ export class DatabaseWeddingAuthorizationState<
     readonly authorizationSession?: unknown;
     readonly recordId: string;
   }) {
-    const [row] = await this.session(input.authorizationSession)
+    const session = this.session(input.authorizationSession);
+    const [task] = await session
+      .select({
+        weddingId: planningTasks.weddingId,
+        ownerActorId: weddingMemberships.actorId,
+      })
+      .from(planningTasks)
+      .leftJoin(
+        weddingMemberships,
+        eq(weddingMemberships.id, planningTasks.ownerMembershipId),
+      )
+      .where(eq(planningTasks.id, input.recordId))
+      .limit(1);
+    if (task) {
+      return {
+        area: "tasks" as const,
+        relationship:
+          task.ownerActorId === input.actorId
+            ? ("assigned" as const)
+            : ("workspace" as const),
+        visibility: "wedding_shared" as const,
+        weddingId: task.weddingId,
+      };
+    }
+    for (const [table] of [
+      [planningMilestones],
+      [taskPhases],
+      [milestonePhases],
+    ] as const) {
+      const [record] = await session
+        .select({ weddingId: table.weddingId })
+        .from(table)
+        .where(eq(table.id, input.recordId))
+        .limit(1);
+      if (record) {
+        return {
+          area: "tasks" as const,
+          relationship: "workspace" as const,
+          visibility: "wedding_shared" as const,
+          weddingId: record.weddingId,
+        };
+      }
+    }
+    const [row] = await session
       .select({ id: weddings.id })
       .from(weddings)
       .where(eq(weddings.id, input.recordId))

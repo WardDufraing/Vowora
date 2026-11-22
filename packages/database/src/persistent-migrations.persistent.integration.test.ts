@@ -181,7 +181,7 @@ describe("persistent migration workflow", () => {
       const journal = await admin.query(
         'SELECT hash FROM "drizzle"."__drizzle_migrations"',
       );
-      expect(journal.rowCount).toBe(9);
+      expect(journal.rowCount).toBe(10);
       const archiveGuard = await admin.query<{
         function_owner: string;
         is_security_definer: boolean;

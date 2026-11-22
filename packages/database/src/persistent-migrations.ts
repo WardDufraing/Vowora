@@ -37,6 +37,12 @@ const plannerPrivateTables = [
   "wedding_organization_handovers",
   "organization_private_notes",
 ] as const;
+const planningTables = [
+  "task_phases",
+  "milestone_phases",
+  "planning_tasks",
+  "planning_milestones",
+] as const;
 const allApplicationTables = [
   "schema_metadata",
   ...appendOnlyTables,
@@ -49,6 +55,7 @@ const allApplicationTables = [
   ...organizationInvitationTables,
   ...plannerAssignmentTables,
   ...plannerPrivateTables,
+  ...planningTables,
 ] as const;
 const tablePrivileges = [
   "SELECT",
@@ -109,6 +116,9 @@ function expectedTablePrivileges(schemaName: string, tableName: string) {
     return new Set(["SELECT", "INSERT"]);
   }
   if ((plannerPrivateTables as readonly string[]).includes(tableName)) {
+    return new Set(["SELECT", "INSERT"]);
+  }
+  if ((planningTables as readonly string[]).includes(tableName)) {
     return new Set(["SELECT", "INSERT"]);
   }
   return new Set<string>();
@@ -240,6 +250,42 @@ function expectedColumnPrivileges(
       mutable.includes(columnName)
         ? ["UPDATE"]
         : []),
+    ]);
+  }
+  if ((planningTables as readonly string[]).includes(tableName)) {
+    const mutable: Readonly<Record<string, readonly string[]>> = {
+      task_phases: ["name", "position", "version", "updated_at"],
+      milestone_phases: ["name", "status", "position", "version", "updated_at"],
+      planning_tasks: [
+        "phase_id",
+        "owner_membership_id",
+        "title",
+        "description",
+        "due_date",
+        "status",
+        "blocked_reason",
+        "lifecycle",
+        "archived_at",
+        "completed_at",
+        "version",
+        "updated_at",
+      ],
+      planning_milestones: [
+        "phase_id",
+        "title",
+        "description",
+        "planned_date",
+        "status",
+        "lifecycle",
+        "trashed_at",
+        "version",
+        "updated_at",
+      ],
+    };
+    return new Set([
+      "SELECT",
+      "INSERT",
+      ...((mutable[tableName] ?? []).includes(columnName) ? ["UPDATE"] : []),
     ]);
   }
   return new Set<string>();
@@ -409,6 +455,7 @@ async function reconcileRuntimeGrants(
     .map(quoteIdentifier)
     .join(", ");
   const plannerPrivate = plannerPrivateTables.map(quoteIdentifier).join(", ");
+  const planning = planningTables.map(quoteIdentifier).join(", ");
 
   await client.query("BEGIN");
   try {
@@ -486,6 +533,7 @@ async function reconcileRuntimeGrants(
     await client.query(
       `GRANT SELECT, INSERT ON TABLE ${plannerPrivate} TO ${role}`,
     );
+    await client.query(`GRANT SELECT, INSERT ON TABLE ${planning} TO ${role}`);
     await client.query(
       `GRANT UPDATE ("status", "accepted_by_actor_id", "rejected_by_actor_id", "revoked_by_actor_id", "accepted_at", "rejected_at", "revoked_at", "replaced_by_invitation_id", "updated_at") ON TABLE "wedding_organization_invitations" TO ${role}`,
     );
@@ -500,6 +548,18 @@ async function reconcileRuntimeGrants(
     );
     await client.query(
       `GRANT UPDATE ("title", "body", "status", "archived_at", "updated_at") ON TABLE "organization_private_notes" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("name", "position", "version", "updated_at") ON TABLE "task_phases" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("name", "status", "position", "version", "updated_at") ON TABLE "milestone_phases" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("phase_id", "owner_membership_id", "title", "description", "due_date", "status", "blocked_reason", "lifecycle", "archived_at", "completed_at", "version", "updated_at") ON TABLE "planning_tasks" TO ${role}`,
+    );
+    await client.query(
+      `GRANT UPDATE ("phase_id", "title", "description", "planned_date", "status", "lifecycle", "trashed_at", "version", "updated_at") ON TABLE "planning_milestones" TO ${role}`,
     );
     await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",
@@ -838,7 +898,7 @@ async function verifyRuntimeGrants(
   if (defaultPrivileges.rows[0]?.exposed) {
     throw new PersistentMigrationError("runtime default privileges mismatch");
   }
-  if (allApplicationTables.length !== 19) {
+  if (allApplicationTables.length !== 23) {
     throw new PersistentMigrationError("runtime grant manifest mismatch");
   }
 }

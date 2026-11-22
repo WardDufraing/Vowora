@@ -197,8 +197,18 @@ describe("API contracts", () => {
       "/api/v1/organizations/{organizationId}/invitations/{invitationId}",
       "/api/v1/organization-invitations/{token}/accept",
       "/api/v1/organization-invitations/pending/{invitationId}/accept",
+      "/api/v1/weddings/{weddingId}/planning",
+      "/api/v1/weddings/{weddingId}/planning/{recordId}",
       "/api/v1/{path}",
     ]);
+    expect(
+      openApiDocument.paths["/api/v1/weddings/{weddingId}/planning"].post
+        .responses["201"],
+    ).toBeTruthy();
+    expect(
+      openApiDocument.paths["/api/v1/weddings/{weddingId}/planning/{recordId}"]
+        .patch.responses["409"],
+    ).toBeTruthy();
     expect(
       openApiDocument.paths["/api/v1/auth/sign-out"].post.operationId,
     ).toBe("signOut");

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -21,6 +21,7 @@ import {
   organizationMemberships,
   organizationPrivateNotes,
   outboxEvents,
+  planningTasks,
   weddingOrganizationAccesses,
   weddingOrganizationHandovers,
   weddingOrganizationInvitations,
@@ -33,6 +34,7 @@ type Schema = {
   organizationMemberships: typeof organizationMemberships;
   organizationPrivateNotes: typeof organizationPrivateNotes;
   outboxEvents: typeof outboxEvents;
+  planningTasks: typeof planningTasks;
   weddingOrganizationAccesses: typeof weddingOrganizationAccesses;
   weddingOrganizationHandovers: typeof weddingOrganizationHandovers;
   weddingOrganizationInvitations: typeof weddingOrganizationInvitations;
@@ -79,6 +81,26 @@ function noteView(
         member.role === "manager" ||
         row.createdByMembershipId === member.id),
   });
+}
+
+async function unresolvedAssignedTasks<HKT extends PgQueryResultHKT>(
+  database: PlannerPrivateDatabase<HKT>,
+  weddingId: string,
+  membershipIds: readonly string[],
+) {
+  if (membershipIds.length === 0) return 0;
+  const [row] = await database
+    .select({ count: sql<number>`count(*)::int` })
+    .from(planningTasks)
+    .where(
+      and(
+        eq(planningTasks.weddingId, weddingId),
+        inArray(planningTasks.ownerMembershipId, membershipIds),
+        eq(planningTasks.lifecycle, "active"),
+        ne(planningTasks.status, "complete"),
+      ),
+    );
+  return row?.count ?? 0;
 }
 
 async function lockedMembership<HKT extends PgQueryResultHKT>(
@@ -366,6 +388,8 @@ export async function completeOrganizationWeddingExit<
       .select({
         id: weddingOrganizationStaffAssignments.id,
         isLead: weddingOrganizationStaffAssignments.isLead,
+        weddingMembershipId:
+          weddingOrganizationStaffAssignments.weddingMembershipId,
       })
       .from(weddingOrganizationStaffAssignments)
       .where(
@@ -393,7 +417,11 @@ export async function completeOrganizationWeddingExit<
       activeAssignmentCount: assignments.length,
       leadAssigned: assignments.some((item) => item.isLead),
       pendingInvitationCount: pending?.count ?? 0,
-      unresolvedResponsibilityCount: null,
+      unresolvedResponsibilityCount: await unresolvedAssignedTasks(
+        transaction,
+        access.weddingId,
+        assignments.map((item) => item.weddingMembershipId),
+      ),
       sharedDataRetained: true,
       privateNotesRetainedByOrganization: true,
     };
@@ -495,7 +523,11 @@ export async function previewOrganizationWeddingExit<
       access.weddingId,
     );
     const assignments = await transaction
-      .select({ isLead: weddingOrganizationStaffAssignments.isLead })
+      .select({
+        isLead: weddingOrganizationStaffAssignments.isLead,
+        weddingMembershipId:
+          weddingOrganizationStaffAssignments.weddingMembershipId,
+      })
       .from(weddingOrganizationStaffAssignments)
       .where(
         and(
@@ -522,7 +554,11 @@ export async function previewOrganizationWeddingExit<
       activeAssignmentCount: assignments.length,
       leadAssigned: assignments.some((item) => item.isLead),
       pendingInvitationCount: pending?.count ?? 0,
-      unresolvedResponsibilityCount: null,
+      unresolvedResponsibilityCount: await unresolvedAssignedTasks(
+        transaction,
+        access.weddingId,
+        assignments.map((item) => item.weddingMembershipId),
+      ),
       sharedDataRetained: true,
       privateNotesRetainedByOrganization: true,
     });
