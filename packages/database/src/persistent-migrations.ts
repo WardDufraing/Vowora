@@ -62,6 +62,8 @@ const tablePrivileges = [
 ] as const;
 const columnPrivileges = ["SELECT", "INSERT", "UPDATE", "REFERENCES"] as const;
 const sequencePrivileges = ["USAGE", "SELECT", "UPDATE"] as const;
+const archivedPrivateNoteGuardBody =
+  "BEGIN IF OLD.status = 'archived' THEN RAISE EXCEPTION 'archived organization private notes are immutable' USING ERRCODE = '55000'; END IF; RETURN NEW; END;";
 
 export class PersistentMigrationError extends Error {
   constructor(readonly reason: string) {
@@ -730,6 +732,53 @@ async function verifyRuntimeGrants(
     if (result.rows[0]?.allowed) {
       throw new PersistentMigrationError("runtime routine privileges mismatch");
     }
+  }
+
+  const archiveGuard = await client.query<{
+    function_owner: string;
+    is_security_definer: boolean;
+    function_settings: string[] | null;
+    function_body: string;
+    trigger_enabled: string;
+    trigger_type: number;
+    trigger_column_count: number;
+    trigger_condition: string | null;
+  }>(
+    `SELECT function_owner.rolname AS function_owner,
+            routine.prosecdef AS is_security_definer,
+            routine.proconfig AS function_settings,
+            btrim(regexp_replace(routine.prosrc, '\\s+', ' ', 'g')) AS function_body,
+            trigger.tgenabled AS trigger_enabled,
+            trigger.tgtype::integer AS trigger_type,
+            cardinality(trigger.tgattr::smallint[]) AS trigger_column_count,
+            pg_get_expr(trigger.tgqual, trigger.tgrelid) AS trigger_condition
+       FROM pg_proc routine
+       JOIN pg_namespace namespace ON namespace.oid = routine.pronamespace
+       JOIN pg_roles function_owner ON function_owner.oid = routine.proowner
+       JOIN pg_trigger trigger ON trigger.tgfoid = routine.oid
+      WHERE namespace.nspname = 'public'
+        AND routine.proname = 'reject_archived_organization_private_note_update'
+        AND routine.pronargs = 0
+        AND routine.prorettype = 'trigger'::regtype
+        AND routine.prolang = (SELECT oid FROM pg_language WHERE lanname = 'plpgsql')
+        AND trigger.tgrelid = 'organization_private_notes'::regclass
+        AND trigger.tgname = 'organization_private_notes_archived_immutable'
+        AND NOT trigger.tgisinternal`,
+  );
+  const guard = archiveGuard.rows[0];
+  if (
+    archiveGuard.rowCount !== 1 ||
+    guard?.function_owner !== config.migrationUsername ||
+    guard.is_security_definer ||
+    JSON.stringify(guard.function_settings) !==
+      JSON.stringify(["search_path=pg_catalog"]) ||
+    guard.function_body !== archivedPrivateNoteGuardBody ||
+    guard.trigger_enabled !== "O" ||
+    guard.trigger_type !== 19 ||
+    guard.trigger_column_count !== 0 ||
+    guard.trigger_condition !== null
+  ) {
+    throw new PersistentMigrationError("archived private note guard mismatch");
   }
 
   const exposedPrivileges = await client.query<{ exposed: boolean }>(
