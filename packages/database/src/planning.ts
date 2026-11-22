@@ -175,12 +175,18 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
     taskCursor?: string;
     milestoneCursor?: string;
     limit?: number;
+    expectedPermissionScopeVersion?: string;
   },
 ) {
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
   const state = new DatabaseWeddingAuthorizationState(database);
   const loaded = await state.loadWeddingMembership(input);
   if (!loaded) throw new PlanningUnavailableError("access_denied");
+  if (
+    input.expectedPermissionScopeVersion !== undefined &&
+    loaded.permissionScopeVersion !== input.expectedPermissionScopeVersion
+  )
+    throw new PlanningUnavailableError("access_denied");
   let membership;
   try {
     membership = parseWeddingMembership(loaded.membership);
@@ -748,66 +754,76 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       let affectedMilestones = 0;
       if (previous.kind === "custom" && previous.status !== row.status) {
         if (row.status === "trashed") {
-          const unassigned = await call.session
-            .update(planningMilestones)
-            .set({
-              phaseId: null,
-              restorablePhaseId: row.id,
-              version: sql`${planningMilestones.version} + 1`,
-              updatedAt: now,
-            })
-            .where(
-              and(
-                eq(planningMilestones.weddingId, weddingId),
-                eq(planningMilestones.phaseId, row.id),
-              ),
-            )
-            .returning({ id: planningMilestones.id });
-          affectedMilestones = unassigned.length;
-        } else {
-          const restored = await call.session
-            .update(planningMilestones)
-            .set({
-              phaseId: row.id,
-              restorablePhaseId: null,
-              version: sql`${planningMilestones.version} + 1`,
-              updatedAt: now,
-            })
+          const [{ count = 0 } = {}] = await call.session
+            .select({ count: sql<number>`count(*)::integer` })
+            .from(planningMilestones)
             .where(
               and(
                 eq(planningMilestones.weddingId, weddingId),
                 eq(planningMilestones.restorablePhaseId, row.id),
                 isNull(planningMilestones.phaseId),
               ),
-            )
-            .returning({ id: planningMilestones.id });
-          affectedMilestones = restored.length;
-          await call.session
-            .update(planningMilestones)
-            .set({ restorablePhaseId: null, updatedAt: now })
+            );
+          affectedMilestones = count;
+        } else {
+          const [{ count = 0 } = {}] = await call.session
+            .select({ count: sql<number>`count(*)::integer` })
+            .from(planningMilestones)
             .where(
               and(
                 eq(planningMilestones.weddingId, weddingId),
-                eq(planningMilestones.restorablePhaseId, row.id),
+                eq(planningMilestones.phaseId, row.id),
               ),
             );
+          affectedMilestones = count;
         }
       }
-      await emit(
-        call,
-        previous.status !== row.status && previous.kind === "custom"
-          ? `planning.milestone_phase_${row.status === "trashed" ? "trashed" : "restored"}`
-          : "planning.milestone_phase_updated",
-        "milestone_phase",
-        row.id,
-        {
-          hidden: row.status === "hidden",
-          lifecycle: row.status === "trashed" ? "trashed" : "active",
-          affectedMilestones,
-          version: row.version,
-        },
-        now,
-      );
+      const events: Array<[string, Record<string, unknown>]> = [];
+      if (previous.name !== row.name)
+        events.push([
+          "planning.milestone_phase_renamed",
+          { previousName: previous.name, name: row.name, notify: false },
+        ]);
+      if (previous.position !== row.position)
+        events.push([
+          "planning.milestone_phase_reordered",
+          {
+            previousPosition: previous.position,
+            position: row.position,
+            notify: false,
+          },
+        ]);
+      if (previous.status !== row.status) {
+        if (previous.kind === "suggested")
+          events.push([
+            "planning.milestone_phase_visibility_changed",
+            {
+              previouslyHidden: previous.status === "hidden",
+              hidden: row.status === "hidden",
+              notify: false,
+            },
+          ]);
+        else
+          events.push([
+            `planning.milestone_phase_${row.status === "trashed" ? "trashed" : "restored"}`,
+            {
+              lifecycle: row.status === "trashed" ? "trashed" : "active",
+              affectedMilestones,
+              notify: false,
+            },
+          ]);
+      }
+      if (events.length === 0)
+        events.push(["planning.milestone_phase_updated", { notify: false }]);
+      for (const [eventType, metadata] of events)
+        await emit(
+          call,
+          eventType,
+          "milestone_phase",
+          row.id,
+          { ...metadata, version: row.version },
+          now,
+        );
       return {
         recordType: "milestone_phase" as const,
         id: row.id,
@@ -837,6 +853,21 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         .limit(1);
       if (!previous || previous.version !== input.expectedVersion)
         throw new PlanningUnavailableError("conflict");
+      const nextTitle = title(input.title, 200);
+      const nextDescription = clean(input.description, 10_000);
+      if (
+        previous.lifecycle !== input.lifecycle &&
+        (nextTitle !== previous.title ||
+          nextDescription !== previous.description ||
+          input.dueDate !== previous.dueDate ||
+          input.phaseId !== previous.phaseId ||
+          input.ownerMembershipId !== previous.ownerMembershipId ||
+          input.status !== previous.status ||
+          input.blockedReason !== previous.blockedReason)
+      )
+        throw new PlanningUnavailableError("invalid");
+      if (previous.lifecycle === "archived" && input.lifecycle === "archived")
+        throw new PlanningUnavailableError("invalid");
       await assertTaskUpdateScope(
         call.session,
         operation.authorization.actorId,
@@ -847,8 +878,8 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       const [row] = await call.session
         .update(planningTasks)
         .set({
-          title: title(input.title, 200),
-          description: clean(input.description, 10_000),
+          title: nextTitle,
+          description: nextDescription,
           dueDate: input.dueDate,
           phaseId: input.phaseId,
           ownerMembershipId: input.ownerMembershipId,
@@ -936,6 +967,25 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       .limit(1);
     if (!previous || previous.version !== input.expectedVersion)
       throw new PlanningUnavailableError("conflict");
+    const nextTitle = title(input.title, 200);
+    const nextDescription = clean(input.description, 10_000);
+    if (
+      (previous.lifecycle === "trashed" &&
+        (input.lifecycle !== "active" ||
+          nextTitle !== previous.title ||
+          nextDescription !== previous.description ||
+          input.plannedDate !== previous.plannedDate ||
+          input.phaseId !== previous.phaseId ||
+          input.status !== previous.status)) ||
+      (previous.lifecycle === "active" &&
+        input.lifecycle === "trashed" &&
+        (nextTitle !== previous.title ||
+          nextDescription !== previous.description ||
+          input.plannedDate !== previous.plannedDate ||
+          input.phaseId !== previous.phaseId ||
+          input.status !== previous.status))
+    )
+      throw new PlanningUnavailableError("invalid");
     await assertPhase(
       call.session,
       weddingId,
@@ -946,8 +996,8 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
     const [row] = await call.session
       .update(planningMilestones)
       .set({
-        title: title(input.title, 200),
-        description: clean(input.description, 10_000),
+        title: nextTitle,
+        description: nextDescription,
         plannedDate: input.plannedDate,
         phaseId: input.phaseId,
         status: input.status,

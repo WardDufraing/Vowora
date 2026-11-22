@@ -71,6 +71,14 @@ const columnPrivileges = ["SELECT", "INSERT", "UPDATE", "REFERENCES"] as const;
 const sequencePrivileges = ["USAGE", "SELECT", "UPDATE"] as const;
 const archivedPrivateNoteGuardBody =
   "BEGIN IF OLD.status = 'archived' THEN RAISE EXCEPTION 'archived organization private notes are immutable' USING ERRCODE = '55000'; END IF; RETURN NEW; END;";
+const planningLifecycleGuardBodies = {
+  vowora_apply_milestone_phase_lifecycle:
+    "BEGIN IF OLD.kind = 'custom' AND OLD.status IS DISTINCT FROM NEW.status THEN IF NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'milestone phase lifecycle change requires the next version' USING ERRCODE = '23514'; END IF; IF NEW.status = 'trashed' THEN EXECUTE pg_catalog.format( 'UPDATE %I.planning_milestones SET phase_id = NULL, restorable_phase_id = $2, version = version + 1, updated_at = $3 WHERE wedding_id = $1 AND phase_id = $2', TG_TABLE_SCHEMA ) USING OLD.wedding_id, OLD.id, NEW.updated_at; ELSIF OLD.status = 'trashed' AND NEW.status = 'active' THEN EXECUTE pg_catalog.format( 'UPDATE %I.planning_milestones SET phase_id = $2, restorable_phase_id = NULL, version = version + 1, updated_at = $3 WHERE wedding_id = $1 AND restorable_phase_id = $2 AND phase_id IS NULL', TG_TABLE_SCHEMA ) USING OLD.wedding_id, OLD.id, NEW.updated_at; EXECUTE pg_catalog.format( 'UPDATE %I.planning_milestones SET restorable_phase_id = NULL, updated_at = $3 WHERE wedding_id = $1 AND restorable_phase_id = $2', TG_TABLE_SCHEMA ) USING OLD.wedding_id, OLD.id, NEW.updated_at; END IF; END IF; RETURN NULL; END;",
+  vowora_guard_planning_milestone_lifecycle:
+    "BEGIN IF OLD.lifecycle = 'trashed' THEN IF NEW.lifecycle <> 'active' OR NEW.trashed_at IS NOT NULL OR NEW.phase_id IS DISTINCT FROM OLD.phase_id OR NEW.restorable_phase_id IS DISTINCT FROM OLD.restorable_phase_id OR NEW.title IS DISTINCT FROM OLD.title OR NEW.description IS DISTINCT FROM OLD.description OR NEW.planned_date IS DISTINCT FROM OLD.planned_date OR NEW.status IS DISTINCT FROM OLD.status OR NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'trashed planning milestone is immutable except for restore' USING ERRCODE = '23514'; END IF; ELSIF NEW.lifecycle = 'trashed' THEN IF NEW.trashed_at IS NULL OR NEW.phase_id IS DISTINCT FROM OLD.phase_id OR NEW.restorable_phase_id IS DISTINCT FROM OLD.restorable_phase_id OR NEW.title IS DISTINCT FROM OLD.title OR NEW.description IS DISTINCT FROM OLD.description OR NEW.planned_date IS DISTINCT FROM OLD.planned_date OR NEW.status IS DISTINCT FROM OLD.status OR NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'planning milestone trash must preserve milestone contents' USING ERRCODE = '23514'; END IF; END IF; RETURN NEW; END;",
+  vowora_guard_planning_task_lifecycle:
+    "BEGIN IF OLD.lifecycle = 'archived' THEN IF NEW.lifecycle <> 'active' OR NEW.archived_at IS NOT NULL OR NEW.phase_id IS DISTINCT FROM OLD.phase_id OR NEW.owner_membership_id IS DISTINCT FROM OLD.owner_membership_id OR NEW.title IS DISTINCT FROM OLD.title OR NEW.description IS DISTINCT FROM OLD.description OR NEW.due_date IS DISTINCT FROM OLD.due_date OR NEW.status IS DISTINCT FROM OLD.status OR NEW.blocked_reason IS DISTINCT FROM OLD.blocked_reason OR NEW.completed_at IS DISTINCT FROM OLD.completed_at OR NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'archived planning task is immutable except for restore' USING ERRCODE = '23514'; END IF; ELSIF NEW.lifecycle = 'archived' THEN IF NEW.archived_at IS NULL OR NEW.phase_id IS DISTINCT FROM OLD.phase_id OR NEW.owner_membership_id IS DISTINCT FROM OLD.owner_membership_id OR NEW.title IS DISTINCT FROM OLD.title OR NEW.description IS DISTINCT FROM OLD.description OR NEW.due_date IS DISTINCT FROM OLD.due_date OR NEW.status IS DISTINCT FROM OLD.status OR NEW.blocked_reason IS DISTINCT FROM OLD.blocked_reason OR NEW.completed_at IS DISTINCT FROM OLD.completed_at OR NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'planning task archive must preserve task contents' USING ERRCODE = '23514'; END IF; END IF; RETURN NEW; END;",
+} as const;
 
 export class PersistentMigrationError extends Error {
   constructor(readonly reason: string) {
@@ -848,6 +856,91 @@ async function verifyRuntimeGrants(
   ) {
     throw new PersistentMigrationError("archived private note guard mismatch");
   }
+
+  const planningGuards = await client.query<{
+    function_name: string;
+    function_owner: string;
+    is_security_definer: boolean;
+    function_settings: string[] | null;
+    function_body: string;
+    trigger_name: string;
+    trigger_enabled: string;
+    trigger_type: number;
+    trigger_column_count: number;
+    trigger_condition: string | null;
+  }>(
+    `SELECT routine.proname AS function_name,
+            function_owner.rolname AS function_owner,
+            routine.prosecdef AS is_security_definer,
+            routine.proconfig AS function_settings,
+            btrim(regexp_replace(routine.prosrc, '\\s+', ' ', 'g')) AS function_body,
+            trigger.tgname AS trigger_name,
+            trigger.tgenabled AS trigger_enabled,
+            trigger.tgtype::integer AS trigger_type,
+            cardinality(trigger.tgattr::smallint[]) AS trigger_column_count,
+            pg_get_expr(trigger.tgqual, trigger.tgrelid) AS trigger_condition
+       FROM pg_proc routine
+       JOIN pg_namespace namespace ON namespace.oid = routine.pronamespace
+       JOIN pg_roles function_owner ON function_owner.oid = routine.proowner
+       JOIN pg_trigger trigger ON trigger.tgfoid = routine.oid
+      WHERE namespace.nspname = 'public'
+        AND routine.proname IN (
+          'vowora_apply_milestone_phase_lifecycle',
+          'vowora_guard_planning_milestone_lifecycle',
+          'vowora_guard_planning_task_lifecycle'
+        )
+        AND routine.pronargs = 0
+        AND routine.prorettype = 'trigger'::regtype
+        AND routine.prolang = (SELECT oid FROM pg_language WHERE lanname = 'plpgsql')
+        AND NOT trigger.tgisinternal
+      ORDER BY routine.proname`,
+  );
+  const expectedPlanningGuards = [
+    {
+      function_name: "vowora_apply_milestone_phase_lifecycle",
+      function_owner: config.migrationUsername,
+      is_security_definer: false,
+      function_settings: ["search_path=pg_catalog"],
+      function_body:
+        planningLifecycleGuardBodies.vowora_apply_milestone_phase_lifecycle,
+      trigger_name: "milestone_phases_lifecycle_apply",
+      trigger_enabled: "O",
+      trigger_type: 17,
+      trigger_column_count: 1,
+      trigger_condition: null,
+    },
+    {
+      function_name: "vowora_guard_planning_milestone_lifecycle",
+      function_owner: config.migrationUsername,
+      is_security_definer: false,
+      function_settings: ["search_path=pg_catalog"],
+      function_body:
+        planningLifecycleGuardBodies.vowora_guard_planning_milestone_lifecycle,
+      trigger_name: "planning_milestones_lifecycle_guard",
+      trigger_enabled: "O",
+      trigger_type: 19,
+      trigger_column_count: 0,
+      trigger_condition: null,
+    },
+    {
+      function_name: "vowora_guard_planning_task_lifecycle",
+      function_owner: config.migrationUsername,
+      is_security_definer: false,
+      function_settings: ["search_path=pg_catalog"],
+      function_body:
+        planningLifecycleGuardBodies.vowora_guard_planning_task_lifecycle,
+      trigger_name: "planning_tasks_lifecycle_guard",
+      trigger_enabled: "O",
+      trigger_type: 19,
+      trigger_column_count: 0,
+      trigger_condition: null,
+    },
+  ];
+  if (
+    JSON.stringify(planningGuards.rows) !==
+    JSON.stringify(expectedPlanningGuards)
+  )
+    throw new PersistentMigrationError("planning lifecycle guards mismatch");
 
   const exposedPrivileges = await client.query<{ exposed: boolean }>(
     `SELECT EXISTS (

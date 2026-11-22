@@ -11,6 +11,8 @@ import {
 } from "@vowora/database";
 
 import { getRuntimeDatabase } from "./database";
+import { readAuthEnvironment } from "./env";
+import { decodePlanningCursor, encodePlanningCursor } from "./planning-cursor";
 import {
   authorizeApiOperation,
   type ApiAuthorizationResult,
@@ -28,14 +30,63 @@ interface SessionReader {
   };
 }
 
-export function loadPlanningWorkspace(input: {
+export async function loadPlanningWorkspace(input: {
   actorId: string;
   weddingId: string;
   taskCursor?: string;
   milestoneCursor?: string;
   limit?: number;
 }) {
-  return listPlanningWorkspace(getRuntimeDatabase().database, input);
+  const database = getRuntimeDatabase().database;
+  const authorization = await new DatabaseWeddingAuthorizationState(
+    database,
+  ).loadWeddingMembership(input);
+  if (!authorization) throw new PlanningUnavailableError("access_denied");
+  const limit = input.limit ?? 50;
+  const secret = readAuthEnvironment().AUTH_SECRET;
+  const binding = {
+    actorId: input.actorId,
+    weddingId: input.weddingId,
+    permissionScopeVersion: authorization.permissionScopeVersion,
+    limit,
+  };
+  const result = await listPlanningWorkspace(database, {
+    actorId: input.actorId,
+    weddingId: input.weddingId,
+    limit,
+    expectedPermissionScopeVersion: authorization.permissionScopeVersion,
+    taskCursor: input.taskCursor
+      ? decodePlanningCursor(secret, input.taskCursor, {
+          ...binding,
+          kind: "task",
+        })
+      : undefined,
+    milestoneCursor: input.milestoneCursor
+      ? decodePlanningCursor(secret, input.milestoneCursor, {
+          ...binding,
+          kind: "milestone",
+        })
+      : undefined,
+  });
+  return {
+    ...result,
+    page: {
+      nextTaskCursor: result.page.nextTaskCursor
+        ? encodePlanningCursor(secret, {
+            ...binding,
+            kind: "task",
+            afterId: result.page.nextTaskCursor,
+          })
+        : null,
+      nextMilestoneCursor: result.page.nextMilestoneCursor
+        ? encodePlanningCursor(secret, {
+            ...binding,
+            kind: "milestone",
+            afterId: result.page.nextMilestoneCursor,
+          })
+        : null,
+    },
+  };
 }
 
 export function authorizePlanningCreate(

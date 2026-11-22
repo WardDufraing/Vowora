@@ -325,8 +325,8 @@ export const createPlanningRecordRequestSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const planningCollectionQuerySchema = z.strictObject({
-  taskCursor: z.uuidv7().optional(),
-  milestoneCursor: z.uuidv7().optional(),
+  taskCursor: z.string().min(40).max(2048).optional(),
+  milestoneCursor: z.string().min(40).max(2048).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
@@ -424,8 +424,8 @@ export const planningWorkspaceResponseSchema = z.strictObject({
     ),
     canEdit: z.boolean(),
     page: z.strictObject({
-      nextTaskCursor: z.uuidv7().nullable(),
-      nextMilestoneCursor: z.uuidv7().nullable(),
+      nextTaskCursor: z.string().min(40).max(2048).nullable(),
+      nextMilestoneCursor: z.string().min(40).max(2048).nullable(),
     }),
   }),
   meta: responseMetadataSchema,
@@ -2235,12 +2235,16 @@ export const openApiDocument = {
           {
             name: "taskCursor",
             in: "query",
-            schema: { type: "string", format: "uuid" },
+            description:
+              "Opaque signed cursor from the prior task page; bound to the actor, wedding, permission scope, sort and limit.",
+            schema: { type: "string", minLength: 40, maxLength: 2048 },
           },
           {
             name: "milestoneCursor",
             in: "query",
-            schema: { type: "string", format: "uuid" },
+            description:
+              "Opaque signed cursor from the prior milestone page; bound to the actor, wedding, permission scope, sort and limit.",
+            schema: { type: "string", minLength: 40, maxLength: 2048 },
           },
           {
             name: "limit",

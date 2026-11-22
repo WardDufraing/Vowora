@@ -345,6 +345,108 @@ describe("persistent migration workflow", () => {
       await expect(
         runtime.query("DELETE FROM weddings WHERE id = $1", [weddingId]),
       ).rejects.toThrow(/permission denied/);
+      const milestonePhaseId = "019a27f0-67b7-7000-8000-000000000016";
+      const milestoneId = "019a27f0-67b7-7000-8000-000000000017";
+      await runtime.query(
+        `INSERT INTO milestone_phases
+          (id, wedding_id, name, kind, status, position)
+         VALUES ($1, $2, 'Venue', 'custom', 'active', 0)`,
+        [milestonePhaseId, weddingId],
+      );
+      await runtime.query(
+        `INSERT INTO planning_milestones
+          (id, wedding_id, phase_id, title, planned_date, status, lifecycle)
+         VALUES ($1, $2, $3, 'Venue confirmed', '2027-03-01',
+           'in_progress', 'active')`,
+        [milestoneId, weddingId, milestonePhaseId],
+      );
+      await runtime.query(
+        `UPDATE milestone_phases
+            SET status = 'trashed', trashed_at = now(), version = 2,
+                updated_at = now()
+          WHERE id = $1`,
+        [milestonePhaseId],
+      );
+      expect(
+        (
+          await runtime.query(
+            `SELECT phase_id, restorable_phase_id, version
+               FROM planning_milestones WHERE id = $1`,
+            [milestoneId],
+          )
+        ).rows[0],
+      ).toEqual({
+        phase_id: null,
+        restorable_phase_id: milestonePhaseId,
+        version: 2,
+      });
+      await runtime.query(
+        `UPDATE planning_milestones
+            SET lifecycle = 'trashed', trashed_at = now(), version = 3,
+                updated_at = now()
+          WHERE id = $1`,
+        [milestoneId],
+      );
+      await expect(
+        runtime.query(
+          `UPDATE planning_milestones
+              SET title = 'Mutated in trash', version = 4, updated_at = now()
+            WHERE id = $1`,
+          [milestoneId],
+        ),
+      ).rejects.toThrow(/trashed planning milestone is immutable/);
+      await runtime.query(
+        `UPDATE planning_milestones
+            SET lifecycle = 'active', trashed_at = NULL, version = 4,
+                updated_at = now()
+          WHERE id = $1`,
+        [milestoneId],
+      );
+      await runtime.query(
+        `UPDATE milestone_phases
+            SET status = 'active', trashed_at = NULL, version = 3,
+                updated_at = now()
+          WHERE id = $1`,
+        [milestonePhaseId],
+      );
+      expect(
+        (
+          await runtime.query(
+            `SELECT phase_id, restorable_phase_id, title, status, version
+               FROM planning_milestones WHERE id = $1`,
+            [milestoneId],
+          )
+        ).rows[0],
+      ).toEqual({
+        phase_id: milestonePhaseId,
+        restorable_phase_id: null,
+        title: "Venue confirmed",
+        status: "in_progress",
+        version: 5,
+      });
+      const taskId = "019a27f0-67b7-7000-8000-000000000018";
+      await runtime.query(
+        `INSERT INTO planning_tasks
+          (id, wedding_id, title, status, lifecycle)
+         VALUES ($1, $2, 'Preserved task', 'in_progress', 'active')`,
+        [taskId, weddingId],
+      );
+      await runtime.query(
+        `UPDATE planning_tasks
+            SET lifecycle = 'archived', archived_at = now(), version = 2,
+                updated_at = now()
+          WHERE id = $1`,
+        [taskId],
+      );
+      await expect(
+        runtime.query(
+          `UPDATE planning_tasks
+              SET title = 'Mutated in archive', version = 3,
+                  updated_at = now()
+            WHERE id = $1`,
+          [taskId],
+        ),
+      ).rejects.toThrow(/archived planning task is immutable/);
       const organizationId = "019a27f0-67b7-7000-8000-000000000009";
       await runtime.query(
         `INSERT INTO organizations
@@ -607,6 +709,31 @@ describe("persistent migration workflow", () => {
     try {
       await restore.query(
         'ALTER FUNCTION "reject_archived_organization_private_note_update"() SET search_path TO pg_catalog',
+      );
+    } finally {
+      await restore.end();
+    }
+    await expect(
+      runPersistentMigration(config("verify")),
+    ).resolves.toBeUndefined();
+  });
+
+  it("fails verification when a planning lifecycle guard drifts", async () => {
+    const admin = await administrator();
+    try {
+      await admin.query(
+        'ALTER FUNCTION "vowora_guard_planning_milestone_lifecycle"() RESET search_path',
+      );
+    } finally {
+      await admin.end();
+    }
+    await expect(runPersistentMigration(config("verify"))).rejects.toThrow(
+      "planning lifecycle guards mismatch",
+    );
+    const restore = await administrator();
+    try {
+      await restore.query(
+        'ALTER FUNCTION "vowora_guard_planning_milestone_lifecycle"() SET search_path TO pg_catalog',
       );
     } finally {
       await restore.end();

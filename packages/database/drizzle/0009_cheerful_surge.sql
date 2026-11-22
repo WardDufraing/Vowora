@@ -100,3 +100,120 @@ CREATE INDEX "planning_tasks_wedding_status_due_idx" ON "planning_tasks" USING b
 CREATE INDEX "planning_tasks_owner_idx" ON "planning_tasks" USING btree ("owner_membership_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "task_phases_wedding_name_unique_idx" ON "task_phases" USING btree ("wedding_id",lower(btrim("name")));--> statement-breakpoint
 CREATE INDEX "task_phases_wedding_position_idx" ON "task_phases" USING btree ("wedding_id","position");--> statement-breakpoint
+CREATE FUNCTION "vowora_guard_planning_task_lifecycle"()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $function$
+BEGIN
+	IF OLD.lifecycle = 'archived' THEN
+		IF NEW.lifecycle <> 'active'
+			OR NEW.archived_at IS NOT NULL
+			OR NEW.phase_id IS DISTINCT FROM OLD.phase_id
+			OR NEW.owner_membership_id IS DISTINCT FROM OLD.owner_membership_id
+			OR NEW.title IS DISTINCT FROM OLD.title
+			OR NEW.description IS DISTINCT FROM OLD.description
+			OR NEW.due_date IS DISTINCT FROM OLD.due_date
+			OR NEW.status IS DISTINCT FROM OLD.status
+			OR NEW.blocked_reason IS DISTINCT FROM OLD.blocked_reason
+			OR NEW.completed_at IS DISTINCT FROM OLD.completed_at
+			OR NEW.version <> OLD.version + 1 THEN
+			RAISE EXCEPTION 'archived planning task is immutable except for restore' USING ERRCODE = '23514';
+		END IF;
+	ELSIF NEW.lifecycle = 'archived' THEN
+		IF NEW.archived_at IS NULL
+			OR NEW.phase_id IS DISTINCT FROM OLD.phase_id
+			OR NEW.owner_membership_id IS DISTINCT FROM OLD.owner_membership_id
+			OR NEW.title IS DISTINCT FROM OLD.title
+			OR NEW.description IS DISTINCT FROM OLD.description
+			OR NEW.due_date IS DISTINCT FROM OLD.due_date
+			OR NEW.status IS DISTINCT FROM OLD.status
+			OR NEW.blocked_reason IS DISTINCT FROM OLD.blocked_reason
+			OR NEW.completed_at IS DISTINCT FROM OLD.completed_at
+			OR NEW.version <> OLD.version + 1 THEN
+			RAISE EXCEPTION 'planning task archive must preserve task contents' USING ERRCODE = '23514';
+		END IF;
+	END IF;
+	RETURN NEW;
+END;
+$function$;--> statement-breakpoint
+CREATE TRIGGER "planning_tasks_lifecycle_guard"
+BEFORE UPDATE ON "planning_tasks"
+FOR EACH ROW
+EXECUTE FUNCTION "vowora_guard_planning_task_lifecycle"();--> statement-breakpoint
+CREATE FUNCTION "vowora_guard_planning_milestone_lifecycle"()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $function$
+BEGIN
+	IF OLD.lifecycle = 'trashed' THEN
+		IF NEW.lifecycle <> 'active'
+			OR NEW.trashed_at IS NOT NULL
+			OR NEW.phase_id IS DISTINCT FROM OLD.phase_id
+			OR NEW.restorable_phase_id IS DISTINCT FROM OLD.restorable_phase_id
+			OR NEW.title IS DISTINCT FROM OLD.title
+			OR NEW.description IS DISTINCT FROM OLD.description
+			OR NEW.planned_date IS DISTINCT FROM OLD.planned_date
+			OR NEW.status IS DISTINCT FROM OLD.status
+			OR NEW.version <> OLD.version + 1 THEN
+			RAISE EXCEPTION 'trashed planning milestone is immutable except for restore' USING ERRCODE = '23514';
+		END IF;
+	ELSIF NEW.lifecycle = 'trashed' THEN
+		IF NEW.trashed_at IS NULL
+			OR NEW.phase_id IS DISTINCT FROM OLD.phase_id
+			OR NEW.restorable_phase_id IS DISTINCT FROM OLD.restorable_phase_id
+			OR NEW.title IS DISTINCT FROM OLD.title
+			OR NEW.description IS DISTINCT FROM OLD.description
+			OR NEW.planned_date IS DISTINCT FROM OLD.planned_date
+			OR NEW.status IS DISTINCT FROM OLD.status
+			OR NEW.version <> OLD.version + 1 THEN
+			RAISE EXCEPTION 'planning milestone trash must preserve milestone contents' USING ERRCODE = '23514';
+		END IF;
+	END IF;
+	RETURN NEW;
+END;
+$function$;--> statement-breakpoint
+CREATE TRIGGER "planning_milestones_lifecycle_guard"
+BEFORE UPDATE ON "planning_milestones"
+FOR EACH ROW
+EXECUTE FUNCTION "vowora_guard_planning_milestone_lifecycle"();--> statement-breakpoint
+CREATE FUNCTION "vowora_apply_milestone_phase_lifecycle"()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $function$
+BEGIN
+	IF OLD.kind = 'custom' AND OLD.status IS DISTINCT FROM NEW.status THEN
+		IF NEW.version <> OLD.version + 1 THEN
+			RAISE EXCEPTION 'milestone phase lifecycle change requires the next version' USING ERRCODE = '23514';
+		END IF;
+		IF NEW.status = 'trashed' THEN
+			EXECUTE pg_catalog.format(
+				'UPDATE %I.planning_milestones SET phase_id = NULL, restorable_phase_id = $2, version = version + 1, updated_at = $3 WHERE wedding_id = $1 AND phase_id = $2',
+				TG_TABLE_SCHEMA
+			) USING OLD.wedding_id, OLD.id, NEW.updated_at;
+		ELSIF OLD.status = 'trashed' AND NEW.status = 'active' THEN
+			EXECUTE pg_catalog.format(
+				'UPDATE %I.planning_milestones SET phase_id = $2, restorable_phase_id = NULL, version = version + 1, updated_at = $3 WHERE wedding_id = $1 AND restorable_phase_id = $2 AND phase_id IS NULL',
+				TG_TABLE_SCHEMA
+			) USING OLD.wedding_id, OLD.id, NEW.updated_at;
+			EXECUTE pg_catalog.format(
+				'UPDATE %I.planning_milestones SET restorable_phase_id = NULL, updated_at = $3 WHERE wedding_id = $1 AND restorable_phase_id = $2',
+				TG_TABLE_SCHEMA
+			) USING OLD.wedding_id, OLD.id, NEW.updated_at;
+		END IF;
+	END IF;
+	RETURN NULL;
+END;
+$function$;--> statement-breakpoint
+CREATE TRIGGER "milestone_phases_lifecycle_apply"
+AFTER UPDATE OF "status" ON "milestone_phases"
+FOR EACH ROW
+EXECUTE FUNCTION "vowora_apply_milestone_phase_lifecycle"();--> statement-breakpoint
+REVOKE ALL ON FUNCTION "vowora_guard_planning_task_lifecycle"() FROM PUBLIC;--> statement-breakpoint
+REVOKE ALL ON FUNCTION "vowora_guard_planning_milestone_lifecycle"() FROM PUBLIC;--> statement-breakpoint
+REVOKE ALL ON FUNCTION "vowora_apply_milestone_phase_lifecycle"() FROM PUBLIC;

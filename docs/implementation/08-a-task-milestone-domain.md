@@ -11,9 +11,9 @@ Implemented source rules: Product §4.4; DEC-193–194, DEC-265–266, DEC-268, 
 ## Implementation
 
 - `packages/database/src/schema.ts` and `drizzle/0009_cheerful_surge.sql`: additive UUIDv7 tables, checks, indexes and composite tenant-bound foreign keys. The final schema is one forward migration; the earlier feature-branch-only draft migration was regenerated before merge because no persistent environment or `main` journal had applied it.
-- `packages/database/src/planning.ts`: domain-owned repository/application operations, SQL-filtered cursor reads, exact authorization capability consumption, validation, optimistic version checks, assigned-scope enforcement, assignment, custom-phase trash/restore with assignment recovery, and transactional audit/outbox events.
+- `packages/database/src/planning.ts`: domain-owned repository/application operations, SQL-filtered cursor reads, exact authorization capability consumption, validation, optimistic version checks, assigned-scope enforcement, assignment, immutable archive/trash transitions, custom-phase trash/restore with assignment recovery, distinct activity facts, and transactional audit/outbox events.
 - `packages/database/src/weddings.ts`: authoritative record projections for central authorization.
-- `packages/contracts/src/index.ts` and app routes/service: strict Zod contracts and versioned OpenAPI GET/POST/PATCH endpoints with safe problem responses and CSRF enforcement.
+- `packages/contracts/src/index.ts` and app routes/service: strict Zod contracts and versioned OpenAPI GET/POST/PATCH endpoints with safe problem responses, CSRF enforcement, and versioned HMAC-signed cursors bound to actor, wedding, permission-scope version, sort and limit.
 - `packages/database/src/planner-private.ts`: planner-exit previews now count active incomplete tasks assigned to exiting staff instead of returning an unknown placeholder.
 - `packages/database/src/persistent-migrations.ts`: exact runtime table/column grant manifest for the four new tables.
 
@@ -21,19 +21,20 @@ Implemented source rules: Product §4.4; DEC-193–194, DEC-265–266, DEC-268, 
 
 All database commands below used an ephemeral local PostgreSQL 17 container and a database named `vowora_test`. No persistent environment was accessed.
 
-- `vitest run` — 382/382 unit/component tests passed after updating the OpenAPI path expectation and adding invalid-pagination coverage.
+- `vitest run` — 384/384 unit/component tests passed after updating the OpenAPI path expectation and adding invalid-pagination and signed-cursor coverage.
 - Focused planning route tests — 6/6 passed.
-- `vitest run src/planning.integration.test.ts --config vitest.integration.config.ts` — 6/6 passed.
-- Full database integration config — 43/43 passed after updating the pre-existing handover assertion from unknown to the now-computed zero count.
-- Persistent workflow integration config — 8/8 passed, including exact runtime grant reconciliation.
+- `vitest run src/planning.integration.test.ts --config vitest.integration.config.ts` — 8/8 passed, including assigned scope, immutable milestone restore, phase activity and a deterministic two-connection phase-trash/stale-edit race.
+- Full database integration config — 45/45 passed after updating the pre-existing handover assertion from unknown to the now-computed zero count.
+- Persistent workflow integration config — 9/9 passed, including exact runtime grant/guard reconciliation, raw runtime lifecycle regressions and deliberate guard drift detection.
 - `drizzle-kit check`, `scripts/drizzle-drift.mjs`, and `scripts/migration-safety.mjs` — passed.
 - Workspace ESLint passed; tooling/policy/boundary checks passed 38/38 (the cloud pnpm shim initially caused four infrastructure-only failures, then the same checks passed through a local command shim).
 - Uncached Turbo workspace typecheck passed 8/8 tasks and production build passed 5/5 tasks, including both Next.js applications and the new planning routes.
+- Production-build Chromium suites passed 31/31 for the product and 26/26 for marketing using system Chromium.
 
 ## Migration and rollback
 
-Migration `0009_cheerful_surge.sql` is additive. It creates four tables and one composite uniqueness index on existing wedding memberships so PostgreSQL can enforce same-wedding task ownership. It neither rewrites nor deletes existing data. Automatic 30-day cleanup and final-notice delivery remain with the later lifecycle/notification milestones; this slice records the necessary trash timestamps and durable facts. Application rollback is to revert the feature while leaving additive tables unused; destructive schema rollback requires a separate owner-approved migration. A separate migration agent owns all persistent staging/production apply and verify work.
+Migration `0009_cheerful_surge.sql` is additive. It creates four tables and one composite uniqueness index on existing wedding memberships so PostgreSQL can enforce same-wedding task ownership. Lifecycle triggers preserve archived/trashed contents and atomically unassign/restore milestones even for raw runtime SQL; their exact invoker security, fixed search paths, bodies and trigger shapes are part of persistent verification. It neither rewrites nor deletes existing data. 08-c owns exact early-delete confirmation UX (DEC-569, DEC-584–585); 20-a owns automatic/requested deletion, linked-record cleanup, recipient resolution and final-notice facts (DEC-535, DEC-569–571, DEC-583–587); milestone 16 owns delivery. Application rollback is to revert the feature while leaving additive tables unused; destructive schema rollback requires a separate owner-approved migration. A separate migration agent owns all persistent staging/production apply and verify work.
 
 ## Review and owner actions
 
-Fresh independent review: pending. Draft PR: [#84](https://github.com/WardDufraing/Vowora/pull/84). Owner action after checks/review: inspect and merge the PR. No deploy, provider configuration or persistent migration is part of this task.
+Initial independent reviewer `/root/finalize_08_a/review_08_a_final` blocked head `45603fd` on the red hosted test gate, raw lifecycle invariants, trashed-milestone mutation, raw cursors, incomplete phase activity facts and ambiguous ownership of deferred deletion decisions. The corrected implementation adds exact database lifecycle guards and raw-role tests, immutable trash/restore, signed scope-bound cursors, distinct activity facts, deterministic concurrency coverage and exact 08-c/20-a/milestone-16 ownership. Local product and marketing Chromium suites both pass; a different fresh corrected-head re-review and hosted checks are pending. Draft PR: [#84](https://github.com/WardDufraing/Vowora/pull/84). Owner action after corrected checks/review: inspect and merge the PR. No deploy, provider configuration or persistent migration is part of this task.

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { eq } from "drizzle-orm";
+import pg from "pg";
 import { describe, expect, it } from "vitest";
 
 import { authorizeWeddingServerOperation } from "@vowora/domain";
@@ -17,6 +18,7 @@ import { createUuidV7 } from "./uuid.js";
 import { DatabaseWeddingAuthorizationState } from "./weddings.js";
 
 const config = parseTestMigrationConfig(process.env);
+const { Client } = pg;
 
 type TestDatabase = ReturnType<typeof createTestDatabase>;
 
@@ -622,8 +624,8 @@ describe("task and milestone domain", () => {
           {
             kind: "milestone_phase",
             expectedVersion: 1,
-            name: "Venue",
-            position: 1,
+            name: "Venue planning",
+            position: 2,
             hidden: false,
             lifecycle: "trashed",
           },
@@ -649,8 +651,8 @@ describe("task and milestone domain", () => {
           {
             kind: "milestone_phase",
             expectedVersion: 2,
-            name: "Venue",
-            position: 1,
+            name: "Venue planning",
+            position: 2,
             hidden: false,
             lifecycle: "active",
           },
@@ -663,6 +665,227 @@ describe("task and milestone domain", () => {
           phaseId: phase.id,
           restorablePhaseId: null,
           version: 3,
+        });
+        const events = await database
+          .select({ type: tables.auditEvents.eventType })
+          .from(tables.auditEvents);
+        expect(events.map((event) => event.type)).toEqual(
+          expect.arrayContaining([
+            "planning.milestone_phase_renamed",
+            "planning.milestone_phase_reordered",
+            "planning.milestone_phase_trashed",
+            "planning.milestone_phase_restored",
+          ]),
+        );
+      },
+    );
+  });
+
+  it("keeps trashed milestone contents immutable and restores the prior state", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planning-milestone-trash-${randomUUID()}`,
+      async ({ client }) => {
+        const database = createTestDatabase(client);
+        const state = await seed(database);
+        const milestone = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "milestone",
+            title: "Venue confirmed",
+            description: "Keep this state",
+            plannedDate: "2027-03-01",
+            phaseId: null,
+          },
+        );
+        if (milestone.recordType !== "milestone")
+          throw new Error("Expected milestone");
+        const inProgress = await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            milestone.id,
+          ),
+          milestone.id,
+          {
+            kind: "milestone",
+            expectedVersion: 1,
+            title: milestone.title,
+            description: milestone.description,
+            plannedDate: milestone.plannedDate,
+            phaseId: null,
+            status: "in_progress",
+            lifecycle: "active",
+          },
+        );
+        const trashed = await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            milestone.id,
+          ),
+          milestone.id,
+          {
+            kind: "milestone",
+            expectedVersion: 2,
+            title: inProgress.title,
+            description: inProgress.description,
+            plannedDate: inProgress.plannedDate,
+            phaseId: null,
+            status: "in_progress",
+            lifecycle: "trashed",
+          },
+        );
+        expect(trashed).toMatchObject({
+          lifecycle: "trashed",
+          status: "in_progress",
+          version: 3,
+        });
+        await expect(
+          updatePlanningRecord(
+            database,
+            await updateOperation(
+              database,
+              state.actor.partner,
+              state.weddingId,
+              milestone.id,
+            ),
+            milestone.id,
+            {
+              kind: "milestone",
+              expectedVersion: 3,
+              title: "Changed in trash",
+              description: inProgress.description,
+              plannedDate: inProgress.plannedDate,
+              phaseId: null,
+              status: "complete",
+              lifecycle: "trashed",
+            },
+          ),
+        ).rejects.toMatchObject({ reason: "invalid" });
+        const restored = await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            milestone.id,
+          ),
+          milestone.id,
+          {
+            kind: "milestone",
+            expectedVersion: 3,
+            title: inProgress.title,
+            description: inProgress.description,
+            plannedDate: inProgress.plannedDate,
+            phaseId: null,
+            status: "in_progress",
+            lifecycle: "active",
+          },
+        );
+        expect(restored).toMatchObject({
+          title: "Venue confirmed",
+          description: "Keep this state",
+          status: "in_progress",
+          lifecycle: "active",
+          version: 4,
+        });
+        await expect(
+          updatePlanningRecord(
+            database,
+            await updateOperation(
+              database,
+              state.actor.partner,
+              state.weddingId,
+              milestone.id,
+            ),
+            milestone.id,
+            {
+              kind: "milestone",
+              expectedVersion: 3,
+              title: inProgress.title,
+              description: inProgress.description,
+              plannedDate: inProgress.plannedDate,
+              phaseId: null,
+              status: "in_progress",
+              lifecycle: "active",
+            },
+          ),
+        ).rejects.toMatchObject({ reason: "conflict" });
+      },
+    );
+  });
+
+  it("serializes phase trash against a stale concurrent milestone edit", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planning-phase-race-${randomUUID()}`,
+      async ({ client, schemaName }) => {
+        const database = createTestDatabase(client);
+        const state = await seed(database);
+        const phase = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          { kind: "milestone_phase", name: "Venue", position: 1 },
+        );
+        const milestone = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "milestone",
+            title: "Venue confirmed",
+            description: null,
+            plannedDate: "2027-03-01",
+            phaseId: phase.id,
+          },
+        );
+        const connection = {
+          connectionString: config.connectionString,
+          options: `-c search_path=${schemaName},public`,
+        };
+        const phaseWriter = new Client(connection);
+        const staleWriter = new Client(connection);
+        await phaseWriter.connect();
+        await staleWriter.connect();
+        try {
+          await phaseWriter.query("BEGIN");
+          await staleWriter.query("BEGIN");
+          await phaseWriter.query(
+            `UPDATE milestone_phases
+                SET status = 'trashed', trashed_at = now(), version = 2,
+                    updated_at = now()
+              WHERE id = $1 AND version = 1`,
+            [phase.id],
+          );
+          const staleEdit = staleWriter.query(
+            `UPDATE planning_milestones
+                SET title = 'Stale edit', version = 2, updated_at = now()
+              WHERE id = $1 AND version = 1`,
+            [milestone.id],
+          );
+          await phaseWriter.query("COMMIT");
+          expect((await staleEdit).rowCount).toBe(0);
+          await staleWriter.query("COMMIT");
+        } finally {
+          await phaseWriter.query("ROLLBACK").catch(() => undefined);
+          await staleWriter.query("ROLLBACK").catch(() => undefined);
+          await phaseWriter.end();
+          await staleWriter.end();
+        }
+        expect(
+          await database.query.planningMilestones.findFirst({
+            where: eq(tables.planningMilestones.id, milestone.id),
+          }),
+        ).toMatchObject({
+          title: "Venue confirmed",
+          phaseId: null,
+          restorablePhaseId: phase.id,
+          version: 2,
         });
       },
     );
