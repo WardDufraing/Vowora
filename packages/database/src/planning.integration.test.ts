@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { drizzle } from "drizzle-orm/node-postgres";
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { authorizeWeddingServerOperation } from "@vowora/domain";
 
 import { parseTestMigrationConfig } from "./config.js";
-import { withIsolatedTestSchema } from "./migrations.js";
+import { createTestDatabase, withIsolatedTestSchema } from "./migrations.js";
 import {
   createPlanningRecord,
   listPlanningWorkspace,
@@ -18,7 +18,9 @@ import { DatabaseWeddingAuthorizationState } from "./weddings.js";
 
 const config = parseTestMigrationConfig(process.env);
 
-async function seed(database: ReturnType<typeof drizzle>) {
+type TestDatabase = ReturnType<typeof createTestDatabase>;
+
+async function seed(database: TestDatabase) {
   const actor = {
     partner: createUuidV7(),
     helper: createUuidV7(),
@@ -72,7 +74,7 @@ async function seed(database: ReturnType<typeof drizzle>) {
 }
 
 function createOperation(
-  database: ReturnType<typeof drizzle>,
+  database: TestDatabase,
   actorId: string,
   weddingId: string,
 ) {
@@ -90,7 +92,7 @@ function createOperation(
 }
 
 function updateOperation(
-  database: ReturnType<typeof drizzle>,
+  database: TestDatabase,
   actorId: string,
   weddingId: string,
   recordId: string,
@@ -114,10 +116,7 @@ describe("task and milestone domain", () => {
       config,
       `planning-domain-${randomUUID()}`,
       async ({ client }) => {
-        const database = drizzle(client, {
-          casing: "snake_case",
-          schema: tables,
-        });
+        const database = createTestDatabase(client);
         const state = await seed(database);
         const taskPhase = await createPlanningRecord(
           database,
@@ -141,6 +140,7 @@ describe("task and milestone domain", () => {
             ownerMembershipId: state.helperMembershipId,
           },
         );
+        if (task.recordType !== "task") throw new Error("Expected task");
         const milestone = await createPlanningRecord(
           database,
           await createOperation(database, state.actor.partner, state.weddingId),
@@ -186,10 +186,7 @@ describe("task and milestone domain", () => {
       config,
       `planning-state-${randomUUID()}`,
       async ({ client }) => {
-        const database = drizzle(client, {
-          casing: "snake_case",
-          schema: tables,
-        });
+        const database = createTestDatabase(client);
         const state = await seed(database);
         const task = await createPlanningRecord(
           database,
@@ -198,11 +195,12 @@ describe("task and milestone domain", () => {
             kind: "task",
             title: "Confirm",
             description: null,
-            dueDate: null,
+            dueDate: "2027-03-01",
             phaseId: null,
-            ownerMembershipId: null,
+            ownerMembershipId: state.helperMembershipId,
           },
         );
+        if (task.recordType !== "task") throw new Error("Expected task");
         const complete = await updatePlanningRecord(
           database,
           await updateOperation(
@@ -289,6 +287,8 @@ describe("task and milestone domain", () => {
           expect.arrayContaining([
             "planning.task_completed",
             "planning.task_reopened",
+            "planning.task_assignment_changed",
+            "planning.task_due_date_changed",
           ]),
         );
       },
@@ -300,10 +300,7 @@ describe("task and milestone domain", () => {
       config,
       `planning-blocked-${randomUUID()}`,
       async ({ client }) => {
-        const database = drizzle(client, {
-          casing: "snake_case",
-          schema: tables,
-        });
+        const database = createTestDatabase(client);
         const state = await seed(database);
         const task = await createPlanningRecord(
           database,
@@ -317,6 +314,7 @@ describe("task and milestone domain", () => {
             ownerMembershipId: null,
           },
         );
+        if (task.recordType !== "task") throw new Error("Expected task");
         await expect(
           updatePlanningRecord(
             database,
@@ -374,10 +372,7 @@ describe("task and milestone domain", () => {
       config,
       `planning-tenant-${randomUUID()}`,
       async ({ client }) => {
-        const database = drizzle(client, {
-          casing: "snake_case",
-          schema: tables,
-        });
+        const database = createTestDatabase(client);
         const state = await seed(database);
         await expect(
           createPlanningRecord(
@@ -427,6 +422,248 @@ describe("task and milestone domain", () => {
             foreignTask.id,
           ),
         ).rejects.toThrow();
+      },
+    );
+  });
+
+  it("limits assigned-scope creation to the actor's own task and filters in SQL", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planning-assigned-scope-${randomUUID()}`,
+      async ({ client }) => {
+        const database = createTestDatabase(client);
+        const state = await seed(database);
+        await database
+          .update(tables.weddingMemberships)
+          .set({
+            role: "coordinator",
+            permissionOverrides: [
+              {
+                area: "tasks",
+                action: "view",
+                effect: "allow",
+                scope: "assigned",
+              },
+              {
+                area: "tasks",
+                action: "edit",
+                effect: "allow",
+                scope: "assigned",
+              },
+            ],
+            permissionScopeVersion: 2,
+          })
+          .where(eq(tables.weddingMemberships.id, state.helperMembershipId));
+        await expect(
+          createPlanningRecord(
+            database,
+            await createOperation(
+              database,
+              state.actor.helper,
+              state.weddingId,
+            ),
+            {
+              kind: "task",
+              title: "Unassigned escape",
+              description: null,
+              dueDate: null,
+              phaseId: null,
+              ownerMembershipId: null,
+            },
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await expect(
+          createPlanningRecord(
+            database,
+            await createOperation(
+              database,
+              state.actor.helper,
+              state.weddingId,
+            ),
+            { kind: "milestone_phase", name: "Escape", position: 0 },
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        const assignedPhase = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          { kind: "task_phase", name: "Assigned work", position: 0 },
+        );
+        const assigned = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "task",
+            title: "Existing assigned task",
+            description: null,
+            dueDate: null,
+            phaseId: assignedPhase.id,
+            ownerMembershipId: state.helperMembershipId,
+          },
+        );
+        if (assigned.recordType !== "task") throw new Error("Expected task");
+        await expect(
+          updatePlanningRecord(
+            database,
+            await updateOperation(
+              database,
+              state.actor.helper,
+              state.weddingId,
+              assigned.id,
+            ),
+            assigned.id,
+            {
+              kind: "task",
+              expectedVersion: 1,
+              title: assigned.title,
+              description: null,
+              dueDate: null,
+              phaseId: assignedPhase.id,
+              ownerMembershipId: state.helperMembershipId,
+              status: "in_progress",
+              blockedReason: null,
+              lifecycle: "active",
+            },
+          ),
+        ).resolves.toMatchObject({ status: "in_progress", version: 2 });
+        const own = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.helper, state.weddingId),
+          {
+            kind: "task",
+            title: "My task",
+            description: null,
+            dueDate: null,
+            phaseId: null,
+            ownerMembershipId: state.helperMembershipId,
+          },
+        );
+        if (own.recordType !== "task") throw new Error("Expected task");
+        await expect(
+          updatePlanningRecord(
+            database,
+            await updateOperation(
+              database,
+              state.actor.helper,
+              state.weddingId,
+              own.id,
+            ),
+            own.id,
+            {
+              kind: "task",
+              expectedVersion: 1,
+              title: own.title,
+              description: null,
+              dueDate: null,
+              phaseId: null,
+              ownerMembershipId: null,
+              status: "not_started",
+              blockedReason: null,
+              lifecycle: "active",
+            },
+          ),
+        ).rejects.toMatchObject({ reason: "access_denied" });
+        await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.helper, state.weddingId),
+          {
+            kind: "task",
+            title: "My second task",
+            description: null,
+            dueDate: null,
+            phaseId: null,
+            ownerMembershipId: state.helperMembershipId,
+          },
+        );
+        const view = await listPlanningWorkspace(database, {
+          actorId: state.actor.helper,
+          weddingId: state.weddingId,
+          limit: 1,
+        });
+        expect(view.canEdit).toBe(false);
+        expect(view.tasks).toHaveLength(1);
+        expect(view.page.nextTaskCursor).not.toBeNull();
+        expect(view.milestones).toEqual([]);
+      },
+    );
+  });
+
+  it("trashes and restores custom phases with only still-unassigned milestones", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planning-phase-lifecycle-${randomUUID()}`,
+      async ({ client }) => {
+        const database = createTestDatabase(client);
+        const state = await seed(database);
+        const phase = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          { kind: "milestone_phase", name: "Venue", position: 1 },
+        );
+        const milestone = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "milestone",
+            title: "Venue booked",
+            description: null,
+            plannedDate: "2027-03-01",
+            phaseId: phase.id,
+          },
+        );
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            phase.id,
+          ),
+          phase.id,
+          {
+            kind: "milestone_phase",
+            expectedVersion: 1,
+            name: "Venue",
+            position: 1,
+            hidden: false,
+            lifecycle: "trashed",
+          },
+        );
+        expect(
+          await database.query.planningMilestones.findFirst({
+            where: eq(tables.planningMilestones.id, milestone.id),
+          }),
+        ).toMatchObject({
+          phaseId: null,
+          restorablePhaseId: phase.id,
+          version: 2,
+        });
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            phase.id,
+          ),
+          phase.id,
+          {
+            kind: "milestone_phase",
+            expectedVersion: 2,
+            name: "Venue",
+            position: 1,
+            hidden: false,
+            lifecycle: "active",
+          },
+        );
+        expect(
+          await database.query.planningMilestones.findFirst({
+            where: eq(tables.planningMilestones.id, milestone.id),
+          }),
+        ).toMatchObject({
+          phaseId: phase.id,
+          restorablePhaseId: null,
+          version: 3,
+        });
       },
     );
   });

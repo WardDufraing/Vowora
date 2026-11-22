@@ -45,6 +45,7 @@ describe("planning collection route", () => {
     expect(loadWorkspace).toHaveBeenCalledWith({
       actorId: "actor-1",
       weddingId,
+      limit: 50,
     });
   });
 
@@ -54,6 +55,16 @@ describe("planning collection route", () => {
       params: Promise.resolve({ weddingId }),
     });
     expect(response.status).toBe(401);
+    expect(loadWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid collection query before loading records", async () => {
+    getSession.mockResolvedValue({ user: { id: "actor-1" } });
+    const response = await GET(
+      new Request("https://app.example.test?limit=101"),
+      { params: Promise.resolve({ weddingId }) },
+    );
+    expect(response.status).toBe(400);
     expect(loadWorkspace).not.toHaveBeenCalled();
   });
 

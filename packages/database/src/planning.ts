@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, sql } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -169,8 +169,15 @@ function permission(
  * assigned tasks without receiving workspace-wide task visibility. */
 export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
   database: PlanningDatabase<HKT>,
-  input: { actorId: string; weddingId: string },
+  input: {
+    actorId: string;
+    weddingId: string;
+    taskCursor?: string;
+    milestoneCursor?: string;
+    limit?: number;
+  },
 ) {
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
   const state = new DatabaseWeddingAuthorizationState(database);
   const loaded = await state.loadWeddingMembership(input);
   if (!loaded) throw new PlanningUnavailableError("access_denied");
@@ -192,7 +199,7 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
     input.actorId,
     input.weddingId,
     "edit",
-    "new_record",
+    "workspace",
   );
   const [{ id: membershipIdForActor } = { id: "" }] = await database
     .select({ id: weddingMemberships.id })
@@ -204,6 +211,12 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
       ),
     )
     .limit(1);
+  const taskScope = canViewWorkspace
+    ? eq(planningTasks.weddingId, input.weddingId)
+    : and(
+        eq(planningTasks.weddingId, input.weddingId),
+        eq(planningTasks.ownerMembershipId, membershipIdForActor),
+      );
   const rows = await database
     .select({
       task: planningTasks,
@@ -216,9 +229,14 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
       eq(weddingMemberships.id, planningTasks.ownerMembershipId),
     )
     .leftJoin(user, eq(user.id, weddingMemberships.actorId))
-    .where(eq(planningTasks.weddingId, input.weddingId))
-    .orderBy(asc(planningTasks.dueDate), asc(planningTasks.createdAt));
-  const tasks = rows.flatMap(({ task, ownerId, ownerName }) => {
+    .where(
+      input.taskCursor
+        ? and(taskScope, gt(planningTasks.id, input.taskCursor))
+        : taskScope,
+    )
+    .orderBy(asc(planningTasks.id))
+    .limit(limit + 1);
+  const tasks = rows.slice(0, limit).flatMap(({ task, ownerId, ownerName }) => {
     const assigned = ownerId !== null && ownerId === membershipIdForActor;
     const relationship = assigned ? "assigned" : "workspace";
     if (
@@ -250,8 +268,16 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
     ? await database
         .select()
         .from(planningMilestones)
-        .where(eq(planningMilestones.weddingId, input.weddingId))
-        .orderBy(asc(planningMilestones.plannedDate))
+        .where(
+          input.milestoneCursor
+            ? and(
+                eq(planningMilestones.weddingId, input.weddingId),
+                gt(planningMilestones.id, input.milestoneCursor),
+              )
+            : eq(planningMilestones.weddingId, input.weddingId),
+        )
+        .orderBy(asc(planningMilestones.id))
+        .limit(limit + 1)
     : [];
   const taskPhaseRows = canViewWorkspace
     ? await database
@@ -259,6 +285,7 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
         .from(taskPhases)
         .where(eq(taskPhases.weddingId, input.weddingId))
         .orderBy(asc(taskPhases.position), asc(taskPhases.name))
+        .limit(200)
     : [];
   const milestonePhaseRows = canViewWorkspace
     ? await database
@@ -266,6 +293,7 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
         .from(milestonePhases)
         .where(eq(milestonePhases.weddingId, input.weddingId))
         .orderBy(asc(milestonePhases.position), asc(milestonePhases.name))
+        .limit(200)
     : [];
   const memberRows = canViewWorkspace
     ? await database
@@ -279,9 +307,8 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
           ),
         )
         .orderBy(asc(user.name))
+        .limit(200)
     : [];
-  if (!canViewWorkspace && tasks.length === 0)
-    throw new PlanningUnavailableError("access_denied");
   return Object.freeze({
     taskPhases: taskPhaseRows.map((phase) => ({
       id: phase.id,
@@ -294,15 +321,21 @@ export async function listPlanningWorkspace<HKT extends PgQueryResultHKT>(
       name: phase.name,
       kind: phase.kind as "suggested" | "custom",
       hidden: phase.status === "hidden",
+      lifecycle: phase.status === "trashed" ? "trashed" : "active",
       position: phase.position,
       version: phase.version,
     })),
     tasks,
-    milestones: milestoneRows.map((row) =>
-      milestoneView(row, canEditWorkspace),
-    ),
+    milestones: milestoneRows
+      .slice(0, limit)
+      .map((row) => milestoneView(row, canEditWorkspace)),
     assignableMembers: memberRows,
     canEdit: canEditWorkspace,
+    page: {
+      nextTaskCursor: rows.length > limit ? rows[limit - 1]!.task.id : null,
+      nextMilestoneCursor:
+        milestoneRows.length > limit ? milestoneRows[limit - 1]!.id : null,
+    },
   });
 }
 
@@ -325,20 +358,99 @@ export type CreatePlanningInput =
       phaseId: string | null;
     };
 
+async function assertCreateScope<HKT extends PgQueryResultHKT>(
+  database: PlanningDatabase<HKT>,
+  actorId: string,
+  weddingId: string,
+  input: CreatePlanningInput,
+) {
+  const loaded = await new DatabaseWeddingAuthorizationState(
+    database,
+  ).loadWeddingMembership({ actorId, weddingId });
+  if (!loaded) throw new PlanningUnavailableError("access_denied");
+  const membership = parseWeddingMembership(loaded.membership);
+  if (permission(membership, actorId, weddingId, "edit", "workspace")) return;
+  if (input.kind !== "task" || !input.ownerMembershipId || input.phaseId)
+    throw new PlanningUnavailableError("access_denied");
+  const [ownMembership] = await database
+    .select({ id: weddingMemberships.id })
+    .from(weddingMemberships)
+    .where(
+      and(
+        eq(weddingMemberships.id, input.ownerMembershipId),
+        eq(weddingMemberships.weddingId, weddingId),
+        eq(weddingMemberships.actorId, actorId),
+        eq(weddingMemberships.status, "active"),
+      ),
+    )
+    .limit(1);
+  if (!ownMembership) throw new PlanningUnavailableError("access_denied");
+}
+
+async function assertTaskUpdateScope<HKT extends PgQueryResultHKT>(
+  database: PlanningDatabase<HKT>,
+  actorId: string,
+  weddingId: string,
+  previous: typeof planningTasks.$inferSelect,
+  input: Extract<UpdatePlanningInput, { kind: "task" }>,
+) {
+  const loaded = await new DatabaseWeddingAuthorizationState(
+    database,
+  ).loadWeddingMembership({ actorId, weddingId });
+  if (!loaded) throw new PlanningUnavailableError("access_denied");
+  const membership = parseWeddingMembership(loaded.membership);
+  if (permission(membership, actorId, weddingId, "edit", "workspace")) return;
+  const [ownMembership] = await database
+    .select({ id: weddingMemberships.id })
+    .from(weddingMemberships)
+    .where(
+      and(
+        eq(weddingMemberships.weddingId, weddingId),
+        eq(weddingMemberships.actorId, actorId),
+        eq(weddingMemberships.status, "active"),
+      ),
+    )
+    .limit(1);
+  if (
+    !ownMembership ||
+    previous.ownerMembershipId !== ownMembership.id ||
+    input.ownerMembershipId !== ownMembership.id ||
+    input.phaseId !== previous.phaseId
+  )
+    throw new PlanningUnavailableError("access_denied");
+}
+
 async function assertPhase<HKT extends PgQueryResultHKT>(
   database: PlanningDatabase<HKT>,
   weddingId: string,
   phaseId: string | null,
   kind: "task" | "milestone",
+  currentPhaseId: string | null = null,
 ) {
   if (!phaseId) return;
-  const table = kind === "task" ? taskPhases : milestonePhases;
+  if (kind === "task") {
+    const [phase] = await database
+      .select({ id: taskPhases.id })
+      .from(taskPhases)
+      .where(
+        and(eq(taskPhases.id, phaseId), eq(taskPhases.weddingId, weddingId)),
+      )
+      .limit(1);
+    if (!phase) throw new PlanningUnavailableError("invalid");
+    return;
+  }
   const [phase] = await database
-    .select({ id: table.id })
-    .from(table)
-    .where(and(eq(table.id, phaseId), eq(table.weddingId, weddingId)))
+    .select({ id: milestonePhases.id, status: milestonePhases.status })
+    .from(milestonePhases)
+    .where(
+      and(
+        eq(milestonePhases.id, phaseId),
+        eq(milestonePhases.weddingId, weddingId),
+      ),
+    )
     .limit(1);
-  if (!phase) throw new PlanningUnavailableError("invalid");
+  if (!phase || (phase.status !== "active" && phaseId !== currentPhaseId))
+    throw new PlanningUnavailableError("invalid");
 }
 
 async function assertOwner<HKT extends PgQueryResultHKT>(
@@ -376,6 +488,12 @@ export async function createPlanningRecord<HKT extends PgQueryResultHKT>(
       resource: { kind: "new" },
       visibility: "wedding_shared",
     });
+    await assertCreateScope(
+      call.session,
+      operation.authorization.actorId,
+      weddingId,
+      input,
+    );
     if (input.kind === "task_phase") {
       const [row] = await call.session
         .insert(taskPhases)
@@ -425,6 +543,7 @@ export async function createPlanningRecord<HKT extends PgQueryResultHKT>(
         name: row!.name,
         kind: "custom" as const,
         hidden: false,
+        lifecycle: "active" as const,
         position: row!.position,
         version: row!.version,
       };
@@ -448,7 +567,11 @@ export async function createPlanningRecord<HKT extends PgQueryResultHKT>(
         "planning.task_created",
         "planning_task",
         row!.id,
-        { assigned: Boolean(row!.ownerMembershipId), version: row!.version },
+        {
+          ownerMembershipId: row!.ownerMembershipId,
+          dueDate: row!.dueDate,
+          version: row!.version,
+        },
         now,
       );
       return {
@@ -501,6 +624,7 @@ export type UpdatePlanningInput =
       name: string;
       position: number;
       hidden: boolean;
+      lifecycle: "active" | "trashed";
     }
   | {
       kind: "task";
@@ -577,12 +701,38 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       };
     }
     if (input.kind === "milestone_phase") {
+      const [previous] = await call.session
+        .select()
+        .from(milestonePhases)
+        .where(
+          and(
+            eq(milestonePhases.id, recordId),
+            eq(milestonePhases.weddingId, weddingId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!previous || previous.version !== input.expectedVersion)
+        throw new PlanningUnavailableError("conflict");
+      if (
+        (previous.kind === "suggested" && input.lifecycle !== "active") ||
+        (previous.kind === "custom" && input.hidden)
+      )
+        throw new PlanningUnavailableError("invalid");
+      const nextStatus =
+        previous.kind === "suggested"
+          ? input.hidden
+            ? "hidden"
+            : "active"
+          : input.lifecycle;
       const [row] = await call.session
         .update(milestonePhases)
         .set({
           name: title(input.name, 80),
           position: input.position,
-          status: input.hidden ? "hidden" : "active",
+          status: nextStatus,
+          trashedAt:
+            nextStatus === "trashed" ? (previous.trashedAt ?? now) : null,
           version: input.expectedVersion + 1,
           updatedAt: now,
         })
@@ -595,12 +745,67 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         )
         .returning();
       if (!row) throw new PlanningUnavailableError("conflict");
+      let affectedMilestones = 0;
+      if (previous.kind === "custom" && previous.status !== row.status) {
+        if (row.status === "trashed") {
+          const unassigned = await call.session
+            .update(planningMilestones)
+            .set({
+              phaseId: null,
+              restorablePhaseId: row.id,
+              version: sql`${planningMilestones.version} + 1`,
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(planningMilestones.weddingId, weddingId),
+                eq(planningMilestones.phaseId, row.id),
+              ),
+            )
+            .returning({ id: planningMilestones.id });
+          affectedMilestones = unassigned.length;
+        } else {
+          const restored = await call.session
+            .update(planningMilestones)
+            .set({
+              phaseId: row.id,
+              restorablePhaseId: null,
+              version: sql`${planningMilestones.version} + 1`,
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(planningMilestones.weddingId, weddingId),
+                eq(planningMilestones.restorablePhaseId, row.id),
+                isNull(planningMilestones.phaseId),
+              ),
+            )
+            .returning({ id: planningMilestones.id });
+          affectedMilestones = restored.length;
+          await call.session
+            .update(planningMilestones)
+            .set({ restorablePhaseId: null, updatedAt: now })
+            .where(
+              and(
+                eq(planningMilestones.weddingId, weddingId),
+                eq(planningMilestones.restorablePhaseId, row.id),
+              ),
+            );
+        }
+      }
       await emit(
         call,
-        "planning.milestone_phase_updated",
+        previous.status !== row.status && previous.kind === "custom"
+          ? `planning.milestone_phase_${row.status === "trashed" ? "trashed" : "restored"}`
+          : "planning.milestone_phase_updated",
         "milestone_phase",
         row.id,
-        { hidden: row.status === "hidden", version: row.version },
+        {
+          hidden: row.status === "hidden",
+          lifecycle: row.status === "trashed" ? "trashed" : "active",
+          affectedMilestones,
+          version: row.version,
+        },
         now,
       );
       return {
@@ -609,6 +814,7 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         name: row.name,
         kind: row.kind as "suggested" | "custom",
         hidden: row.status === "hidden",
+        lifecycle: row.status === "trashed" ? "trashed" : "active",
         position: row.position,
         version: row.version,
       };
@@ -631,6 +837,13 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         .limit(1);
       if (!previous || previous.version !== input.expectedVersion)
         throw new PlanningUnavailableError("conflict");
+      await assertTaskUpdateScope(
+        call.session,
+        operation.authorization.actorId,
+        weddingId,
+        previous,
+        input,
+      );
       const [row] = await call.session
         .update(planningTasks)
         .set({
@@ -659,28 +872,48 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         )
         .returning();
       if (!row) throw new PlanningUnavailableError("conflict");
-      const eventType =
-        previous.status !== "complete" && row.status === "complete"
-          ? "planning.task_completed"
-          : previous.status === "complete" && row.status !== "complete"
-            ? "planning.task_reopened"
-            : previous.lifecycle !== row.lifecycle
-              ? `planning.task_${row.lifecycle === "archived" ? "archived" : "restored"}`
-              : previous.ownerMembershipId !== row.ownerMembershipId
-                ? "planning.task_assigned"
-                : "planning.task_updated";
-      await emit(
-        call,
-        eventType,
-        "planning_task",
-        row.id,
-        {
-          status: row.status,
-          assigned: Boolean(row.ownerMembershipId),
-          version: row.version,
-        },
-        now,
-      );
+      const events: Array<[string, Record<string, unknown>]> = [];
+      if (previous.status !== "complete" && row.status === "complete")
+        events.push(["planning.task_completed", { notify: false }]);
+      if (previous.status === "complete" && row.status !== "complete")
+        events.push(["planning.task_reopened", { notify: false }]);
+      if (previous.lifecycle !== row.lifecycle)
+        events.push([
+          `planning.task_${row.lifecycle === "archived" ? "archived" : "restored"}`,
+          { previousLifecycle: previous.lifecycle, lifecycle: row.lifecycle },
+        ]);
+      if (previous.ownerMembershipId !== row.ownerMembershipId)
+        events.push([
+          "planning.task_assignment_changed",
+          {
+            previousOwnerMembershipId: previous.ownerMembershipId,
+            ownerMembershipId: row.ownerMembershipId,
+            notifyOwnerMembershipId: row.ownerMembershipId,
+          },
+        ]);
+      if (previous.dueDate !== row.dueDate)
+        events.push([
+          "planning.task_due_date_changed",
+          {
+            previousDueDate: previous.dueDate,
+            dueDate: row.dueDate,
+            notifyOwnerMembershipId: row.ownerMembershipId,
+          },
+        ]);
+      if (events.length === 0)
+        events.push([
+          "planning.task_updated",
+          { previousStatus: previous.status, status: row.status },
+        ]);
+      for (const [eventType, metadata] of events)
+        await emit(
+          call,
+          eventType,
+          "planning_task",
+          row.id,
+          { ...metadata, version: row.version },
+          now,
+        );
       return {
         ...taskView(
           row,
@@ -690,7 +923,6 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
         recordType: "task" as const,
       };
     }
-    await assertPhase(call.session, weddingId, input.phaseId, "milestone");
     const [previous] = await call.session
       .select()
       .from(planningMilestones)
@@ -704,6 +936,13 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       .limit(1);
     if (!previous || previous.version !== input.expectedVersion)
       throw new PlanningUnavailableError("conflict");
+    await assertPhase(
+      call.session,
+      weddingId,
+      input.phaseId,
+      "milestone",
+      previous.phaseId,
+    );
     const [row] = await call.session
       .update(planningMilestones)
       .set({
@@ -727,19 +966,36 @@ export async function updatePlanningRecord<HKT extends PgQueryResultHKT>(
       )
       .returning();
     if (!row) throw new PlanningUnavailableError("conflict");
-    await emit(
-      call,
-      "planning.milestone_updated",
-      "planning_milestone",
-      row.id,
-      {
-        status: row.status,
-        lifecycle: row.lifecycle,
-        plannedDate: row.plannedDate,
-        version: row.version,
-      },
-      now,
-    );
+    const events: Array<[string, Record<string, unknown>]> = [];
+    if (previous.plannedDate !== row.plannedDate)
+      events.push([
+        "planning.milestone_date_changed",
+        {
+          previousPlannedDate: previous.plannedDate,
+          plannedDate: row.plannedDate,
+          notifyPartnersAndLeadPlanner: true,
+        },
+      ]);
+    if (previous.status !== row.status)
+      events.push([
+        "planning.milestone_status_changed",
+        { previousStatus: previous.status, status: row.status, notify: false },
+      ]);
+    if (previous.lifecycle !== row.lifecycle)
+      events.push([
+        `planning.milestone_${row.lifecycle === "trashed" ? "trashed" : "restored"}`,
+        { previousLifecycle: previous.lifecycle, lifecycle: row.lifecycle },
+      ]);
+    if (events.length === 0) events.push(["planning.milestone_updated", {}]);
+    for (const [eventType, metadata] of events)
+      await emit(
+        call,
+        eventType,
+        "planning_milestone",
+        row.id,
+        { ...metadata, version: row.version },
+        now,
+      );
     return { ...milestoneView(row, true), recordType: "milestone" as const };
   }).catch((error: unknown) => {
     if (error instanceof PlanningUnavailableError) throw error;

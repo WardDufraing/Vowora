@@ -4,13 +4,15 @@ CREATE TABLE "milestone_phases" (
 	"name" text NOT NULL,
 	"kind" text DEFAULT 'custom' NOT NULL,
 	"status" text DEFAULT 'active' NOT NULL,
+	"trashed_at" timestamp with time zone,
 	"position" integer DEFAULT 0 NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "milestone_phases_name_length" CHECK (char_length(btrim("milestone_phases"."name")) BETWEEN 1 AND 80),
 	CONSTRAINT "milestone_phases_kind" CHECK ("milestone_phases"."kind" IN ('suggested', 'custom')),
-	CONSTRAINT "milestone_phases_status" CHECK ("milestone_phases"."status" IN ('active', 'hidden')),
+	CONSTRAINT "milestone_phases_status" CHECK ("milestone_phases"."status" IN ('active', 'hidden', 'trashed')),
+	CONSTRAINT "milestone_phases_kind_status" CHECK (("milestone_phases"."kind" = 'suggested' AND "milestone_phases"."status" IN ('active', 'hidden') AND "milestone_phases"."trashed_at" IS NULL) OR ("milestone_phases"."kind" = 'custom' AND "milestone_phases"."status" IN ('active', 'trashed') AND (("milestone_phases"."status" = 'trashed') = ("milestone_phases"."trashed_at" IS NOT NULL)))),
 	CONSTRAINT "milestone_phases_position_nonnegative" CHECK ("milestone_phases"."position" >= 0),
 	CONSTRAINT "milestone_phases_version_positive" CHECK ("milestone_phases"."version" > 0)
 );
@@ -19,6 +21,7 @@ CREATE TABLE "planning_milestones" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"wedding_id" uuid NOT NULL,
 	"phase_id" uuid,
+	"restorable_phase_id" uuid,
 	"title" text NOT NULL,
 	"description" text,
 	"planned_date" date NOT NULL,
@@ -81,14 +84,16 @@ CREATE UNIQUE INDEX "wedding_memberships_wedding_id_unique_idx" ON "wedding_memb
 ALTER TABLE "milestone_phases" ADD CONSTRAINT "milestone_phases_wedding_id_weddings_id_fk" FOREIGN KEY ("wedding_id") REFERENCES "weddings"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_milestones" ADD CONSTRAINT "planning_milestones_wedding_id_weddings_id_fk" FOREIGN KEY ("wedding_id") REFERENCES "weddings"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_milestones" ADD CONSTRAINT "planning_milestones_phase_id_milestone_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "milestone_phases"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "planning_milestones" ADD CONSTRAINT "planning_milestones_restorable_phase_id_milestone_phases_id_fk" FOREIGN KEY ("restorable_phase_id") REFERENCES "milestone_phases"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_milestones" ADD CONSTRAINT "planning_milestones_phase_same_wedding_fk" FOREIGN KEY ("wedding_id","phase_id") REFERENCES "milestone_phases"("wedding_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "planning_milestones" ADD CONSTRAINT "planning_milestones_restorable_phase_same_wedding_fk" FOREIGN KEY ("wedding_id","restorable_phase_id") REFERENCES "milestone_phases"("wedding_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_tasks" ADD CONSTRAINT "planning_tasks_wedding_id_weddings_id_fk" FOREIGN KEY ("wedding_id") REFERENCES "weddings"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_tasks" ADD CONSTRAINT "planning_tasks_phase_id_task_phases_id_fk" FOREIGN KEY ("phase_id") REFERENCES "task_phases"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_tasks" ADD CONSTRAINT "planning_tasks_owner_membership_id_wedding_memberships_id_fk" FOREIGN KEY ("owner_membership_id") REFERENCES "wedding_memberships"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_tasks" ADD CONSTRAINT "planning_tasks_phase_same_wedding_fk" FOREIGN KEY ("wedding_id","phase_id") REFERENCES "task_phases"("wedding_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "planning_tasks" ADD CONSTRAINT "planning_tasks_owner_same_wedding_fk" FOREIGN KEY ("wedding_id","owner_membership_id") REFERENCES "wedding_memberships"("wedding_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_phases" ADD CONSTRAINT "task_phases_wedding_id_weddings_id_fk" FOREIGN KEY ("wedding_id") REFERENCES "weddings"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "milestone_phases_wedding_name_unique_idx" ON "milestone_phases" USING btree ("wedding_id",lower(btrim("name")));--> statement-breakpoint
+CREATE UNIQUE INDEX "milestone_phases_wedding_name_unique_idx" ON "milestone_phases" USING btree ("wedding_id",lower(btrim("name"))) WHERE "milestone_phases"."status" <> 'trashed';--> statement-breakpoint
 CREATE INDEX "milestone_phases_wedding_position_idx" ON "milestone_phases" USING btree ("wedding_id","position");--> statement-breakpoint
 CREATE INDEX "planning_milestones_wedding_date_idx" ON "planning_milestones" USING btree ("wedding_id","planned_date","status");--> statement-breakpoint
 CREATE INDEX "planning_tasks_wedding_status_due_idx" ON "planning_tasks" USING btree ("wedding_id","lifecycle","status","due_date");--> statement-breakpoint

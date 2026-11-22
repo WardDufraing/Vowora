@@ -1,5 +1,5 @@
 {
-  "id": "9c218573-8134-43d4-beb8-ec0ae4d56295",
+  "id": "16820a9a-07e3-4a9f-887c-9a52d2408a6a",
   "prevId": "9bbf4470-5ab2-4acf-8f37-b508552209a2",
   "version": "7",
   "dialect": "postgresql",
@@ -318,6 +318,12 @@
           "notNull": true,
           "default": "'active'"
         },
+        "trashed_at": {
+          "name": "trashed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "position": {
           "name": "position",
           "type": "integer",
@@ -365,6 +371,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"milestone_phases\".\"status\" <> 'trashed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -437,7 +444,11 @@
         },
         "milestone_phases_status": {
           "name": "milestone_phases_status",
-          "value": "\"milestone_phases\".\"status\" IN ('active', 'hidden')"
+          "value": "\"milestone_phases\".\"status\" IN ('active', 'hidden', 'trashed')"
+        },
+        "milestone_phases_kind_status": {
+          "name": "milestone_phases_kind_status",
+          "value": "(\"milestone_phases\".\"kind\" = 'suggested' AND \"milestone_phases\".\"status\" IN ('active', 'hidden') AND \"milestone_phases\".\"trashed_at\" IS NULL) OR (\"milestone_phases\".\"kind\" = 'custom' AND \"milestone_phases\".\"status\" IN ('active', 'trashed') AND ((\"milestone_phases\".\"status\" = 'trashed') = (\"milestone_phases\".\"trashed_at\" IS NOT NULL)))"
         },
         "milestone_phases_position_nonnegative": {
           "name": "milestone_phases_position_nonnegative",
@@ -1320,6 +1331,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "restorable_phase_id": {
+          "name": "restorable_phase_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -1428,11 +1445,29 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
+        "planning_milestones_restorable_phase_id_milestone_phases_id_fk": {
+          "name": "planning_milestones_restorable_phase_id_milestone_phases_id_fk",
+          "tableFrom": "planning_milestones",
+          "tableTo": "milestone_phases",
+          "columnsFrom": ["restorable_phase_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "planning_milestones_phase_same_wedding_fk": {
           "name": "planning_milestones_phase_same_wedding_fk",
           "tableFrom": "planning_milestones",
           "tableTo": "milestone_phases",
           "columnsFrom": ["wedding_id", "phase_id"],
+          "columnsTo": ["wedding_id", "id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "planning_milestones_restorable_phase_same_wedding_fk": {
+          "name": "planning_milestones_restorable_phase_same_wedding_fk",
+          "tableFrom": "planning_milestones",
+          "tableTo": "milestone_phases",
+          "columnsFrom": ["wedding_id", "restorable_phase_id"],
           "columnsTo": ["wedding_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"

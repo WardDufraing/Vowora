@@ -255,7 +255,14 @@ function expectedColumnPrivileges(
   if ((planningTables as readonly string[]).includes(tableName)) {
     const mutable: Readonly<Record<string, readonly string[]>> = {
       task_phases: ["name", "position", "version", "updated_at"],
-      milestone_phases: ["name", "status", "position", "version", "updated_at"],
+      milestone_phases: [
+        "name",
+        "status",
+        "trashed_at",
+        "position",
+        "version",
+        "updated_at",
+      ],
       planning_tasks: [
         "phase_id",
         "owner_membership_id",
@@ -272,6 +279,7 @@ function expectedColumnPrivileges(
       ],
       planning_milestones: [
         "phase_id",
+        "restorable_phase_id",
         "title",
         "description",
         "planned_date",
@@ -553,13 +561,13 @@ async function reconcileRuntimeGrants(
       `GRANT UPDATE ("name", "position", "version", "updated_at") ON TABLE "task_phases" TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("name", "status", "position", "version", "updated_at") ON TABLE "milestone_phases" TO ${role}`,
+      `GRANT UPDATE ("name", "status", "trashed_at", "position", "version", "updated_at") ON TABLE "milestone_phases" TO ${role}`,
     );
     await client.query(
       `GRANT UPDATE ("phase_id", "owner_membership_id", "title", "description", "due_date", "status", "blocked_reason", "lifecycle", "archived_at", "completed_at", "version", "updated_at") ON TABLE "planning_tasks" TO ${role}`,
     );
     await client.query(
-      `GRANT UPDATE ("phase_id", "title", "description", "planned_date", "status", "lifecycle", "trashed_at", "version", "updated_at") ON TABLE "planning_milestones" TO ${role}`,
+      `GRANT UPDATE ("phase_id", "restorable_phase_id", "title", "description", "planned_date", "status", "lifecycle", "trashed_at", "version", "updated_at") ON TABLE "planning_milestones" TO ${role}`,
     );
     await client.query(
       "ALTER DEFAULT PRIVILEGES REVOKE ALL ON TABLES FROM PUBLIC",

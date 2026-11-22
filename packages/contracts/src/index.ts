@@ -324,6 +324,12 @@ export const createPlanningRecordRequestSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+export const planningCollectionQuerySchema = z.strictObject({
+  taskCursor: z.uuidv7().optional(),
+  milestoneCursor: z.uuidv7().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 export const updatePlanningRecordRequestSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("task_phase"),
@@ -337,6 +343,7 @@ export const updatePlanningRecordRequestSchema = z.discriminatedUnion("kind", [
     name: z.string().trim().min(1).max(80),
     position: z.number().int().nonnegative(),
     hidden: z.boolean(),
+    lifecycle: z.enum(["active", "trashed"]),
   }),
   z.strictObject({
     kind: z.literal("task"),
@@ -371,6 +378,7 @@ export const taskPhaseSchema = z.strictObject({
 export const milestonePhaseSchema = taskPhaseSchema.extend({
   kind: z.enum(["suggested", "custom"]),
   hidden: z.boolean(),
+  lifecycle: z.enum(["active", "trashed"]),
 });
 export const planningTaskSchema = z.strictObject({
   id: z.uuidv7(),
@@ -415,6 +423,10 @@ export const planningWorkspaceResponseSchema = z.strictObject({
       }),
     ),
     canEdit: z.boolean(),
+    page: z.strictObject({
+      nextTaskCursor: z.uuidv7().nullable(),
+      nextMilestoneCursor: z.uuidv7().nullable(),
+    }),
   }),
   meta: responseMetadataSchema,
 });
@@ -2219,6 +2231,23 @@ export const openApiDocument = {
       ],
       get: {
         operationId: "listWeddingPlanningRecords",
+        parameters: [
+          {
+            name: "taskCursor",
+            in: "query",
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "milestoneCursor",
+            in: "query",
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+          },
+        ],
         responses: {
           "200": {
             description: "Permission-filtered task, milestone and phase data.",

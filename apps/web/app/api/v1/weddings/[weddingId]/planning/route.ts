@@ -1,4 +1,7 @@
-import { createPlanningRecordRequestSchema } from "@vowora/contracts";
+import {
+  createPlanningRecordRequestSchema,
+  planningCollectionQuerySchema,
+} from "@vowora/contracts";
 import { z } from "zod";
 
 import {
@@ -26,6 +29,12 @@ export async function GET(
 ) {
   const correlationId = correlationIdFor(request);
   const weddingId = z.uuidv7().safeParse((await context.params).weddingId);
+  const url = new URL(request.url);
+  const query = planningCollectionQuerySchema.safeParse({
+    taskCursor: url.searchParams.get("taskCursor") ?? undefined,
+    milestoneCursor: url.searchParams.get("milestoneCursor") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+  });
   const session = await getAuth()
     .api.getSession({
       headers: request.headers,
@@ -54,10 +63,22 @@ export async function GET(
       },
       correlationId,
     );
+  if (!query.success)
+    return problemResponse(
+      request,
+      {
+        status: 400,
+        title: "Invalid planning query",
+        detail: "Check the planning query and try again.",
+        code: "PLANNING_INVALID",
+      },
+      correlationId,
+    );
   try {
     const data = await loadPlanningWorkspace({
       actorId: session.user.id,
       weddingId: weddingId.data,
+      ...query.data,
     });
     return jsonResponse({ data, meta: { correlationId } }, correlationId);
   } catch {

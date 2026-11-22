@@ -1045,6 +1045,7 @@ export const milestonePhases = pgTable(
     name: text("name").notNull(),
     kind: text("kind").notNull().default("custom"),
     status: text("status").notNull().default("active"),
+    trashedAt: timestamp("trashed_at", { withTimezone: true, mode: "date" }),
     position: integer("position").notNull().default(0),
     version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
@@ -1065,14 +1066,17 @@ export const milestonePhases = pgTable(
     ),
     check(
       "milestone_phases_status",
-      sql`${table.status} IN ('active', 'hidden')`,
+      sql`${table.status} IN ('active', 'hidden', 'trashed')`,
+    ),
+    check(
+      "milestone_phases_kind_status",
+      sql`(${table.kind} = 'suggested' AND ${table.status} IN ('active', 'hidden') AND ${table.trashedAt} IS NULL) OR (${table.kind} = 'custom' AND ${table.status} IN ('active', 'trashed') AND ((${table.status} = 'trashed') = (${table.trashedAt} IS NOT NULL)))`,
     ),
     check("milestone_phases_position_nonnegative", sql`${table.position} >= 0`),
     check("milestone_phases_version_positive", sql`${table.version} > 0`),
-    uniqueIndex("milestone_phases_wedding_name_unique_idx").on(
-      table.weddingId,
-      sql`lower(btrim(${table.name}))`,
-    ),
+    uniqueIndex("milestone_phases_wedding_name_unique_idx")
+      .on(table.weddingId, sql`lower(btrim(${table.name}))`)
+      .where(sql`${table.status} <> 'trashed'`),
     uniqueIndex("milestone_phases_wedding_id_unique_idx").on(
       table.weddingId,
       table.id,
@@ -1177,6 +1181,10 @@ export const planningMilestones = pgTable(
     phaseId: uuid("phase_id").references(() => milestonePhases.id, {
       onDelete: "restrict",
     }),
+    restorablePhaseId: uuid("restorable_phase_id").references(
+      () => milestonePhases.id,
+      { onDelete: "set null" },
+    ),
     title: text("title").notNull(),
     description: text("description"),
     plannedDate: date("planned_date", { mode: "string" }).notNull(),
@@ -1222,6 +1230,11 @@ export const planningMilestones = pgTable(
       columns: [table.weddingId, table.phaseId],
       foreignColumns: [milestonePhases.weddingId, milestonePhases.id],
       name: "planning_milestones_phase_same_wedding_fk",
+    }),
+    foreignKey({
+      columns: [table.weddingId, table.restorablePhaseId],
+      foreignColumns: [milestonePhases.weddingId, milestonePhases.id],
+      name: "planning_milestones_restorable_phase_same_wedding_fk",
     }),
   ],
 );

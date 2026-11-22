@@ -34,7 +34,6 @@ type Schema = {
   organizationMemberships: typeof organizationMemberships;
   organizationPrivateNotes: typeof organizationPrivateNotes;
   outboxEvents: typeof outboxEvents;
-  planningTasks: typeof planningTasks;
   weddingOrganizationAccesses: typeof weddingOrganizationAccesses;
   weddingOrganizationHandovers: typeof weddingOrganizationHandovers;
   weddingOrganizationInvitations: typeof weddingOrganizationInvitations;

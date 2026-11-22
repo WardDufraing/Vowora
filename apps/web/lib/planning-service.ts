@@ -31,6 +31,9 @@ interface SessionReader {
 export function loadPlanningWorkspace(input: {
   actorId: string;
   weddingId: string;
+  taskCursor?: string;
+  milestoneCursor?: string;
+  limit?: number;
 }) {
   return listPlanningWorkspace(getRuntimeDatabase().database, input);
 }

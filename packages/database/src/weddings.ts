@@ -42,10 +42,6 @@ type WeddingSchema = {
   outboxEvents: typeof outboxEvents;
   weddingMemberships: typeof weddingMemberships;
   weddings: typeof weddings;
-  milestonePhases: typeof milestonePhases;
-  planningMilestones: typeof planningMilestones;
-  planningTasks: typeof planningTasks;
-  taskPhases: typeof taskPhases;
 };
 
 export type WeddingDatabase<HKT extends PgQueryResultHKT = PgQueryResultHKT> =
