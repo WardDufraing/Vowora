@@ -282,6 +282,164 @@ export const organizationWeddingExitResponseSchema = z.strictObject({
   meta: responseMetadataSchema.extend({ replayed: z.boolean() }),
 });
 
+export const planningTaskStatusSchema = z.enum([
+  "not_started",
+  "in_progress",
+  "blocked",
+  "complete",
+]);
+export const milestoneStatusSchema = z.enum([
+  "not_started",
+  "in_progress",
+  "complete",
+]);
+const optionalTrimmedText = (maximum: number) =>
+  z.string().trim().max(maximum).nullable();
+
+export const createPlanningRecordRequestSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("task_phase"),
+    name: z.string().trim().min(1).max(80),
+    position: z.number().int().nonnegative().default(0),
+  }),
+  z.strictObject({
+    kind: z.literal("milestone_phase"),
+    name: z.string().trim().min(1).max(80),
+    position: z.number().int().nonnegative().default(0),
+  }),
+  z.strictObject({
+    kind: z.literal("task"),
+    title: z.string().trim().min(1).max(200),
+    description: optionalTrimmedText(10_000).default(null),
+    dueDate: z.iso.date().nullable().default(null),
+    phaseId: z.uuidv7().nullable().default(null),
+    ownerMembershipId: z.uuidv7().nullable().default(null),
+  }),
+  z.strictObject({
+    kind: z.literal("milestone"),
+    title: z.string().trim().min(1).max(200),
+    description: optionalTrimmedText(10_000).default(null),
+    plannedDate: z.iso.date(),
+    phaseId: z.uuidv7().nullable().default(null),
+  }),
+]);
+
+export const planningCollectionQuerySchema = z.strictObject({
+  taskCursor: z.string().min(40).max(2048).optional(),
+  milestoneCursor: z.string().min(40).max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const updatePlanningRecordRequestSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("task_phase"),
+    expectedVersion: z.number().int().positive(),
+    name: z.string().trim().min(1).max(80),
+    position: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    kind: z.literal("milestone_phase"),
+    expectedVersion: z.number().int().positive(),
+    name: z.string().trim().min(1).max(80),
+    position: z.number().int().nonnegative(),
+    hidden: z.boolean(),
+    lifecycle: z.enum(["active", "trashed"]),
+  }),
+  z.strictObject({
+    kind: z.literal("task"),
+    expectedVersion: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200),
+    description: optionalTrimmedText(10_000),
+    dueDate: z.iso.date().nullable(),
+    phaseId: z.uuidv7().nullable(),
+    ownerMembershipId: z.uuidv7().nullable(),
+    status: planningTaskStatusSchema,
+    blockedReason: z.string().trim().min(1).max(500).nullable(),
+    lifecycle: z.enum(["active", "archived"]),
+  }),
+  z.strictObject({
+    kind: z.literal("milestone"),
+    expectedVersion: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200),
+    description: optionalTrimmedText(10_000),
+    plannedDate: z.iso.date(),
+    phaseId: z.uuidv7().nullable(),
+    status: milestoneStatusSchema,
+    lifecycle: z.enum(["active", "trashed"]),
+  }),
+]);
+
+export const taskPhaseSchema = z.strictObject({
+  id: z.uuidv7(),
+  name: z.string().min(1).max(80),
+  position: z.number().int().nonnegative(),
+  version: z.number().int().positive(),
+});
+export const milestonePhaseSchema = taskPhaseSchema.extend({
+  kind: z.enum(["suggested", "custom"]),
+  hidden: z.boolean(),
+  lifecycle: z.enum(["active", "trashed"]),
+});
+export const planningTaskSchema = z.strictObject({
+  id: z.uuidv7(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(10_000).nullable(),
+  dueDate: z.iso.date().nullable(),
+  phaseId: z.uuidv7().nullable(),
+  owner: z
+    .strictObject({
+      membershipId: z.uuidv7(),
+      name: z.string().min(1).max(100),
+    })
+    .nullable(),
+  status: planningTaskStatusSchema,
+  blockedReason: z.string().min(1).max(500).nullable(),
+  lifecycle: z.enum(["active", "archived"]),
+  completedAt: z.iso.datetime().nullable(),
+  version: z.number().int().positive(),
+  editable: z.boolean(),
+});
+export const planningMilestoneSchema = z.strictObject({
+  id: z.uuidv7(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(10_000).nullable(),
+  plannedDate: z.iso.date(),
+  phaseId: z.uuidv7().nullable(),
+  status: milestoneStatusSchema,
+  lifecycle: z.enum(["active", "trashed"]),
+  version: z.number().int().positive(),
+  editable: z.boolean(),
+});
+export const planningWorkspaceResponseSchema = z.strictObject({
+  data: z.strictObject({
+    taskPhases: z.array(taskPhaseSchema),
+    milestonePhases: z.array(milestonePhaseSchema),
+    tasks: z.array(planningTaskSchema),
+    milestones: z.array(planningMilestoneSchema),
+    assignableMembers: z.array(
+      z.strictObject({
+        membershipId: z.uuidv7(),
+        name: z.string().min(1).max(100),
+      }),
+    ),
+    canEdit: z.boolean(),
+    page: z.strictObject({
+      nextTaskCursor: z.string().min(40).max(2048).nullable(),
+      nextMilestoneCursor: z.string().min(40).max(2048).nullable(),
+    }),
+  }),
+  meta: responseMetadataSchema,
+});
+export const planningRecordResponseSchema = z.strictObject({
+  data: z.union([
+    taskPhaseSchema.extend({ recordType: z.literal("task_phase") }),
+    milestonePhaseSchema.extend({ recordType: z.literal("milestone_phase") }),
+    planningTaskSchema.extend({ recordType: z.literal("task") }),
+    planningMilestoneSchema.extend({ recordType: z.literal("milestone") }),
+  ]),
+  meta: responseMetadataSchema,
+});
+
 export const permissionCeilingEntrySchema = z.strictObject({
   area: z.enum([
     "settings",
@@ -488,6 +646,15 @@ export type UpdateOrganizationPrivateNoteRequest = z.infer<
 export type OrganizationWeddingExitRequest = z.infer<
   typeof organizationWeddingExitRequestSchema
 >;
+export type CreatePlanningRecordRequest = z.infer<
+  typeof createPlanningRecordRequestSchema
+>;
+export type UpdatePlanningRecordRequest = z.infer<
+  typeof updatePlanningRecordRequestSchema
+>;
+export type PlanningWorkspace = z.infer<
+  typeof planningWorkspaceResponseSchema
+>["data"];
 export type PermissionCeilingEntry = z.infer<
   typeof permissionCeilingEntrySchema
 >;
@@ -2053,6 +2220,128 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/weddings/{weddingId}/planning": {
+      parameters: [
+        {
+          name: "weddingId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listWeddingPlanningRecords",
+        parameters: [
+          {
+            name: "taskCursor",
+            in: "query",
+            description:
+              "Opaque signed cursor from the prior task page; bound to the actor, wedding, permission scope, sort and limit.",
+            schema: { type: "string", minLength: 40, maxLength: 2048 },
+          },
+          {
+            name: "milestoneCursor",
+            in: "query",
+            description:
+              "Opaque signed cursor from the prior milestone page; bound to the actor, wedding, permission scope, sort and limit.",
+            schema: { type: "string", minLength: 40, maxLength: 2048 },
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Permission-filtered task, milestone and phase data.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/PlanningWorkspaceResponse",
+                },
+              },
+            },
+          },
+          "401": authenticationFailure,
+          "403": problemResponse("The planning workspace is unavailable."),
+        },
+      },
+      post: {
+        operationId: "createWeddingPlanningRecord",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/CreatePlanningRecordRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Planning record created.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/PlanningRecordResponse" },
+              },
+            },
+          },
+          "400": problemResponse("The planning record is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("The planning record cannot be created."),
+          "409": problemResponse(
+            "The planning record conflicts with current state.",
+          ),
+        },
+      },
+    },
+    "/api/v1/weddings/{weddingId}/planning/{recordId}": {
+      parameters: [
+        {
+          name: "weddingId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "recordId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      patch: {
+        operationId: "updateWeddingPlanningRecord",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/UpdatePlanningRecordRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Planning record updated.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/PlanningRecordResponse" },
+              },
+            },
+          },
+          "400": problemResponse("The planning change is invalid."),
+          "401": authenticationFailure,
+          "403": problemResponse("The planning record is unavailable."),
+          "409": problemResponse(
+            "The planning record changed before this update.",
+          ),
+        },
+      },
+    },
     "/api/v1/{path}": {
       parameters: [
         {
@@ -2207,6 +2496,21 @@ export const openApiDocument = {
         organizationWeddingExitResponseSchema,
         { target: "draft-2020-12" },
       ),
+      CreatePlanningRecordRequest: z.toJSONSchema(
+        createPlanningRecordRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      UpdatePlanningRecordRequest: z.toJSONSchema(
+        updatePlanningRecordRequestSchema,
+        { target: "draft-2020-12" },
+      ),
+      PlanningWorkspaceResponse: z.toJSONSchema(
+        planningWorkspaceResponseSchema,
+        { target: "draft-2020-12" },
+      ),
+      PlanningRecordResponse: z.toJSONSchema(planningRecordResponseSchema, {
+        target: "draft-2020-12",
+      }),
       CreateWeddingOrganizationInvitationRequest: z.toJSONSchema(
         createWeddingOrganizationInvitationRequestSchema,
         { target: "draft-2020-12" },

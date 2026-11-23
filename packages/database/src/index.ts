@@ -23,6 +23,10 @@ export {
   weddingOrganizationAccesses,
   weddingOrganizationStaffAssignments,
   weddingOrganizationStaffRestrictions,
+  taskPhases,
+  milestonePhases,
+  planningTasks,
+  planningMilestones,
 } from "./schema.js";
 export { AuditEventWriter, OutboxEventWriter } from "./audit-outbox.js";
 export type { AuditOutboxSession } from "./audit-outbox.js";
@@ -82,6 +86,19 @@ export {
   updateOrganizationPrivateNote,
 } from "./planner-private.js";
 export type { PlannerPrivateDatabase } from "./planner-private.js";
+export {
+  createPlanningRecord,
+  listPlanningWorkspace,
+  updatePlanningRecord,
+  PlanningUnavailableError,
+} from "./planning.js";
+export type {
+  CreatePlanningInput,
+  PlanningDatabase,
+  PlanningMilestoneStatus,
+  PlanningTaskStatus,
+  UpdatePlanningInput,
+} from "./planning.js";
 export type {
   PermissionCeilingEntry,
   PlannerAssignmentDatabase,
