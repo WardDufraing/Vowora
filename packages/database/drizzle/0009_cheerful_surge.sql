@@ -150,7 +150,16 @@ SET search_path = pg_catalog
 AS $function$
 BEGIN
 	IF OLD.lifecycle = 'trashed' THEN
-		IF NEW.lifecycle <> 'active'
+		IF pg_catalog.pg_trigger_depth() > 1 AND NEW.lifecycle = 'trashed' THEN
+			IF NEW.trashed_at IS DISTINCT FROM OLD.trashed_at
+				OR NEW.title IS DISTINCT FROM OLD.title
+				OR NEW.description IS DISTINCT FROM OLD.description
+				OR NEW.planned_date IS DISTINCT FROM OLD.planned_date
+				OR NEW.status IS DISTINCT FROM OLD.status
+				OR NEW.version <> OLD.version + 1 THEN
+				RAISE EXCEPTION 'phase lifecycle must preserve trashed planning milestone contents' USING ERRCODE = '23514';
+			END IF;
+		ELSIF NEW.lifecycle <> 'active'
 			OR NEW.trashed_at IS NOT NULL
 			OR NEW.phase_id IS DISTINCT FROM OLD.phase_id
 			OR NEW.restorable_phase_id IS DISTINCT FROM OLD.restorable_phase_id

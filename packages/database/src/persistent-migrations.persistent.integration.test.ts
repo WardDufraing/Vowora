@@ -347,6 +347,7 @@ describe("persistent migration workflow", () => {
       ).rejects.toThrow(/permission denied/);
       const milestonePhaseId = "019a27f0-67b7-7000-8000-000000000016";
       const milestoneId = "019a27f0-67b7-7000-8000-000000000017";
+      const alreadyTrashedMilestoneId = "019a27f0-67b7-7000-8000-000000000019";
       await runtime.query(
         `INSERT INTO milestone_phases
           (id, wedding_id, name, kind, status, position)
@@ -356,9 +357,19 @@ describe("persistent migration workflow", () => {
       await runtime.query(
         `INSERT INTO planning_milestones
           (id, wedding_id, phase_id, title, planned_date, status, lifecycle)
-         VALUES ($1, $2, $3, 'Venue confirmed', '2027-03-01',
-           'in_progress', 'active')`,
-        [milestoneId, weddingId, milestonePhaseId],
+         VALUES
+           ($1, $3, $4, 'Venue confirmed', '2027-03-01',
+             'in_progress', 'active'),
+           ($2, $3, $4, 'Already trashed milestone', '2027-03-02',
+             'not_started', 'active')`,
+        [milestoneId, alreadyTrashedMilestoneId, weddingId, milestonePhaseId],
+      );
+      await runtime.query(
+        `UPDATE planning_milestones
+            SET lifecycle = 'trashed', trashed_at = now(), version = 2,
+                updated_at = now()
+          WHERE id = $1`,
+        [alreadyTrashedMilestoneId],
       );
       await runtime.query(
         `UPDATE milestone_phases
@@ -380,6 +391,20 @@ describe("persistent migration workflow", () => {
         restorable_phase_id: milestonePhaseId,
         version: 2,
       });
+      expect(
+        (
+          await runtime.query(
+            `SELECT lifecycle, phase_id, restorable_phase_id, version
+               FROM planning_milestones WHERE id = $1`,
+            [alreadyTrashedMilestoneId],
+          )
+        ).rows[0],
+      ).toEqual({
+        lifecycle: "trashed",
+        phase_id: null,
+        restorable_phase_id: milestonePhaseId,
+        version: 3,
+      });
       await runtime.query(
         `UPDATE planning_milestones
             SET lifecycle = 'trashed', trashed_at = now(), version = 3,
@@ -396,18 +421,42 @@ describe("persistent migration workflow", () => {
         ),
       ).rejects.toThrow(/trashed planning milestone is immutable/);
       await runtime.query(
-        `UPDATE planning_milestones
-            SET lifecycle = 'active', trashed_at = NULL, version = 4,
-                updated_at = now()
-          WHERE id = $1`,
-        [milestoneId],
-      );
-      await runtime.query(
         `UPDATE milestone_phases
             SET status = 'active', trashed_at = NULL, version = 3,
                 updated_at = now()
           WHERE id = $1`,
         [milestonePhaseId],
+      );
+      expect(
+        (
+          await runtime.query(
+            `SELECT lifecycle, phase_id, restorable_phase_id, version
+               FROM planning_milestones
+              WHERE id IN ($1, $2)
+              ORDER BY id`,
+            [milestoneId, alreadyTrashedMilestoneId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          lifecycle: "trashed",
+          phase_id: milestonePhaseId,
+          restorable_phase_id: null,
+          version: 4,
+        },
+        {
+          lifecycle: "trashed",
+          phase_id: milestonePhaseId,
+          restorable_phase_id: null,
+          version: 4,
+        },
+      ]);
+      await runtime.query(
+        `UPDATE planning_milestones
+            SET lifecycle = 'active', trashed_at = NULL, version = 5,
+                updated_at = now()
+          WHERE id = $1`,
+        [milestoneId],
       );
       expect(
         (

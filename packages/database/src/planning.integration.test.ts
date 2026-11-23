@@ -681,6 +681,149 @@ describe("task and milestone domain", () => {
     );
   });
 
+  it("coordinates phase trash and restore with milestones trashed in either order", async () => {
+    await withIsolatedTestSchema(
+      config,
+      `planning-phase-trashed-milestones-${randomUUID()}`,
+      async ({ client }) => {
+        const database = createTestDatabase(client);
+        const state = await seed(database);
+        const phase = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          { kind: "milestone_phase", name: "Venue", position: 1 },
+        );
+        const beforePhaseTrash = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "milestone",
+            title: "Trashed before phase",
+            description: null,
+            plannedDate: "2027-03-01",
+            phaseId: phase.id,
+          },
+        );
+        const afterPhaseTrash = await createPlanningRecord(
+          database,
+          await createOperation(database, state.actor.partner, state.weddingId),
+          {
+            kind: "milestone",
+            title: "Trashed after phase",
+            description: null,
+            plannedDate: "2027-03-02",
+            phaseId: phase.id,
+          },
+        );
+        if (
+          beforePhaseTrash.recordType !== "milestone" ||
+          afterPhaseTrash.recordType !== "milestone"
+        )
+          throw new Error("Expected milestones");
+
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            beforePhaseTrash.id,
+          ),
+          beforePhaseTrash.id,
+          {
+            kind: "milestone",
+            expectedVersion: 1,
+            title: beforePhaseTrash.title,
+            description: beforePhaseTrash.description,
+            plannedDate: beforePhaseTrash.plannedDate,
+            phaseId: phase.id,
+            status: "not_started",
+            lifecycle: "trashed",
+          },
+        );
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            phase.id,
+          ),
+          phase.id,
+          {
+            kind: "milestone_phase",
+            expectedVersion: 1,
+            name: "Venue",
+            position: 1,
+            hidden: false,
+            lifecycle: "trashed",
+          },
+        );
+        expect(
+          await database.query.planningMilestones.findFirst({
+            where: eq(tables.planningMilestones.id, beforePhaseTrash.id),
+          }),
+        ).toMatchObject({
+          lifecycle: "trashed",
+          phaseId: null,
+          restorablePhaseId: phase.id,
+          version: 3,
+        });
+
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            afterPhaseTrash.id,
+          ),
+          afterPhaseTrash.id,
+          {
+            kind: "milestone",
+            expectedVersion: 2,
+            title: afterPhaseTrash.title,
+            description: afterPhaseTrash.description,
+            plannedDate: afterPhaseTrash.plannedDate,
+            phaseId: null,
+            status: "not_started",
+            lifecycle: "trashed",
+          },
+        );
+        await updatePlanningRecord(
+          database,
+          await updateOperation(
+            database,
+            state.actor.partner,
+            state.weddingId,
+            phase.id,
+          ),
+          phase.id,
+          {
+            kind: "milestone_phase",
+            expectedVersion: 2,
+            name: "Venue",
+            position: 1,
+            hidden: false,
+            lifecycle: "active",
+          },
+        );
+        for (const milestoneId of [beforePhaseTrash.id, afterPhaseTrash.id]) {
+          expect(
+            await database.query.planningMilestones.findFirst({
+              where: eq(tables.planningMilestones.id, milestoneId),
+            }),
+          ).toMatchObject({
+            lifecycle: "trashed",
+            phaseId: phase.id,
+            restorablePhaseId: null,
+            version: 4,
+          });
+        }
+      },
+    );
+  });
+
   it("keeps trashed milestone contents immutable and restores the prior state", async () => {
     await withIsolatedTestSchema(
       config,
