@@ -721,6 +721,8 @@ describe("task and milestone domain", () => {
             lifecycle: "active",
           },
         );
+        if (inProgress.recordType !== "milestone")
+          throw new Error("Expected milestone");
         const trashed = await updatePlanningRecord(
           database,
           await updateOperation(
