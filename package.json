@@ -27,23 +27,23 @@
     "db:migrate:persistent": "pnpm exec turbo run build --filter=@vowora/database && node packages/database/dist/persistent-migrate-cli.js"
   },
   "devDependencies": {
-    "turbo": "2.11.12",
+    "turbo": "2.11.13",
     "@vowora/config": "workspace:*",
     "prettier": "3.10.1",
-    "vitest": "5.1.1",
+    "vitest": "5.1.2",
     "vite": "8.3.8",
     "jsdom": "31.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/dom": "10.4.2",
-    "@testing-library/user-event": "14.6.12",
-    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/user-event": "14.6.13",
+    "@testing-library/jest-dom": "8.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "@types/react": "19.3.0",
+    "@types/react": "19.3.2",
     "@types/react-dom": "19.3.0",
     "eslint": "10.15.0",
     "@typescript/native": "npm:typescript@7.0.2",
     "typescript": "npm:@typescript/typescript6@6.0.2",
-    "@types/node": "24.19.2"
+    "@types/node": "24.19.4"
   }
 }
